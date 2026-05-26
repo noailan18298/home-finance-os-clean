@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'family-finance-os-months-hebrew-v2';
