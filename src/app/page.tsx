@@ -3,10 +3,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
-const STORAGE_KEY = 'family-finance-os-full-intelligence-v2';
+const STORAGE_KEY = 'family-finance-os-full-intelligence-v4';
 const SUPABASE_PROFILE_ID = 'default-household';
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+function getPublicEnv(key) {
+  if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
+  return '';
+}
+
+const SUPABASE_URL = getPublicEnv('NEXT_PUBLIC_SUPABASE_URL');
+const SUPABASE_ANON_KEY = getPublicEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
 const SHEKEL = new Intl.NumberFormat('he-IL', {
   style: 'currency',
@@ -204,9 +210,7 @@ function parseCsvText(text, learnedRules = {}) {
     .filter(Boolean);
 
   if (lines.length === 0) return [];
-
-  const rows = lines.map(splitCsvLine).filter((row) => row.length > 0);
-  return normalizeImportedRows(rows, learnedRules);
+  return normalizeImportedRows(lines.map(splitCsvLine), learnedRules);
 }
 
 function parseExcelArrayBuffer(buffer, learnedRules = {}) {
@@ -214,8 +218,7 @@ function parseExcelArrayBuffer(buffer, learnedRules = {}) {
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) return [];
 
-  const sheet = workbook.Sheets[firstSheetName];
-  const rows = XLSX.utils.sheet_to_json(sheet, {
+  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
     header: 1,
     raw: false,
     defval: '',
@@ -251,7 +254,6 @@ function calculateFinancialHealthScore(transactions) {
   const largestMerchantAmount = Math.max(...Object.values(merchantTotals).map(toNumber));
 
   let score = 100;
-
   if (uncategorizedAmount / total > 0.2) score -= 15;
   if (largestTransaction / total > 0.25) score -= 12;
   if (largestMerchantAmount / total > 0.35) score -= 10;
@@ -280,8 +282,7 @@ function detectRecurringTransactions(transactions, historicalMonths = {}, select
   return transactions.filter((transaction) => {
     const normalized = normalizeMerchantName(transaction.merchant);
     const keywordHit = recurringKeywords.some((keyword) => normalized.includes(normalizeMerchantName(keyword)));
-    const historicalHit = historicalMerchants.has(normalized);
-    return keywordHit || historicalHit;
+    return keywordHit || historicalMerchants.has(normalized);
   });
 }
 
@@ -310,13 +311,13 @@ function buildRealInsights(transactions, recurringTransactions = [], totalIncome
   const healthScore = calculateFinancialHealthScore(transactions);
   const insights = [];
 
-  insights.push(`ציון בריאות הוצאות אשראי: ${healthScore}/100. הציון מחושב לפי חריגות תקציב, ריכוזיות, עסקאות גדולות וסיווגים חסרים.`);
+  insights.push(`ציון בריאות הוצאות אשראי: ${healthScore}/100.`);
 
   const [topCategory, topCategoryAmount] = sortedCategories[0] || [];
   if (topCategory) insights.push(`הקטגוריה הגדולה ביותר באשראי היא ${topCategory}: ${SHEKEL.format(topCategoryAmount)}, שהם ${Math.round((topCategoryAmount / total) * 100)}% מהחיובים.`);
 
   const [topMerchant, topMerchantAmount] = sortedMerchants[0] || [];
-  if (topMerchant) insights.push(`בית העסק הדומיננטי ביותר הוא ${topMerchant}: ${SHEKEL.format(topMerchantAmount)}, כלומר ${Math.round((topMerchantAmount / total) * 100)}% מהחיובים.`);
+  if (topMerchant) insights.push(`בית העסק הדומיננטי ביותר הוא ${topMerchant}: ${SHEKEL.format(topMerchantAmount)}.`);
 
   insights.push(`גובה עסקת אשראי ממוצעת: ${SHEKEL.format(averageTransaction)}.`);
 
@@ -324,7 +325,7 @@ function buildRealInsights(transactions, recurringTransactions = [], totalIncome
 
   Object.entries(categoryBudgets).forEach(([category, budget]) => {
     const spent = categoryTotals[category] || 0;
-    if (spent > budget) insights.push(`${category} חרגה מהתקציב: ${SHEKEL.format(spent)} מתוך ${SHEKEL.format(budget)}. חריגה של ${SHEKEL.format(spent - budget)}.`);
+    if (spent > budget) insights.push(`${category} חרגה מהתקציב ב־${SHEKEL.format(spent - budget)}.`);
     else if (spent >= budget * 0.8) insights.push(`${category} מתקרבת לתקציב: ${SHEKEL.format(spent)} מתוך ${SHEKEL.format(budget)}.`);
   });
 
@@ -342,8 +343,6 @@ function buildRealInsights(transactions, recurringTransactions = [], totalIncome
     insights.push(`זוהו ${recurringTransactions.length} עסקאות חוזרות/מנויים בסך כולל של ${SHEKEL.format(recurringTotal)}.`);
   }
 
-  if (healthScore >= 85) insights.push('לא נמצאו חריגות משמעותיות לפי החוקים שהוגדרו. נראה שהחודש מאוזן יחסית באשראי.');
-
   return insights;
 }
 
@@ -359,7 +358,6 @@ async function loadFinanceStateFromSupabase() {
   });
 
   if (!response.ok) throw new Error('Supabase load failed');
-
   const rows = await response.json();
   return Array.isArray(rows) ? rows[0] || null : null;
 }
@@ -385,20 +383,6 @@ async function saveFinanceStateToSupabase(months, learnedRules) {
 
   if (!response.ok) throw new Error('Supabase save failed');
 }
-
-function runSmokeTests() {
-  console.assert(toNumber('₪1,250') === 1250, 'currency parsing failed');
-  console.assert(detectCategory('Wolt TLV') === 'מסעדות / וולט', 'wolt category failed');
-  console.assert(detectCategory('My Shop', { shop: 'קניות' }) === 'קניות', 'learned rule failed');
-  console.assert(splitCsvLine('a,b,c').length === 3, 'csv split failed');
-  const csvSample = ['date,merchant,amount', '2026-01-01,Wolt,55'].join(String.fromCharCode(10));
-  console.assert(parseCsvText(csvSample).length === 1, 'csv parse failed');
-  console.assert(getCategoryTotals([{ category: 'קניות', amount: 10 }, { category: 'קניות', amount: 20 }]).קניות === 30, 'category totals failed');
-  console.assert(buildRealInsights([{ merchant: 'Wolt', category: 'מסעדות / וולט', amount: 900 }]).some((insight) => insight.includes('חרגה')), 'real budget insight failed');
-  console.assert(detectRecurringTransactions([{ merchant: 'Netflix', amount: 50 }]).length === 1, 'recurring detection failed');
-}
-
-if (typeof window !== 'undefined') runSmokeTests();
 
 function createDefaultMonth() {
   return {
@@ -461,6 +445,22 @@ function normalizeMonthData(data) {
   };
 }
 
+function runSmokeTests() {
+  console.assert(getPublicEnv('THIS_ENV_SHOULD_NOT_EXIST') === '', 'safe env fallback failed');
+  console.assert(toNumber('₪1,250') === 1250, 'currency parsing failed');
+  console.assert(detectCategory('Wolt TLV') === 'מסעדות / וולט', 'wolt category failed');
+  console.assert(detectCategory('My Shop', { shop: 'קניות' }) === 'קניות', 'learned rule failed');
+  console.assert(splitCsvLine('a,b,c').length === 3, 'csv split failed');
+  const csvSample = ['date,merchant,amount', '2026-01-01,Wolt,55'].join(String.fromCharCode(10));
+  console.assert(parseCsvText(csvSample).length === 1, 'csv parse failed');
+  console.assert(getCategoryTotals([{ category: 'קניות', amount: 10 }, { category: 'קניות', amount: 20 }]).קניות === 30, 'category totals failed');
+  console.assert(buildRealInsights([{ merchant: 'Wolt', category: 'מסעדות / וולט', amount: 900 }]).some((insight) => insight.includes('חרגה')), 'real budget insight failed');
+  console.assert(detectRecurringTransactions([{ merchant: 'Netflix', amount: 50 }]).length === 1, 'recurring detection failed');
+  console.assert(normalizeMonthData({}).creditCards.length === 2, 'month normalizer failed');
+}
+
+if (typeof window !== 'undefined') runSmokeTests();
+
 function StatCard({ title, value, note }) {
   return (
     <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
@@ -473,6 +473,123 @@ function StatCard({ title, value, note }) {
 
 function Section({ children, className = '' }) {
   return <section className={`rounded-[32px] border border-slate-200 bg-white p-7 shadow-sm ${className}`}>{children}</section>;
+}
+
+function CreditCardPanel({
+  card,
+  cardTotal,
+  onUpdateCard,
+  onRemoveCard,
+  onImportFile,
+  onUpdatePending,
+  onRemovePending,
+  onApprovePending,
+  onAddTransaction,
+  onRemoveTransaction,
+  onUpdateCategory,
+}) {
+  const pendingRows = card.pendingTransactions || [];
+  const approvedRows = card.transactions || [];
+
+  return (
+    <div className="rounded-[32px] border border-[#d8e2d2] bg-[#f3f5ef]/60 p-6 shadow-sm">
+      <div className="grid gap-3 md:grid-cols-[minmax(180px,1fr)_minmax(140px,1fr)_110px_40px]">
+        <input value={card.name} onChange={(event) => onUpdateCard(card.id, 'name', event.target.value)} className="rounded-xl border border-[#d8e2d2] bg-white px-4 py-3 text-sm" placeholder="שם הכרטיס" />
+        <input value={card.owner} onChange={(event) => onUpdateCard(card.id, 'owner', event.target.value)} className="rounded-xl border border-[#d8e2d2] bg-white px-4 py-3 text-sm" placeholder="בעל/ת הכרטיס" />
+        <div className="rounded-xl bg-white px-4 py-3 text-sm font-bold text-[#5d755f]">{SHEKEL.format(cardTotal)}</div>
+        <button onClick={() => onRemoveCard(card.id)} className="rounded-xl bg-white text-sm font-bold text-slate-500">×</button>
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-dashed border-[#d8e2d2] bg-white p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-sm font-bold text-[#4f6854]">העלאת CSV / Excel של פירוט אשראי</div>
+            <div className="mt-1 text-xs text-slate-500">העלאה נמצאת כאן, בתוך הכרטיס הרלוונטי.</div>
+          </div>
+          <label className="cursor-pointer rounded-2xl bg-[#7a9b76] px-4 py-3 text-sm font-semibold text-white shadow-sm">
+            העלאת קובץ
+            <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onImportFile(card.id, file); }} />
+          </label>
+        </div>
+        {card.importedFile ? <div className="mt-3 rounded-xl bg-[#f3f5ef] px-4 py-3 text-sm text-[#4f6854]">נקלט קובץ: <strong>{card.importedFile}</strong></div> : null}
+      </div>
+
+      {pendingRows.length > 0 ? (
+        <div className="mt-4 rounded-2xl border border-[#d8e2d2] bg-[#fcfbf8] p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="text-sm font-bold text-[#4f6854]">עסקאות שזוהו לאישור</div>
+              <div className="mt-1 text-xs text-slate-500">בדקו סכומים וקטגוריות לפני שהן נכנסות להוצאות.</div>
+            </div>
+            <button onClick={() => onApprovePending(card.id)} className="rounded-2xl bg-[#7a9b76] px-4 py-3 text-sm font-semibold text-white shadow-sm">אשר והכנס להוצאות</button>
+          </div>
+          <TransactionEditorTable rows={pendingRows} cardId={card.id} mode="pending" onUpdate={onUpdatePending} onRemove={onRemovePending} />
+        </div>
+      ) : null}
+
+      <TransactionEditorTable rows={approvedRows} cardId={card.id} mode="approved" onUpdate={onUpdateCategory} onRemove={onRemoveTransaction} />
+      <button onClick={() => onAddTransaction(card.id)} className="mt-4 rounded-2xl bg-[#4d5b52] px-4 py-3 text-sm font-semibold text-white shadow-sm">+ הוספת עסקה</button>
+    </div>
+  );
+}
+
+function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
+  const isPending = mode === 'pending';
+
+  return (
+    <div className="mt-5 max-h-[900px] overflow-auto rounded-2xl border border-[#d8e2d2] bg-white">
+      <div className="min-w-[720px]">
+        <div className="sticky top-0 z-10 grid grid-cols-[110px_minmax(180px,1fr)_170px_120px_44px] bg-[#e5eee2] px-5 py-4 text-sm font-bold text-[#4f6854]">
+          <div>תאריך</div>
+          <div>{isPending ? 'בית עסק' : 'עסקה'}</div>
+          <div>{isPending ? 'קטגוריה' : 'קטגוריה לומדת'}</div>
+          <div>סכום</div>
+          <div></div>
+        </div>
+
+        {rows.map((transaction) => (
+          <div key={transaction.id} className="grid grid-cols-[110px_minmax(180px,1fr)_170px_120px_44px] gap-4 border-t border-[#d8e2d2] p-4">
+            {isPending ? (
+              <input value={transaction.date || ''} onChange={(event) => onUpdate(cardId, transaction.id, 'date', event.target.value)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm" />
+            ) : (
+              <div className="px-3 py-4 text-base text-slate-500">{transaction.date}</div>
+            )}
+
+            {isPending ? (
+              <input value={transaction.merchant} onChange={(event) => onUpdate(cardId, transaction.id, 'merchant', event.target.value)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm" />
+            ) : (
+              <input value={transaction.merchant} readOnly className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm" />
+            )}
+
+            <select
+              value={transaction.category}
+              onChange={(event) => {
+                if (isPending) onUpdate(cardId, transaction.id, 'category', event.target.value);
+                else onUpdate(transaction.id, event.target.value);
+              }}
+              className="rounded-xl border border-slate-200 px-3 py-3 text-sm"
+            >
+              {defaultExpenseCategories.map((category) => <option key={category}>{category}</option>)}
+            </select>
+
+            {isPending ? (
+              <input type="number" value={transaction.amount} onChange={(event) => onUpdate(cardId, transaction.id, 'amount', event.target.value)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm" />
+            ) : (
+              <div className="px-3 py-3 text-sm font-bold">{SHEKEL.format(transaction.amount)}</div>
+            )}
+
+            <button onClick={() => onRemove(cardId, transaction.id)} className="rounded-xl bg-slate-100 text-sm font-bold text-slate-500">×</button>
+          </div>
+        ))}
+
+        {rows.length === 0 ? <div className="p-10 text-center text-sm text-slate-400">אין עדיין עסקאות בכרטיס הזה</div> : null}
+      </div>
+    </div>
+  );
+}
+
+function InputRow({ children }) {
+  return <div className="grid gap-3 rounded-2xl border border-slate-100 p-4 md:grid-cols-[1fr_160px_44px]">{children}</div>;
 }
 
 export default function PersonalIsraeliFamilyFinanceDashboard() {
@@ -508,10 +625,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     async function loadCloudState() {
       try {
         const data = await loadFinanceStateFromSupabase();
-
         if (data?.months) setMonths(data.months);
         if (data?.learned_rules) setLearnedRules(data.learned_rules);
-
         setCloudStatus(data?.months ? 'מסונכרן מהענן' : 'אין עדיין נתוני ענן, עובדים מקומית');
       } catch {
         setCloudStatus('ענן לא זמין כרגע, עובדים מקומית');
@@ -528,7 +643,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(months));
       window.localStorage.setItem(`${STORAGE_KEY}-rules`, JSON.stringify(learnedRules));
     } catch {
-      // Local storage can be blocked. The app still works in memory.
+      // localStorage can be blocked. The app still works in memory.
     }
   }, [months, learnedRules]);
 
@@ -680,19 +795,19 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       }),
     }));
 
-    if (changedTransaction) {
-      const normalizedMerchant = normalizeMerchantName(changedTransaction.merchant);
-      setLearnedRules((current) => ({ ...current, [normalizedMerchant]: newCategory }));
-      setSelectedMonthData({
-        ...monthData,
-        creditCards: updatedCards.map((card) => ({
-          ...card,
-          transactions: (card.transactions || []).map((transaction) =>
-            normalizeMerchantName(transaction.merchant) === normalizedMerchant ? { ...transaction, category: newCategory } : transaction
-          ),
-        })),
-      });
-    }
+    if (!changedTransaction) return;
+
+    const normalizedMerchant = normalizeMerchantName(changedTransaction.merchant);
+    setLearnedRules((current) => ({ ...current, [normalizedMerchant]: newCategory }));
+    setSelectedMonthData({
+      ...monthData,
+      creditCards: updatedCards.map((card) => ({
+        ...card,
+        transactions: (card.transactions || []).map((transaction) =>
+          normalizeMerchantName(transaction.merchant) === normalizedMerchant ? { ...transaction, category: newCategory } : transaction
+        ),
+      })),
+    });
   }
 
   function removePendingTransaction(cardId, transactionId) {
@@ -773,7 +888,6 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const totalAssets = toNumber(monthData.emergencyFund) + monthData.savingsProducts.reduce((sum, item) => sum + toNumber(item.currentBalance), 0) + monthData.savingGoals.reduce((sum, item) => sum + toNumber(item.currentAmount), 0);
 
   const categoryTotals = useMemo(() => getCategoryTotals(allCreditTransactions), [allCreditTransactions]);
-  const merchantTotals = useMemo(() => getMerchantTotals(allCreditTransactions), [allCreditTransactions]);
   const recurringTransactions = useMemo(() => detectRecurringTransactions(allCreditTransactions, months, selectedMonth), [allCreditTransactions, months, selectedMonth]);
   const realInsights = useMemo(() => buildRealInsights(allCreditTransactions, recurringTransactions, totalIncome), [allCreditTransactions, recurringTransactions, totalIncome]);
   const trend = useMemo(() => getMonthlyTrend(months), [months]);
@@ -836,65 +950,239 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         <section className="grid gap-6 lg:grid-cols-2">
           <Section>
             <div className="flex items-center justify-between gap-4">
-              <div><h2 className="text-3xl font-bold">הכנסות</h2><p className="mt-2 text-sm text-slate-500">אפשר להעלות גם תלוש PDF. כשה־OCR יחובר בשרת, נטו מהתלוש ייכנס אוטומטית להכנסות.</p></div>
-              <div className="flex gap-3"><label className="cursor-pointer rounded-2xl bg-[#7c9780] px-4 py-3 text-sm font-semibold text-white shadow-sm">שמירת תלוש לחודש<input type="file" accept="application/pdf" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importSalarySlipFile(file); }} /></label><button onClick={addIncome} className="rounded-2xl bg-[#7a9b76] px-4 py-3 text-sm font-semibold text-white shadow-sm">+ הוספה</button></div>
+              <div>
+                <h2 className="text-3xl font-bold">הכנסות</h2>
+                <p className="mt-2 text-sm text-slate-500">אפשר להעלות גם תלוש PDF. כשה־OCR יחובר בשרת, נטו מהתלוש ייכנס אוטומטית להכנסות.</p>
+              </div>
+              <div className="flex gap-3">
+                <label className="cursor-pointer rounded-2xl bg-[#7c9780] px-4 py-3 text-sm font-semibold text-white shadow-sm">
+                  שמירת תלוש לחודש
+                  <input type="file" accept="application/pdf" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importSalarySlipFile(file); }} />
+                </label>
+                <button onClick={addIncome} className="rounded-2xl bg-[#7a9b76] px-4 py-3 text-sm font-semibold text-white shadow-sm">+ הוספה</button>
+              </div>
             </div>
             {monthData.lastSalaryImport ? <div className="mt-4 rounded-2xl bg-[#f3f5ef] p-4 text-sm text-[#4f6854]">תלוש שנקלט לחודש: {monthData.lastSalaryImport}</div> : null}
-            <div className="mt-6 space-y-3">{monthData.incomes.map((income) => <div key={income.id} className="grid gap-3 rounded-2xl border border-slate-100 p-4 md:grid-cols-[1fr_160px_44px]"><input value={income.name} onChange={(event) => updateRow('incomes', income.id, 'name', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#8fa88c]" /><input type="number" value={income.amount} onChange={(event) => updateRow('incomes', income.id, 'amount', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#8fa88c]" /><button onClick={() => removeRow('incomes', income.id)} className="rounded-xl bg-slate-100 text-sm font-bold text-slate-500">×</button></div>)}</div>
+            <div className="mt-6 space-y-3">
+              {monthData.incomes.map((income) => (
+                <InputRow key={income.id}>
+                  <input value={income.name} onChange={(event) => updateRow('incomes', income.id, 'name', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#8fa88c]" />
+                  <input type="number" value={income.amount} onChange={(event) => updateRow('incomes', income.id, 'amount', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#8fa88c]" />
+                  <button onClick={() => removeRow('incomes', income.id)} className="rounded-xl bg-slate-100 text-sm font-bold text-slate-500">×</button>
+                </InputRow>
+              ))}
+            </div>
           </Section>
 
           <Section>
             <h2 className="text-3xl font-bold">עצמאי: מע״מ, מס הכנסה וביטוח לאומי</h2>
             <p className="mt-2 text-sm text-slate-500">אזור לאורן כעצמאי. נספר בנפרד כדי שלא יתערבב עם הוצאות הבית.</p>
-            <div className="mt-6 grid gap-4 md:grid-cols-2">{[
-              ['owner', 'בעל העסק', 'text'], ['grossRevenue', 'הכנסה עסקית ברוטו', 'number'], ['vatCollected', 'מע״מ שנגבה מלקוחות', 'number'], ['vatPaidOnExpenses', 'מע״מ על הוצאות מוכרות', 'number'], ['incomeTaxAdvance', 'מקדמת מס הכנסה', 'number'], ['nationalInsurance', 'ביטוח לאומי', 'number'], ['businessExpenses', 'הוצאות עסקיות ששולמו החודש', 'number'],
-            ].map(([field, label, type]) => <label key={field} className="text-sm font-bold text-slate-600">{label}<input type={type} value={monthData.selfEmployed[field]} onChange={(event) => updateSelfEmployedField(field, event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#8fa88c]" /></label>)}</div>
-            <div className="mt-6 grid gap-4 md:grid-cols-3"><StatCard title="מע״מ צפוי" value={SHEKEL.format(selfEmployedVatDue)} note="נגבה פחות מוכר" /><StatCard title="מס + ביטוח" value={SHEKEL.format(toNumber(monthData.selfEmployed.incomeTaxAdvance) + toNumber(monthData.selfEmployed.nationalInsurance))} note="תשלומי חובה" /><StatCard title="סה״כ עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note="כולל הוצאות עסקיות" /></div>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {[
+                ['owner', 'בעל העסק', 'text'],
+                ['grossRevenue', 'הכנסה עסקית ברוטו', 'number'],
+                ['vatCollected', 'מע״מ שנגבה מלקוחות', 'number'],
+                ['vatPaidOnExpenses', 'מע״מ על הוצאות מוכרות', 'number'],
+                ['incomeTaxAdvance', 'מקדמת מס הכנסה', 'number'],
+                ['nationalInsurance', 'ביטוח לאומי', 'number'],
+                ['businessExpenses', 'הוצאות עסקיות ששולמו החודש', 'number'],
+              ].map(([field, label, type]) => (
+                <label key={field} className="text-sm font-bold text-slate-600">
+                  {label}
+                  <input type={type} value={monthData.selfEmployed[field]} onChange={(event) => updateSelfEmployedField(field, event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#8fa88c]" />
+                </label>
+              ))}
+            </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <StatCard title="מע״מ צפוי" value={SHEKEL.format(selfEmployedVatDue)} note="נגבה פחות מוכר" />
+              <StatCard title="מס + ביטוח" value={SHEKEL.format(toNumber(monthData.selfEmployed.incomeTaxAdvance) + toNumber(monthData.selfEmployed.nationalInsurance))} note="תשלומי חובה" />
+              <StatCard title="סה״כ עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note="כולל הוצאות עסקיות" />
+            </div>
           </Section>
         </section>
 
         <Section>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-bold">סיכום כרטיסי אשראי</h2><p className="mt-2 text-sm text-slate-500">כאן מעלים CSV/Excel לכל כרטיס, בודקים קטגוריות, ואז מאשרים הכנסה להוצאות.</p></div><button onClick={addCreditCard} className="rounded-2xl bg-[#7a9b76] px-5 py-3 text-sm font-semibold text-white shadow-sm">+ הוספת כרטיס</button></div>
-          <div className="mt-7 grid gap-6 xl:grid-cols-2">{monthData.creditCards.map((card) => {
-            const cardTotal = (card.transactions || []).reduce((sum, item) => sum + toNumber(item.amount), 0);
-            return <div key={card.id} className="rounded-3xl border border-[#d8e2d2] bg-[#f3f5ef]/60 p-5"><div className="grid gap-3 md:grid-cols-[1fr_1fr_110px_44px]"><input value={card.name} onChange={(event) => updateCreditCard(card.id, 'name', event.target.value)} className="rounded-xl border border-[#d8e2d2] bg-white px-4 py-3 text-sm" placeholder="שם הכרטיס" /><input value={card.owner} onChange={(event) => updateCreditCard(card.id, 'owner', event.target.value)} className="rounded-xl border border-[#d8e2d2] bg-white px-4 py-3 text-sm" placeholder="בעל/ת הכרטיס" /><div className="rounded-xl bg-white px-4 py-3 text-sm font-bold text-[#5d755f]">{SHEKEL.format(cardTotal)}</div><button onClick={() => removeCreditCard(card.id)} className="rounded-xl bg-white text-sm font-bold text-slate-500">×</button></div>
-              <div className="mt-5 rounded-2xl border border-dashed border-[#d8e2d2] bg-white p-4"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><div className="text-sm font-bold text-[#4f6854]">העלאת CSV / Excel של פירוט אשראי</div><div className="mt-1 text-xs text-slate-500">העלאה נמצאת כאן, בתוך הכרטיס הרלוונטי.</div></div><label className="cursor-pointer rounded-2xl bg-[#7a9b76] px-4 py-3 text-sm font-semibold text-white shadow-sm">העלאת קובץ<input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importCreditFile(card.id, file); }} /></label></div>{card.importedFile ? <div className="mt-3 rounded-xl bg-[#f3f5ef] px-4 py-3 text-sm text-[#4f6854]">נקלט קובץ: <strong>{card.importedFile}</strong></div> : null}</div>
-              {(card.pendingTransactions || []).length > 0 ? <div className="mt-4 rounded-2xl border border-[#d8e2d2] bg-[#fcfbf8] p-4"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><div className="text-sm font-bold text-[#4f6854]">עסקאות שזוהו לאישור</div><div className="mt-1 text-xs text-slate-500">בדקו סכומים וקטגוריות לפני שהן נכנסות להוצאות.</div></div><button onClick={() => approvePendingTransactions(card.id)} className="rounded-2xl bg-[#7a9b76] px-4 py-3 text-sm font-semibold text-white shadow-sm">אשר והכנס להוצאות</button></div><div className="mt-4 overflow-x-auto rounded-2xl border border-[#d8e2d2] bg-white"><div className="min-w-[760px]"><div className="grid grid-cols-[120px_1fr_170px_140px_44px] bg-[#e5eee2]/60 px-4 py-3 text-xs font-bold text-[#4f6854]"><div>תאריך</div><div>בית עסק</div><div>קטגוריה</div><div>סכום</div><div></div></div>{(card.pendingTransactions || []).map((transaction) => <div key={transaction.id} className="grid grid-cols-[120px_1fr_170px_140px_44px] gap-3 border-t border-[#d8e2d2] p-3"><input value={transaction.date || ''} onChange={(event) => updatePendingTransaction(card.id, transaction.id, 'date', event.target.value)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm" /><input value={transaction.merchant} onChange={(event) => updatePendingTransaction(card.id, transaction.id, 'merchant', event.target.value)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm" /><select value={transaction.category} onChange={(event) => updatePendingTransaction(card.id, transaction.id, 'category', event.target.value)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm">{defaultExpenseCategories.map((category) => <option key={category}>{category}</option>)}</select><input type="number" value={transaction.amount} onChange={(event) => updatePendingTransaction(card.id, transaction.id, 'amount', event.target.value)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm" /><button onClick={() => removePendingTransaction(card.id, transaction.id)} className="rounded-xl bg-slate-100 text-sm font-bold text-slate-500">×</button></div>)}</div></div></div> : null}
-              <div className="mt-5 overflow-x-auto rounded-2xl border border-[#d8e2d2] bg-white"><div className="min-w-[700px]"><div className="grid grid-cols-[130px_1fr_170px_140px_44px] bg-[#e5eee2]/60 px-4 py-3 text-xs font-bold text-[#4f6854]"><div>תאריך</div><div>עסקה</div><div>קטגוריה לומדת</div><div>סכום</div><div></div></div>{(card.transactions || []).map((transaction) => <div key={transaction.id} className="grid grid-cols-[130px_1fr_170px_140px_44px] gap-3 border-t border-[#d8e2d2] p-3"><div className="px-2 py-3 text-sm text-slate-500">{transaction.date}</div><input value={transaction.merchant} readOnly className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" /><select value={transaction.category} onChange={(event) => updateTransactionCategory(transaction.id, event.target.value)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm">{defaultExpenseCategories.map((category) => <option key={category}>{category}</option>)}</select><div className="px-3 py-3 text-sm font-bold">{SHEKEL.format(transaction.amount)}</div><button onClick={() => removeTransaction(card.id, transaction.id)} className="rounded-xl bg-slate-100 text-sm font-bold text-slate-500">×</button></div>)}</div></div><button onClick={() => addTransaction(card.id)} className="mt-4 rounded-2xl bg-[#4d5b52] px-4 py-3 text-sm font-semibold text-white shadow-sm">+ הוספת עסקה</button>
-            </div>;
-          })}</div>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-3xl font-bold">סיכום כרטיסי אשראי</h2>
+              <p className="mt-2 text-sm text-slate-500">כאן מעלים CSV/Excel לכל כרטיס, בודקים קטגוריות, ואז מאשרים הכנסה להוצאות. הטבלאות גבוהות יותר, אבל הרוחב חזר להיות קומפקטי.</p>
+            </div>
+            <button onClick={addCreditCard} className="rounded-2xl bg-[#7a9b76] px-5 py-3 text-sm font-semibold text-white shadow-sm">+ הוספת כרטיס</button>
+          </div>
+          <div className="mt-7 grid gap-8 xl:grid-cols-2">
+            {monthData.creditCards.map((card) => {
+              const cardTotal = (card.transactions || []).reduce((sum, item) => sum + toNumber(item.amount), 0);
+              return (
+                <CreditCardPanel
+                  key={card.id}
+                  card={card}
+                  cardTotal={cardTotal}
+                  onUpdateCard={updateCreditCard}
+                  onRemoveCard={removeCreditCard}
+                  onImportFile={importCreditFile}
+                  onUpdatePending={updatePendingTransaction}
+                  onRemovePending={removePendingTransaction}
+                  onApprovePending={approvePendingTransactions}
+                  onAddTransaction={addTransaction}
+                  onRemoveTransaction={removeTransaction}
+                  onUpdateCategory={updateTransactionCategory}
+                />
+              );
+            })}
+          </div>
         </Section>
 
         <section className="grid gap-6 lg:grid-cols-3">
-          <Section><h2 className="text-2xl font-bold text-[#4d5b52]">Pie Chart לפי קטגוריות אשראי</h2><div className="mx-auto mt-6 h-56 w-56 rounded-full" style={{ background: pieChart }} /><div className="mt-6 space-y-2">{topCategories.map(([category, amount]) => <div key={category} className="flex justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm"><span>{category}</span><strong>{SHEKEL.format(amount)}</strong></div>)}</div></Section>
-          <Section className="lg:col-span-2"><h2 className="text-2xl font-bold text-[#4d5b52]">Trend Line לפי חודשים</h2><div className="mt-6 flex h-64 items-end gap-3 rounded-3xl bg-[#eef3ef] p-5">{trend.map((item) => <div key={item.month} className="flex flex-1 flex-col items-center gap-2"><div className="w-full rounded-t-xl bg-[#7a9b76]" style={{ height: `${Math.max(4, (item.total / maxTrend) * 200)}px` }} /><span className="text-xs text-slate-500">{monthLabel(item.month)}</span></div>)}</div><div className="mt-4 rounded-2xl bg-white p-4 text-sm text-slate-600">Burn Rate ממוצע: <strong>{SHEKEL.format(burnRate)}</strong> | Cash Flow לחיסכון: <strong>{SHEKEL.format(cashFlow)}</strong></div></Section>
+          <Section>
+            <h2 className="text-2xl font-bold text-[#4d5b52]">Pie Chart לפי קטגוריות אשראי</h2>
+            <div className="mx-auto mt-6 h-56 w-56 rounded-full" style={{ background: pieChart }} />
+            <div className="mt-6 space-y-2">
+              {topCategories.map(([category, amount]) => <div key={category} className="flex justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm"><span>{category}</span><strong>{SHEKEL.format(amount)}</strong></div>)}
+            </div>
+          </Section>
+          <Section className="lg:col-span-2">
+            <h2 className="text-2xl font-bold text-[#4d5b52]">Trend Line לפי חודשים</h2>
+            <div className="mt-6 flex h-64 items-end gap-3 rounded-3xl bg-[#eef3ef] p-5">
+              {trend.map((item) => <div key={item.month} className="flex flex-1 flex-col items-center gap-2"><div className="w-full rounded-t-xl bg-[#7a9b76]" style={{ height: `${Math.max(4, (item.total / maxTrend) * 200)}px` }} /><span className="text-xs text-slate-500">{monthLabel(item.month)}</span></div>)}
+            </div>
+            <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-slate-600">Burn Rate ממוצע: <strong>{SHEKEL.format(burnRate)}</strong> | Cash Flow לחיסכון: <strong>{SHEKEL.format(cashFlow)}</strong></div>
+          </Section>
         </section>
 
         <section className="grid gap-6 lg:grid-cols-2">
-          <Section><div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><h2 className="text-2xl font-bold text-[#4d5b52]">תובנות AI אמיתיות</h2><p className="mt-2 text-sm text-slate-500">תובנות מקומיות מחושבות מהנתונים. כפתור AI מפעיל OpenAI אמיתי דרך השרת אחרי שה־API key מוגדר ב־Vercel.</p></div><button onClick={generateAiInsights} disabled={aiStatus === 'loading' || allCreditTransactions.length === 0} className="rounded-2xl bg-[#7a9b76] px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:opacity-50">{aiStatus === 'loading' ? 'מנתח…' : 'נתח עם AI'}</button></div>{aiError ? <div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">{aiError}</div> : null}<div className="mt-5 space-y-3">{(aiInsights.length > 0 ? aiInsights : realInsights).map((insight) => <div key={insight} className="rounded-2xl bg-[#eef3ef] p-4 text-sm leading-relaxed text-slate-700">{insight}</div>)}</div></Section>
-          <Section><h2 className="text-2xl font-bold text-[#4d5b52]">Recurring Detection</h2><p className="mt-2 text-sm text-slate-500">זיהוי מנויים, ביטוחים, סלולר ושכירות לפי מילות מפתח וחזרה בין חודשים.</p><div className="mt-5 space-y-3">{recurringTransactions.length ? recurringTransactions.map((item) => <div key={item.id} className="flex justify-between rounded-2xl bg-slate-50 p-4 text-sm"><span>{item.merchant}</span><strong>{SHEKEL.format(item.amount)}</strong></div>) : <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-400">לא זוהו עסקאות חוזרות עדיין</div>}</div></Section>
+          <Section>
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-[#4d5b52]">תובנות AI אמיתיות</h2>
+                <p className="mt-2 text-sm text-slate-500">תובנות מקומיות מחושבות מהנתונים. כפתור AI מפעיל OpenAI אמיתי דרך השרת אחרי שה־API key מוגדר ב־Vercel.</p>
+              </div>
+              <button onClick={generateAiInsights} disabled={aiStatus === 'loading' || allCreditTransactions.length === 0} className="rounded-2xl bg-[#7a9b76] px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:opacity-50">{aiStatus === 'loading' ? 'מנתח…' : 'נתח עם AI'}</button>
+            </div>
+            {aiError ? <div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">{aiError}</div> : null}
+            <div className="mt-5 space-y-3">
+              {(aiInsights.length > 0 ? aiInsights : realInsights).map((insight) => <div key={insight} className="rounded-2xl bg-[#eef3ef] p-4 text-sm leading-relaxed text-slate-700">{insight}</div>)}
+            </div>
+          </Section>
+          <Section>
+            <h2 className="text-2xl font-bold text-[#4d5b52]">Recurring Detection</h2>
+            <p className="mt-2 text-sm text-slate-500">זיהוי מנויים, ביטוחים, סלולר ושכירות לפי מילות מפתח וחזרה בין חודשים.</p>
+            <div className="mt-5 space-y-3">
+              {recurringTransactions.length ? recurringTransactions.map((item) => <div key={item.id} className="flex justify-between rounded-2xl bg-slate-50 p-4 text-sm"><span>{item.merchant}</span><strong>{SHEKEL.format(item.amount)}</strong></div>) : <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-400">לא זוהו עסקאות חוזרות עדיין</div>}
+            </div>
+          </Section>
         </section>
 
         <Section>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-bold">קרנות, פנסיה וחסכונות</h2><p className="mt-2 text-sm text-slate-500">הפרשות חודשיות לקרן השתלמות, פנסיה וחסכונות קבועים.</p></div><button onClick={addSavingsProduct} className="rounded-2xl bg-[#7a9b76] px-5 py-3 text-sm font-semibold text-white shadow-sm">+ הוספת חיסכון</button></div>
-          <div className="mt-7 grid gap-3">{monthData.savingsProducts.map((product) => <div key={product.id} className="grid gap-3 rounded-2xl border border-slate-100 p-4 md:grid-cols-[1fr_140px_120px_150px_150px_44px]"><input value={product.name} onChange={(event) => updateRow('savingsProducts', product.id, 'name', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm" /><select value={product.type} onChange={(event) => updateRow('savingsProducts', product.id, 'type', event.target.value)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm"><option>קרן השתלמות</option><option>פנסיה</option><option>קופת גמל</option><option>חיסכון</option><option>השקעות</option></select><input value={product.owner} onChange={(event) => updateRow('savingsProducts', product.id, 'owner', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm" /><input type="number" value={product.monthlyDeposit} onChange={(event) => updateRow('savingsProducts', product.id, 'monthlyDeposit', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm" /><input type="number" value={product.currentBalance} onChange={(event) => updateRow('savingsProducts', product.id, 'currentBalance', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm" /><button onClick={() => removeRow('savingsProducts', product.id)} className="rounded-xl bg-slate-100 text-sm font-bold text-slate-500">×</button></div>)}</div>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-3xl font-bold">קרנות, פנסיה וחסכונות</h2>
+              <p className="mt-2 text-sm text-slate-500">הפרשות חודשיות לקרן השתלמות, פנסיה וחסכונות קבועים.</p>
+            </div>
+            <button onClick={addSavingsProduct} className="rounded-2xl bg-[#7a9b76] px-5 py-3 text-sm font-semibold text-white shadow-sm">+ הוספת חיסכון</button>
+          </div>
+          <div className="mt-7 grid gap-3">
+            {monthData.savingsProducts.map((product) => (
+              <div key={product.id} className="grid gap-3 rounded-2xl border border-slate-100 p-4 md:grid-cols-[1fr_140px_120px_150px_150px_44px]">
+                <input value={product.name} onChange={(event) => updateRow('savingsProducts', product.id, 'name', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm" />
+                <select value={product.type} onChange={(event) => updateRow('savingsProducts', product.id, 'type', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm"><option>קרן השתלמות</option><option>פנסיה</option><option>קופת גמל</option><option>חיסכון</option><option>השקעות</option></select>
+                <input value={product.owner} onChange={(event) => updateRow('savingsProducts', product.id, 'owner', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm" />
+                <input type="number" value={product.monthlyDeposit} onChange={(event) => updateRow('savingsProducts', product.id, 'monthlyDeposit', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm" />
+                <input type="number" value={product.currentBalance} onChange={(event) => updateRow('savingsProducts', product.id, 'currentBalance', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm" />
+                <button onClick={() => removeRow('savingsProducts', product.id)} className="rounded-xl bg-slate-100 text-sm font-bold text-slate-500">×</button>
+              </div>
+            ))}
+          </div>
         </Section>
 
         <Section>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-bold">יעדי חיסכון</h2><p className="mt-2 text-sm text-slate-500">טיסה ליפן, חתונה, קרן חירום וכל יעד אחר.</p></div><button onClick={addSavingGoal} className="rounded-2xl bg-[#7a9b76] px-5 py-3 text-sm font-semibold text-white">+ הוספת יעד</button></div>
-          <div className="mt-6 grid gap-5 md:grid-cols-3">{monthData.savingGoals.map((goal) => { const progress = toNumber(goal.targetAmount) ? Math.min(100, Math.round((toNumber(goal.currentAmount) / toNumber(goal.targetAmount)) * 100)) : 0; return <div key={goal.id} className="rounded-3xl bg-[#eef3ef] p-5"><input value={goal.name} onChange={(event) => updateRow('savingGoals', goal.id, 'name', event.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 font-bold" /><div className="mt-3 grid gap-3"><input type="number" value={goal.targetAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'targetAmount', event.target.value)} placeholder="יעד" className="rounded-xl border border-slate-200 px-4 py-3" /><input type="number" value={goal.currentAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'currentAmount', event.target.value)} placeholder="נצבר" className="rounded-xl border border-slate-200 px-4 py-3" /><input type="number" value={goal.monthlyDeposit} onChange={(event) => updateRow('savingGoals', goal.id, 'monthlyDeposit', event.target.value)} placeholder="הפקדה חודשית" className="rounded-xl border border-slate-200 px-4 py-3" /></div><div className="mt-4 flex justify-between text-sm font-bold"><span>{progress}%</span><button onClick={() => removeRow('savingGoals', goal.id)} className="text-red-500">מחיקה</button></div><div className="mt-2 h-3 overflow-hidden rounded-full bg-white"><div className="h-full rounded-full bg-[#7a9b76]" style={{ width: `${progress}%` }} /></div></div>; })}</div>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-3xl font-bold">יעדי חיסכון</h2>
+              <p className="mt-2 text-sm text-slate-500">טיסה ליפן, חתונה, קרן חירום וכל יעד אחר.</p>
+            </div>
+            <button onClick={addSavingGoal} className="rounded-2xl bg-[#7a9b76] px-5 py-3 text-sm font-semibold text-white">+ הוספת יעד</button>
+          </div>
+          <div className="mt-6 grid gap-5 md:grid-cols-3">
+            {monthData.savingGoals.map((goal) => {
+              const progress = toNumber(goal.targetAmount) ? Math.min(100, Math.round((toNumber(goal.currentAmount) / toNumber(goal.targetAmount)) * 100)) : 0;
+              return (
+                <div key={goal.id} className="rounded-3xl bg-[#eef3ef] p-5">
+                  <input value={goal.name} onChange={(event) => updateRow('savingGoals', goal.id, 'name', event.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 font-bold" />
+                  <div className="mt-3 grid gap-3">
+                    <input type="number" value={goal.targetAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'targetAmount', event.target.value)} placeholder="יעד" className="rounded-xl border border-slate-200 px-4 py-3" />
+                    <input type="number" value={goal.currentAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'currentAmount', event.target.value)} placeholder="נצבר" className="rounded-xl border border-slate-200 px-4 py-3" />
+                    <input type="number" value={goal.monthlyDeposit} onChange={(event) => updateRow('savingGoals', goal.id, 'monthlyDeposit', event.target.value)} placeholder="הפקדה חודשית" className="rounded-xl border border-slate-200 px-4 py-3" />
+                  </div>
+                  <div className="mt-4 flex justify-between text-sm font-bold"><span>{progress}%</span><button onClick={() => removeRow('savingGoals', goal.id)} className="text-red-500">מחיקה</button></div>
+                  <div className="mt-2 h-3 overflow-hidden rounded-full bg-white"><div className="h-full rounded-full bg-[#7a9b76]" style={{ width: `${progress}%` }} /></div>
+                </div>
+              );
+            })}
+          </div>
         </Section>
 
-        <section className="grid gap-6 lg:grid-cols-2"><Section><h2 className="text-3xl font-bold">קרן חירום</h2><p className="mt-2 text-sm text-slate-500">מלאו סכום חיסכון נזיל נוכחי.</p><input type="number" value={monthData.emergencyFund} onChange={(event) => updateMonthField('emergencyFund', toNumber(event.target.value))} className="mt-6 w-full rounded-2xl border border-slate-200 px-5 py-4 text-xl font-bold outline-none focus:border-[#8fa88c]" /></Section><Section><h2 className="text-3xl font-bold">חיפוש ופילטרים</h2><div className="mt-5 grid gap-3"><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="חיפוש בית עסק, למשל וולט" className="rounded-2xl border border-slate-200 px-4 py-3" /><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="rounded-2xl border border-slate-200 px-4 py-3"><option>הכול</option>{defaultExpenseCategories.map((category) => <option key={category}>{category}</option>)}</select><div className="grid gap-3 md:grid-cols-2"><input value={minAmount} onChange={(event) => setMinAmount(event.target.value)} type="number" placeholder="סכום מינימום" className="rounded-2xl border border-slate-200 px-4 py-3" /><input value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} type="number" placeholder="סכום מקסימום" className="rounded-2xl border border-slate-200 px-4 py-3" /></div></div></Section></section>
+        <section className="grid gap-6 lg:grid-cols-2">
+          <Section>
+            <h2 className="text-3xl font-bold">קרן חירום</h2>
+            <p className="mt-2 text-sm text-slate-500">מלאו סכום חיסכון נזיל נוכחי.</p>
+            <input type="number" value={monthData.emergencyFund} onChange={(event) => updateMonthField('emergencyFund', toNumber(event.target.value))} className="mt-6 w-full rounded-2xl border border-slate-200 px-5 py-4 text-xl font-bold outline-none focus:border-[#8fa88c]" />
+          </Section>
+          <Section>
+            <h2 className="text-3xl font-bold">חיפוש ופילטרים</h2>
+            <div className="mt-5 grid gap-3">
+              <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="חיפוש בית עסק, למשל וולט" className="rounded-2xl border border-slate-200 px-4 py-3" />
+              <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="rounded-2xl border border-slate-200 px-4 py-3"><option>הכול</option>{defaultExpenseCategories.map((category) => <option key={category}>{category}</option>)}</select>
+              <div className="grid gap-3 md:grid-cols-2">
+                <input value={minAmount} onChange={(event) => setMinAmount(event.target.value)} type="number" placeholder="סכום מינימום" className="rounded-2xl border border-slate-200 px-4 py-3" />
+                <input value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} type="number" placeholder="סכום מקסימום" className="rounded-2xl border border-slate-200 px-4 py-3" />
+              </div>
+            </div>
+          </Section>
+        </section>
 
         <Section>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-bold">הוצאות ידניות</h2><p className="mt-2 text-sm text-slate-500">הוצאות שלא נכנסות מכרטיסי האשראי. הטבלה רחבה ואפשר לגלול אופקית.</p></div><button onClick={addManualExpense} className="rounded-2xl bg-[#7a9b76] px-5 py-3 text-sm font-semibold text-white shadow-sm">+ הוספת הוצאה</button></div>
-          <div className="mt-7 overflow-x-auto rounded-3xl border border-slate-100 bg-white"><div className="min-w-[920px]"><div className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 bg-[#f3f5ef] px-5 py-4 text-sm font-bold text-[#4f6854]"><div>קטגוריה</div><div>סוג</div><div>סכום</div><div></div></div>{monthData.manualExpenses.map((expense) => <div key={expense.id} className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 border-t border-slate-100 p-4"><input value={expense.category} onChange={(event) => updateRow('manualExpenses', expense.id, 'category', event.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-4 text-base outline-none focus:border-[#8fa88c]" /><select value={expense.type} onChange={(event) => updateRow('manualExpenses', expense.id, 'type', event.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-4 text-base outline-none focus:border-[#8fa88c]"><option>קבועה</option><option>משתנה</option><option>חיסכון</option><option>חד פעמית</option></select><input type="number" value={expense.amount} onChange={(event) => updateRow('manualExpenses', expense.id, 'amount', event.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-4 text-base outline-none focus:border-[#8fa88c]" /><button onClick={() => removeRow('manualExpenses', expense.id)} className="rounded-xl bg-slate-100 text-lg font-bold text-slate-500">×</button></div>)}</div></div>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-3xl font-bold">הוצאות ידניות</h2>
+              <p className="mt-2 text-sm text-slate-500">הוצאות שלא נכנסות מכרטיסי האשראי. הטבלה רחבה ואפשר לגלול אופקית.</p>
+            </div>
+            <button onClick={addManualExpense} className="rounded-2xl bg-[#7a9b76] px-5 py-3 text-sm font-semibold text-white shadow-sm">+ הוספת הוצאה</button>
+          </div>
+          <div className="mt-7 overflow-x-auto rounded-3xl border border-slate-100 bg-white">
+            <div className="min-w-[720px]">
+              <div className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 bg-[#f3f5ef] px-5 py-4 text-sm font-bold text-[#4f6854]"><div>קטגוריה</div><div>סוג</div><div>סכום</div><div></div></div>
+              {monthData.manualExpenses.map((expense) => (
+                <div key={expense.id} className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 border-t border-slate-100 p-4">
+                  <input value={expense.category} onChange={(event) => updateRow('manualExpenses', expense.id, 'category', event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#8fa88c]" />
+                  <select value={expense.type} onChange={(event) => updateRow('manualExpenses', expense.id, 'type', event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#8fa88c]"><option>קבועה</option><option>משתנה</option><option>חיסכון</option><option>חד פעמית</option></select>
+                  <input type="number" value={expense.amount} onChange={(event) => updateRow('manualExpenses', expense.id, 'amount', event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#8fa88c]" />
+                  <button onClick={() => removeRow('manualExpenses', expense.id)} className="rounded-xl bg-slate-100 text-lg font-bold text-slate-500">×</button>
+                </div>
+              ))}
+            </div>
+          </div>
         </Section>
 
         <Section>
           <h2 className="text-3xl font-bold">כל עסקאות האשראי המסוננות</h2>
-          <div className="mt-6 overflow-x-auto rounded-3xl border border-slate-100 bg-white"><div className="min-w-[1200px]"><div className="grid grid-cols-[160px_1fr_240px_180px_180px] bg-[#eef3ef] px-6 py-4 text-sm font-bold text-[#4d5b52]"><div>תאריך</div><div>בית עסק</div><div>קטגוריה לומדת</div><div>סכום</div><div>זיהוי</div></div>{filteredTransactions.map((transaction) => { const isRecurring = recurringTransactions.some((item) => item.id === transaction.id); return <div key={transaction.id} className="grid grid-cols-[160px_1fr_240px_180px_180px] gap-4 border-t border-slate-100 px-6 py-4"><div>{transaction.date}</div><div>{transaction.merchant}</div><select value={transaction.category} onChange={(event) => updateTransactionCategory(transaction.id, event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm">{defaultExpenseCategories.map((category) => <option key={category}>{category}</option>)}</select><div className="font-bold">{SHEKEL.format(transaction.amount)}</div><div>{isRecurring ? '🔁 חוזר' : '—'}</div></div>; })}{filteredTransactions.length === 0 ? <div className="p-16 text-center text-slate-400">אין עסקאות להצגה 🌿</div> : null}</div></div>
+          <div className="mt-6 overflow-x-auto rounded-3xl border border-slate-100 bg-white">
+            <div className="min-w-[860px]">
+              <div className="grid grid-cols-[110px_1fr_170px_120px_90px] bg-[#eef3ef] px-6 py-4 text-sm font-bold text-[#4d5b52]"><div>תאריך</div><div>בית עסק</div><div>קטגוריה לומדת</div><div>סכום</div><div>זיהוי</div></div>
+              {filteredTransactions.map((transaction) => {
+                const isRecurring = recurringTransactions.some((item) => item.id === transaction.id);
+                return (
+                  <div key={transaction.id} className="grid grid-cols-[110px_1fr_170px_120px_90px] gap-4 border-t border-slate-100 px-6 py-4">
+                    <div>{transaction.date}</div>
+                    <div>{transaction.merchant}</div>
+                    <select value={transaction.category} onChange={(event) => updateTransactionCategory(transaction.id, event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm">{defaultExpenseCategories.map((category) => <option key={category}>{category}</option>)}</select>
+                    <div className="font-bold">{SHEKEL.format(transaction.amount)}</div>
+                    <div>{isRecurring ? '🔁 חוזר' : '—'}</div>
+                  </div>
+                );
+              })}
+              {filteredTransactions.length === 0 ? <div className="p-16 text-center text-slate-400">אין עסקאות להצגה 🌿</div> : null}
+            </div>
+          </div>
         </Section>
       </div>
     </div>
