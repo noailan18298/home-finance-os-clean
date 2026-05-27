@@ -531,7 +531,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     const lower = fileName.toLowerCase();
 
     if (!lower.endsWith('.csv')) {
-      alert('כרגע ההעלאה המדויקת תומכת בקבצי CSV. אפשר לייצא CSV מאתר האשראי ולהעלות כאן.');
+      alert('כדי לקלוט עסקאות אמיתיות, העלו קובץ CSV שייצאתם מאתר האשראי. PDF יצריך מנגנון שרת/OCR שנוסיף בשלב הבא.');
       return;
     }
 
