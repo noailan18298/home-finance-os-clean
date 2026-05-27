@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
+import { supabase } from '../lib/supabase';
 
 const STORAGE_KEY = 'family-finance-os-full-intelligence-v1';
+const SUPABASE_PROFILE_ID = 'default-household';
 
 const SHEKEL = new Intl.NumberFormat('he-IL', {
   style: 'currency',
@@ -339,6 +341,30 @@ function buildRealInsights(transactions, recurringTransactions = [], totalIncome
   return insights;
 }
 
+async function loadFinanceStateFromSupabase() {
+  const { data, error } = await supabase
+    .from('finance_app_state')
+    .select('months, learned_rules')
+    .eq('profile_id', SUPABASE_PROFILE_ID)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+async function saveFinanceStateToSupabase(months, learnedRules) {
+  const { error } = await supabase
+    .from('finance_app_state')
+    .upsert({
+      profile_id: SUPABASE_PROFILE_ID,
+      months,
+      learned_rules: learnedRules,
+      updated_at: new Date().toISOString(),
+    });
+
+  if (error) throw error;
+}
+
 function runSmokeTests() {
   console.assert(toNumber('₪1,250') === 1250, 'currency parsing failed');
   console.assert(detectCategory('Wolt TLV') === 'מסעדות / וולט', 'wolt category failed');
@@ -450,8 +476,34 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const [aiInsights, setAiInsights] = useState([]);
   const [aiStatus, setAiStatus] = useState('idle');
   const [aiError, setAiError] = useState('');
+  const [cloudStatus, setCloudStatus] = useState('טוען מהענן…');
+  const [hasLoadedCloud, setHasLoadedCloud] = useState(false);
 
   const monthData = normalizeMonthData(months[selectedMonth]);
+
+  useEffect(() => {
+    async function loadCloudState() {
+      try {
+        const data = await loadFinanceStateFromSupabase();
+
+        if (data?.months) {
+          setMonths(data.months);
+        }
+
+        if (data?.learned_rules) {
+          setLearnedRules(data.learned_rules);
+        }
+
+        setCloudStatus(data?.months ? 'מסונכרן מהענן' : 'אין עדיין נתוני ענן, עובדים מקומית');
+      } catch {
+        setCloudStatus('ענן לא זמין כרגע, עובדים מקומית');
+      } finally {
+        setHasLoadedCloud(true);
+      }
+    }
+
+    loadCloudState();
+  }, []);
 
   useEffect(() => {
     try {
@@ -461,6 +513,21 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       // Local storage can be blocked. The app still works in memory.
     }
   }, [months, learnedRules]);
+
+  useEffect(() => {
+    if (!hasLoadedCloud) return;
+
+    const saveTimeout = window.setTimeout(async () => {
+      try {
+        await saveFinanceStateToSupabase(months, learnedRules);
+        setCloudStatus('נשמר בענן');
+      } catch {
+        setCloudStatus('לא נשמר בענן, נשמר מקומית');
+      }
+    }, 900);
+
+    return () => window.clearTimeout(saveTimeout);
+  }, [months, learnedRules, hasLoadedCloud]);
 
   function setSelectedMonthData(nextData) {
     setMonths((current) => ({ ...current, [selectedMonth]: nextData }));
@@ -754,6 +821,9 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               <div>
                 <input value={monthData.dashboardTitle} onChange={(event) => updateMonthField('dashboardTitle', event.target.value)} className="w-full max-w-3xl rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-4xl font-bold tracking-tight text-white outline-none transition placeholder:text-white/70 focus:bg-white/20 md:text-5xl" placeholder="שם הדשבורד המשפחתי" />
                 <p className="mt-4 max-w-2xl text-base text-[#f3f0e8]">ממלאים הכנסות, הוצאות, אשראי, עצמאי, קרנות ויעדים. המערכת מחשבת תזרים, חיסכון ותובנות אמיתיות.</p>
+                <div className="mt-4 inline-flex rounded-2xl bg-white/15 px-4 py-2 text-sm font-semibold text-white">
+                  {cloudStatus}
+                </div>
               </div>
               <div className="rounded-3xl bg-[#f7f5ef]/20 p-6 backdrop-blur-sm">
                 <label className="text-sm uppercase tracking-widest text-[#f3f0e8]">חודש</label>
