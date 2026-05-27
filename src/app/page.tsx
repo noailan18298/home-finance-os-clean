@@ -348,18 +348,20 @@ function detectRecurringTransactions(transactions, historicalMonths = {}, select
 
 function getMonthTotals(data) {
   const safeData = normalizeMonthData(data);
+  const includeSelfEmployed = Boolean(safeData.preferences.includeSelfEmployed);
   const income = safeData.incomes.reduce((sum, item) => sum + toNumber(item.amount), 0);
   const credit = safeData.creditCards.reduce((sum, card) => sum + (card.transactions || []).reduce((inner, item) => inner + toNumber(item.amount), 0), 0);
   const manual = safeData.manualExpenses.reduce((sum, item) => sum + toNumber(item.amount), 0);
   const savingsProducts = safeData.savingsProducts.reduce((sum, item) => sum + toNumber(item.monthlyDeposit), 0);
   const savingGoals = safeData.savingGoals.reduce((sum, item) => sum + toNumber(item.monthlyDeposit), 0);
   const selfEmployedVatDue = Math.max(0, toNumber(safeData.selfEmployed.vatCollected) - toNumber(safeData.selfEmployed.vatPaidOnExpenses));
-  const selfEmployed = selfEmployedVatDue + toNumber(safeData.selfEmployed.incomeTaxAdvance) + toNumber(safeData.selfEmployed.nationalInsurance) + toNumber(safeData.selfEmployed.businessExpenses);
+  const selfEmployedRaw = selfEmployedVatDue + toNumber(safeData.selfEmployed.incomeTaxAdvance) + toNumber(safeData.selfEmployed.nationalInsurance) + toNumber(safeData.selfEmployed.businessExpenses);
+  const selfEmployed = includeSelfEmployed ? selfEmployedRaw : 0;
   const savings = savingsProducts + savingGoals;
   const expenses = credit + manual + savings + selfEmployed;
   const net = income - expenses;
   const savingsRate = income ? (net / income) * 100 : 0;
-  return { income, credit, manual, savings, selfEmployed, expenses, net, savingsRate };
+  return { income, credit, manual, savings, selfEmployed, selfEmployedRaw, expenses, net, savingsRate };
 }
 
 function getPreviousMonthKey(monthKey) {
@@ -563,6 +565,7 @@ function createDefaultMonth() {
     ],
     selfEmployed: {
       owner: 'אורן',
+      salaryTransferToHousehold: 0,
       grossRevenue: 0,
       vatCollected: 0,
       vatPaidOnExpenses: 0,
@@ -574,6 +577,7 @@ function createDefaultMonth() {
       primaryPerson: 'נועה',
       householdProfileId: DEFAULT_SUPABASE_PROFILE_ID,
       secondaryPerson: 'אורן',
+      includeSelfEmployed: false,
       monthlyBudgetTarget: 0,
       savingsRateTarget: 20,
       showMonthlyStory: true,
@@ -642,6 +646,8 @@ function runSmokeTests() {
   console.assert(normalizeMonthData({}).creditCards.length === 2, 'month normalizer failed');
   console.assert(normalizeMonthData({ creditCards: null }).creditCards.length === 2, 'month normalizer array fallback failed');
   console.assert(getMonthTotals(undefined).expenses === 0, 'month totals fallback failed');
+  console.assert(getMonthTotals({ selfEmployed: { incomeTaxAdvance: 100 }, preferences: { includeSelfEmployed: false } }).selfEmployed === 0, 'self employed disabled failed');
+  console.assert(getMonthTotals({ selfEmployed: { incomeTaxAdvance: 100 }, preferences: { includeSelfEmployed: true } }).selfEmployed === 100, 'self employed enabled failed');
   console.assert(Array.isArray(normalizeMonthData({}).attachedDocuments), 'attached documents normalizer failed');
   console.assert(getMonthlyTrend({ '2026-01': createDefaultMonth() }).length === 1, 'monthly trend failed');
   console.assert(getPreviousMonthKey('2026-03') === '2026-02', 'previous month helper failed');
@@ -931,7 +937,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   }
 
   function updateSelfEmployedField(field, value) {
-    const numericFields = ['grossRevenue', 'vatCollected', 'vatPaidOnExpenses', 'incomeTaxAdvance', 'nationalInsurance', 'businessExpenses'];
+    const numericFields = ['salaryTransferToHousehold', 'grossRevenue', 'vatCollected', 'vatPaidOnExpenses', 'incomeTaxAdvance', 'nationalInsurance', 'businessExpenses'];
     setSelectedMonthData({ ...monthData, selfEmployed: { ...monthData.selfEmployed, [field]: numericFields.includes(field) ? toNumber(value) : value } });
   }
 
@@ -1088,8 +1094,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const totalSavingsProducts = monthData.savingsProducts.reduce((sum, item) => sum + toNumber(item.monthlyDeposit), 0);
   const totalSavingGoals = monthData.savingGoals.reduce((sum, item) => sum + toNumber(item.monthlyDeposit), 0);
   const totalPlannedSavings = totalSavingsProducts + totalSavingGoals;
+  const includeSelfEmployed = Boolean(monthData.preferences.includeSelfEmployed);
   const selfEmployedVatDue = Math.max(0, toNumber(monthData.selfEmployed.vatCollected) - toNumber(monthData.selfEmployed.vatPaidOnExpenses));
-  const totalSelfEmployedPayments = selfEmployedVatDue + toNumber(monthData.selfEmployed.incomeTaxAdvance) + toNumber(monthData.selfEmployed.nationalInsurance) + toNumber(monthData.selfEmployed.businessExpenses);
+  const rawSelfEmployedPayments = selfEmployedVatDue + toNumber(monthData.selfEmployed.incomeTaxAdvance) + toNumber(monthData.selfEmployed.nationalInsurance) + toNumber(monthData.selfEmployed.businessExpenses);
+  const totalSelfEmployedPayments = includeSelfEmployed ? rawSelfEmployedPayments : 0;
   const totalExpenses = totalCreditCards + totalManualExpenses + totalPlannedSavings + totalSelfEmployedPayments;
   const monthlySavings = totalIncome - totalExpenses;
   const savingsRate = totalIncome ? (monthlySavings / totalIncome) * 100 : 0;
@@ -1241,7 +1249,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
             <StatCard title="סה״כ הכנסות" value={SHEKEL.format(totalIncome)} note="כל מקורות ההכנסה" tone="good" />
             <StatCard title="סה״כ הוצאות" value={SHEKEL.format(totalExpenses)} note={effectiveBudgetTarget ? `${formatPercent(budgetUsageRate)} מתוך יעד ${modeConfig.label}` : `${totalIncome ? formatPercent((totalExpenses / totalIncome) * 100) : '0%'} מההכנסה`} tone={(effectiveBudgetTarget && totalExpenses > effectiveBudgetTarget) || (totalIncome && totalExpenses > totalIncome) ? 'danger' : budgetUsageRate >= modeConfig.budgetWarningAt ? 'warn' : 'neutral'} />
             <StatCard title="סה״כ אשראי" value={SHEKEL.format(totalCreditCards)} note="מכרטיסי האשראי" />
-            <StatCard title="עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note="מע״מ, מס וביטוח לאומי" />
+            <StatCard title="עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note={includeSelfEmployed ? 'כלול בתזרים המשפחתי' : 'לא כלול בתזרים'} />
             <StatCard title="חסכונות" value={SHEKEL.format(totalPlannedSavings)} note="קרנות, פנסיה ויעדים" tone="good" />
             <StatCard title="יתרה אחרי הכול" value={SHEKEL.format(monthlySavings)} note={`${formatPercent(savingsRate)} חיסכון / יעד ${formatPercent(targetSavingsRate)}`} tone={monthlySavings >= 0 && savingsRate >= targetSavingsRate ? 'good' : monthlySavings < 0 ? 'danger' : 'neutral'} />
             <StatCard title="שווי שהוזן" value={SHEKEL.format(totalAssets)} note={`${emergencyMonths.toFixed(1)} חודשי חירום`} />
@@ -1499,9 +1507,16 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
             </Section>
 
             <Section>
-              <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">עצמאי: מע״מ, מס הכנסה וביטוח לאומי</h2><p className="mt-2 text-sm text-neutral-500">אזור לאורן כעצמאי. נספר בנפרד כדי שלא יתערבב עם הוצאות הבית.</p>
-              <div className="mt-6 grid gap-4 md:grid-cols-2">{[['owner', 'בעל העסק', 'text'], ['grossRevenue', 'הכנסה עסקית ברוטו', 'number'], ['vatCollected', 'מע״מ שנגבה מלקוחות', 'number'], ['vatPaidOnExpenses', 'מע״מ על הוצאות מוכרות', 'number'], ['incomeTaxAdvance', 'מקדמת מס הכנסה', 'number'], ['nationalInsurance', 'ביטוח לאומי', 'number'], ['businessExpenses', 'הוצאות עסקיות ששולמו החודש', 'number']].map(([field, label, type]) => <label key={field} className="text-sm font-semibold text-neutral-600">{label}<Field type={type} value={monthData.selfEmployed[field]} onChange={(event) => updateSelfEmployedField(field, event.target.value)} className="mt-2 w-full" /></label>)}</div>
-              <div className="mt-6 grid gap-4 md:grid-cols-3"><StatCard title="מע״מ צפוי" value={SHEKEL.format(selfEmployedVatDue)} note="נגבה פחות מוכר" /><StatCard title="מס + ביטוח" value={SHEKEL.format(toNumber(monthData.selfEmployed.incomeTaxAdvance) + toNumber(monthData.selfEmployed.nationalInsurance))} note="תשלומי חובה" /><StatCard title="סה״כ עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note="כולל הוצאות עסקיות" /></div>
+              <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">הכנסות אורן / עצמאי</h2><p className="mt-2 text-sm text-neutral-500">אם העסק נפרד, מזינים כאן רק את הסכום שאורן מעביר לחשבון המשותף כהכנסה. אפשר להדליק מצב עצמאי רק אם רוצים לכלול מע״מ, מס וביטוח לאומי בתזרים הבית.</p>
+              <div className="mt-5 rounded-[24px] border border-neutral-200 bg-neutral-50 p-4">
+                <label className="flex items-center justify-between gap-4 text-sm font-semibold text-neutral-700">
+                  <span>לכלול עצמאי בתזרים המשפחתי</span>
+                  <input type="checkbox" checked={includeSelfEmployed} onChange={(event) => updatePreference('includeSelfEmployed', event.target.checked)} className="h-5 w-5" style={{ accentColor: activeTheme.accent }} />
+                </label>
+                <p className="mt-3 text-xs leading-6 text-neutral-500">כבוי: העסק נשאר מחוץ לדשבורד, ורק העברה/משכורת לחשבון המשותף נספרת כהכנסה. דולק: תשלומי עצמאי נספרים כהוצאות בית.</p>
+              </div>
+              <div className="mt-6 grid gap-4 md:grid-cols-2">{[['owner', 'בעל העסק', 'text'], ['salaryTransferToHousehold', 'העברה / משכורת לחשבון המשותף', 'number'], ['grossRevenue', 'הכנסה עסקית ברוטו', 'number'], ['vatCollected', 'מע״מ שנגבה מלקוחות', 'number'], ['vatPaidOnExpenses', 'מע״מ על הוצאות מוכרות', 'number'], ['incomeTaxAdvance', 'מקדמת מס הכנסה', 'number'], ['nationalInsurance', 'ביטוח לאומי', 'number'], ['businessExpenses', 'הוצאות עסקיות ששולמו החודש', 'number']].map(([field, label, type]) => <label key={field} className="text-sm font-semibold text-neutral-600">{label}<Field type={type} value={monthData.selfEmployed[field]} onChange={(event) => updateSelfEmployedField(field, event.target.value)} className="mt-2 w-full" /></label>)}</div>
+              <div className="mt-6 grid gap-4 md:grid-cols-3"><StatCard title="מע״מ צפוי" value={SHEKEL.format(selfEmployedVatDue)} note="נגבה פחות מוכר" /><StatCard title="מס + ביטוח" value={SHEKEL.format(toNumber(monthData.selfEmployed.incomeTaxAdvance) + toNumber(monthData.selfEmployed.nationalInsurance))} note="תשלומי חובה" /><StatCard title="סה״כ עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note={includeSelfEmployed ? 'כלול בבית' : 'מחוץ לבית'} /></div>
             </Section>
           </section>
         ) : null}
