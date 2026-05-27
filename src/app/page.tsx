@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'family-finance-os-months-hebrew-v2';
@@ -491,19 +489,117 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     });
   }
 
-  function importMockPdfTransactions(cardId, fileName) {
-    const mockTransactions = [
-      { id: makeId('tx'), merchant: 'Wolt Tel Aviv', amount: 186 },
-      { id: makeId('tx'), merchant: 'Shufersal Deal', amount: 742 },
-      { id: makeId('tx'), merchant: 'Yellow Station', amount: 310 },
-      { id: makeId('tx'), merchant: 'Fox Home', amount: 229 },
-    ].map((transaction) => ({ ...transaction, category: detectCategory(transaction.merchant) }));
+  function parseCsvText(text) {
+    const lines = text
+      .split(/
+?
+/)
+      .map((line) => line.trim())
+      .filter(Boolean);
 
+    if (lines.length === 0) return [];
+
+    const rows = lines.map((line) => {
+      const separator = line.includes(';') ? ';' : ',';
+      return line.split(separator).map((cell) => cell.trim().replace(/^"|"$/g, ''));
+    });
+
+    const firstRow = rows[0].join(' ').toLowerCase();
+    const hasHeader = firstRow.includes('date') || firstRow.includes('תאריך') || firstRow.includes('amount') || firstRow.includes('סכום');
+    const dataRows = hasHeader ? rows.slice(1) : rows;
+
+    return dataRows
+      .map((row) => {
+        const date = row[0] || '';
+        const merchant = row[1] || row[0] || 'עסקה ללא שם';
+        const rawAmount = row[2] || row[1] || '0';
+        const amount = toNumber(String(rawAmount).replace(',', '').replace('₪', ''));
+
+        return {
+          id: makeId('import'),
+          date,
+          merchant,
+          amount: Math.abs(amount),
+          category: detectCategory(merchant),
+        };
+      })
+      .filter((transaction) => transaction.amount > 0);
+  }
+
+  function importCreditFile(cardId, file) {
+    const fileName = file.name || '';
+    const lower = fileName.toLowerCase();
+
+    if (!lower.endsWith('.csv')) {
+      alert('כרגע ההעלאה המדויקת תומכת בקבצי CSV. אפשר לייצא CSV מאתר האשראי ולהעלות כאן.');
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const text = String(reader.result || '');
+      const importedTransactions = parseCsvText(text);
+
+      setSelectedMonthData({
+        ...monthData,
+        creditCards: monthData.creditCards.map((card) =>
+          card.id === cardId
+            ? {
+                ...card,
+                importedFile: fileName,
+                pendingTransactions: importedTransactions,
+              }
+            : card
+        ),
+      });
+    };
+
+    reader.readAsText(file, 'utf-8');
+  }
+
+  function updatePendingTransaction(cardId, transactionId, field, value) {
     setSelectedMonthData({
       ...monthData,
       creditCards: monthData.creditCards.map((card) =>
         card.id === cardId
-          ? { ...card, importedFile: fileName, transactions: [...(card.transactions || []), ...mockTransactions] }
+          ? {
+              ...card,
+              pendingTransactions: (card.pendingTransactions || []).map((transaction) =>
+                transaction.id === transactionId
+                  ? { ...transaction, [field]: field === 'amount' ? toNumber(value) : value }
+                  : transaction
+              ),
+            }
+          : card
+      ),
+    });
+  }
+
+  function removePendingTransaction(cardId, transactionId) {
+    setSelectedMonthData({
+      ...monthData,
+      creditCards: monthData.creditCards.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              pendingTransactions: (card.pendingTransactions || []).filter((transaction) => transaction.id !== transactionId),
+            }
+          : card
+      ),
+    });
+  }
+
+  function approvePendingTransactions(cardId) {
+    setSelectedMonthData({
+      ...monthData,
+      creditCards: monthData.creditCards.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              transactions: [...(card.transactions || []), ...(card.pendingTransactions || [])],
+              pendingTransactions: [],
+            }
           : card
       ),
     });
@@ -792,7 +888,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-3xl font-bold">סיכום כרטיסי אשראי</h2>
-              <p className="mt-2 text-sm text-slate-500">הוסיפו עסקאות לפי כרטיס וקטגוריה, או העלו PDF לדוגמה.</p>
+              <p className="mt-2 text-sm text-slate-500">הוסיפו עסקאות לפי כרטיס וקטגוריה, או העלו CSV/Excel מאתר האשראי.</p>
             </div>
             <button onClick={addCreditCard} className="rounded-2xl bg-[#7a9b76] px-5 py-3 text-sm font-semibold text-white shadow-sm">+ הוספת כרטיס</button>
           </div>
@@ -812,15 +908,45 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   <div className="mt-5 rounded-2xl border border-dashed border-[#d8e2d2] bg-white p-4">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div>
-                        <div className="text-sm font-bold text-[#4f6854]">העלאת PDF של פירוט אשראי</div>
-                        <div className="mt-1 text-xs text-slate-500">בגרסת הדמו, העלאה מוסיפה עסקאות לדוגמה וממיינת אותן אוטומטית.</div>
+                        <div className="text-sm font-bold text-[#4f6854]">העלאת CSV של פירוט אשראי</div>
+                        <div className="mt-1 text-xs text-slate-500">ייצאו CSV מאתר האשראי, העלו כאן, בדקו את הקטגוריות ואז אשרו הכנסת עסקאות.</div>
                       </div>
                       <label className="cursor-pointer rounded-2xl bg-[#7a9b76] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#688864]">
-                        העלאת PDF
-                        <input type="file" accept="application/pdf" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importMockPdfTransactions(card.id, file.name); }} />
+                        העלאת CSV
+                        <input type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importCreditFile(card.id, file); }} />
                       </label>
                     </div>
                     {card.importedFile ? <div className="mt-3 rounded-xl bg-[#f3f5ef] px-4 py-3 text-sm text-[#4f6854]">נקלט קובץ: <strong>{card.importedFile}</strong></div> : null}
+                    {(card.pendingTransactions || []).length > 0 ? (
+                      <div className="mt-4 rounded-2xl border border-[#d8e2d2] bg-[#fcfbf8] p-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <div className="text-sm font-bold text-[#4f6854]">עסקאות שזוהו לאישור</div>
+                            <div className="mt-1 text-xs text-slate-500">בדקו סכומים וקטגוריות לפני שהן נכנסות להוצאות.</div>
+                          </div>
+                          <button onClick={() => approvePendingTransactions(card.id)} className="rounded-2xl bg-[#7a9b76] px-4 py-3 text-sm font-semibold text-white shadow-sm">
+                            אשר והכנס להוצאות
+                          </button>
+                        </div>
+
+                        <div className="mt-4 overflow-x-auto rounded-2xl border border-[#d8e2d2] bg-white">
+                          <div className="min-w-[760px]">
+                            <div className="grid grid-cols-[120px_1fr_170px_140px_44px] bg-[#e5eee2]/60 px-4 py-3 text-xs font-bold text-[#4f6854]">
+                              <div>תאריך</div><div>בית עסק</div><div>קטגוריה מוצעת</div><div>סכום</div><div></div>
+                            </div>
+                            {(card.pendingTransactions || []).map((transaction) => (
+                              <div key={transaction.id} className="grid grid-cols-[120px_1fr_170px_140px_44px] gap-3 border-t border-[#d8e2d2] p-3">
+                                <input value={transaction.date || ''} onChange={(event) => updatePendingTransaction(card.id, transaction.id, 'date', event.target.value)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#8fa88c]" />
+                                <input value={transaction.merchant} onChange={(event) => updatePendingTransaction(card.id, transaction.id, 'merchant', event.target.value)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#8fa88c]" />
+                                <select value={transaction.category} onChange={(event) => updatePendingTransaction(card.id, transaction.id, 'category', event.target.value)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#8fa88c]">{defaultExpenseCategories.map((category) => <option key={category}>{category}</option>)}</select>
+                                <input type="number" value={transaction.amount} onChange={(event) => updatePendingTransaction(card.id, transaction.id, 'amount', event.target.value)} className="rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-[#8fa88c]" />
+                                <button onClick={() => removePendingTransaction(card.id, transaction.id)} className="rounded-xl bg-slate-100 text-sm font-bold text-slate-500">×</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="mt-5 overflow-x-auto rounded-2xl border border-[#d8e2d2] bg-white">
@@ -938,8 +1064,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
             <div className="mt-5 space-y-3 text-sm text-slate-200">
               <div className="rounded-2xl bg-white/10 p-3">1. בוחרים חודש</div>
               <div className="rounded-2xl bg-white/10 p-3">2. ממלאים הכנסות</div>
-              <div className="rounded-2xl bg-white/10 p-3">3. מעלים PDF של האשראי</div>
-              <div className="rounded-2xl bg-white/10 p-3">4. המערכת ממיינת אוטומטית לקטגוריות</div>
+              <div className="rounded-2xl bg-white/10 p-3">3. מעלים CSV של האשראי</div>
+              <div className="rounded-2xl bg-white/10 p-3">4. בודקים ומאשרים קטגוריות</div>
               <div className="rounded-2xl bg-white/10 p-3">5. בודקים חיסכון ותובנות</div>
             </div>
           </div>
