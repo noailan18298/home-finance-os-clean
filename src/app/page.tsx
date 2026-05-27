@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 const STORAGE_KEY = 'family-finance-os-stable-v11';
-const SUPABASE_PROFILE_ID = 'default-household';
+const DEFAULT_SUPABASE_PROFILE_ID = 'default-household';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -379,16 +379,17 @@ function buildRealInsights(transactions, recurringTransactions = [], totalIncome
   return insights;
 }
 
-async function loadFinanceStateFromSupabase() {
+async function loadFinanceStateFromSupabase(profileId = DEFAULT_SUPABASE_PROFILE_ID) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
-  const url = `${SUPABASE_URL}/rest/v1/finance_app_state?profile_id=eq.${encodeURIComponent(SUPABASE_PROFILE_ID)}&select=months,learned_rules`;
+  const safeProfileId = profileId || DEFAULT_SUPABASE_PROFILE_ID;
+  const url = `${SUPABASE_URL}/rest/v1/finance_app_state?profile_id=eq.${encodeURIComponent(safeProfileId)}&select=months,learned_rules`;
   const response = await fetch(url, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } });
   if (!response.ok) throw new Error('Supabase load failed');
   const rows = await response.json();
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
-async function saveFinanceStateToSupabase(months, learnedRules) {
+async function saveFinanceStateToSupabase(months, learnedRules, profileId = DEFAULT_SUPABASE_PROFILE_ID) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
   const response = await fetch(`${SUPABASE_URL}/rest/v1/finance_app_state`, {
     method: 'POST',
@@ -398,7 +399,7 @@ async function saveFinanceStateToSupabase(months, learnedRules) {
       'Content-Type': 'application/json',
       Prefer: 'resolution=merge-duplicates',
     },
-    body: JSON.stringify({ profile_id: SUPABASE_PROFILE_ID, months, learned_rules: learnedRules, updated_at: new Date().toISOString() }),
+    body: JSON.stringify({ profile_id: profileId || DEFAULT_SUPABASE_PROFILE_ID, months, learned_rules: learnedRules, updated_at: new Date().toISOString() }),
   });
   if (!response.ok) throw new Error('Supabase save failed');
 }
@@ -448,6 +449,7 @@ function createDefaultMonth() {
     },
     preferences: {
       primaryPerson: 'נועה',
+      householdProfileId: DEFAULT_SUPABASE_PROFILE_ID,
       secondaryPerson: 'אורן',
       monthlyBudgetTarget: 0,
       savingsRateTarget: 20,
@@ -507,6 +509,7 @@ function runSmokeTests() {
   console.assert(TABS[1].id === 'income', 'income tab should be second');
   console.assert(TABS.some((tab) => tab.id === 'insights' && tab.label === 'תובנות חכמות'), 'smart insights tab label failed');
   console.assert(normalizeMonthData({ preferences: { showTrendChart: false } }).preferences.showTrendChart === false, 'preferences override failed');
+  console.assert(normalizeMonthData({}).preferences.householdProfileId === DEFAULT_SUPABASE_PROFILE_ID, 'household profile default failed');
   console.assert(getSafeTheme('Missing').accent === THEME_STYLES.Sage.accent, 'theme fallback failed');
   console.assert(getSafeTheme('Dark').page.includes('111111'), 'dark theme page exists');
   console.assert(noSingleWordLine('אחת שתיים שלוש').includes(String.fromCharCode(160)), 'no orphan text helper failed');
@@ -703,11 +706,18 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const activeTheme = getSafeTheme(monthData.preferences.themeMood);
   const isDark = monthData.preferences.themeMood === 'Dark';
   const modeConfig = getFinancialModeConfig(monthData.preferences.financialMode);
+  const householdProfileId = monthData.preferences.householdProfileId || DEFAULT_SUPABASE_PROFILE_ID;
+  const setupHealth = {
+    localStorage: typeof window !== 'undefined',
+    supabaseEnv: Boolean(SUPABASE_URL && SUPABASE_ANON_KEY),
+    householdProfileId,
+    xlsxParser: Boolean(XLSX?.read),
+  };
 
   useEffect(() => {
     async function loadCloudState() {
       try {
-        const data = await loadFinanceStateFromSupabase();
+        const data = await loadFinanceStateFromSupabase(householdProfileId);
         if (data?.months) setMonths(data.months);
         if (data?.learned_rules) setLearnedRules(data.learned_rules);
         setCloudStatus(data?.months ? 'מסונכרן מהענן' : 'אין עדיין נתוני ענן, עובדים מקומית');
@@ -718,7 +728,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       }
     }
     loadCloudState();
-  }, []);
+  }, [householdProfileId]);
 
   useEffect(() => {
     try {
@@ -734,7 +744,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     const saveTimeout = window.setTimeout(async () => {
       try {
         if (monthData.preferences.syncMode === 'Cloud Sync' || monthData.preferences.syncMode === 'Auto Backup') {
-          await saveFinanceStateToSupabase(months, learnedRules);
+          await saveFinanceStateToSupabase(months, learnedRules, householdProfileId);
           setCloudStatus(SUPABASE_URL && SUPABASE_ANON_KEY ? 'נשמר בענן' : 'לא הוגדר Supabase, נשמר מקומית');
         } else {
           setCloudStatus('Local Only: נשמר רק בדפדפן');
@@ -744,7 +754,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       }
     }, 900);
     return () => window.clearTimeout(saveTimeout);
-  }, [months, learnedRules, hasLoadedCloud, monthData.preferences.syncMode]);
+  }, [months, learnedRules, hasLoadedCloud, monthData.preferences.syncMode, householdProfileId]);
 
   function setSelectedMonthData(nextData) {
     setMonths((current) => ({ ...current, [selectedMonth]: nextData }));
@@ -1301,10 +1311,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
           <>
             <Section>
               <div className="flex flex-col gap-2"><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">התאמה אישית</h2><p className="text-sm leading-7 text-neutral-500">כאן מגדירים איך הטופס והדשבורד יתנהגו: שמות, יעדים ומה יוצג במסך הראשי.</p></div>
-              <div className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">פרטי הבית</h3><div className="mt-4 grid gap-3"><label className="text-sm font-semibold text-neutral-600">שם הדשבורד<Field value={monthData.dashboardTitle} onChange={(event) => updateMonthField('dashboardTitle', event.target.value)} className="mt-2 w-full" /></label><div className="grid gap-3 md:grid-cols-2"><label className="text-sm font-semibold text-neutral-600">משתמש/ת ראשון/ה<Field value={monthData.preferences.primaryPerson} onChange={(event) => updatePreference('primaryPerson', event.target.value)} className="mt-2 w-full" /></label><label className="text-sm font-semibold text-neutral-600">משתמש/ת שני/ה<Field value={monthData.preferences.secondaryPerson} onChange={(event) => updatePreference('secondaryPerson', event.target.value)} className="mt-2 w-full" /></label></div></div></div><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">יעדים חודשיים</h3><div className="mt-4 grid gap-3 md:grid-cols-2"><label className="text-sm font-semibold text-neutral-600">יעד הוצאות חודשי<Field type="number" value={monthData.preferences.monthlyBudgetTarget} onChange={(event) => updatePreference('monthlyBudgetTarget', event.target.value)} className="mt-2 w-full" /></label><label className="text-sm font-semibold text-neutral-600">יעד שיעור חיסכון באחוזים<Field type="number" value={monthData.preferences.savingsRateTarget} onChange={(event) => updatePreference('savingsRateTarget', event.target.value)} className="mt-2 w-full" /></label></div></div></div>
+              <div className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">פרטי הבית</h3><div className="mt-4 grid gap-3"><label className="text-sm font-semibold text-neutral-600">שם הדשבורד<Field value={monthData.dashboardTitle} onChange={(event) => updateMonthField('dashboardTitle', event.target.value)} className="mt-2 w-full" /></label><label className="text-sm font-semibold text-neutral-600">מזהה בית / Household ID<Field value={householdProfileId} onChange={(event) => updatePreference('householdProfileId', event.target.value || DEFAULT_SUPABASE_PROFILE_ID)} className="mt-2 w-full" /></label><div className="grid gap-3 md:grid-cols-2"><label className="text-sm font-semibold text-neutral-600">משתמש/ת ראשון/ה<Field value={monthData.preferences.primaryPerson} onChange={(event) => updatePreference('primaryPerson', event.target.value)} className="mt-2 w-full" /></label><label className="text-sm font-semibold text-neutral-600">משתמש/ת שני/ה<Field value={monthData.preferences.secondaryPerson} onChange={(event) => updatePreference('secondaryPerson', event.target.value)} className="mt-2 w-full" /></label></div></div></div><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">יעדים חודשיים</h3><div className="mt-4 grid gap-3 md:grid-cols-2"><label className="text-sm font-semibold text-neutral-600">יעד הוצאות חודשי<Field type="number" value={monthData.preferences.monthlyBudgetTarget} onChange={(event) => updatePreference('monthlyBudgetTarget', event.target.value)} className="mt-2 w-full" /></label><label className="text-sm font-semibold text-neutral-600">יעד שיעור חיסכון באחוזים<Field type="number" value={monthData.preferences.savingsRateTarget} onChange={(event) => updatePreference('savingsRateTarget', event.target.value)} className="mt-2 w-full" /></label></div></div></div>
               <div className="mt-6 rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Home Widgets</h3><div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">{[['showMonthlyStory', 'Monthly Story'], ['showFinancialHealth', 'Financial Health'], ['showCategoryChart', 'גרף קטגוריות'], ['showTrendChart', 'גרף מגמה'], ['showSmartInsightCards', 'כרטיסי תובנות'], ['showRecurringDetection', 'זיהוי חיובים קבועים']].map(([field, label]) => <label key={field} className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700"><span>{label}</span><input type="checkbox" checked={Boolean(monthData.preferences[field])} onChange={(event) => updatePreference(field, event.target.checked)} className="h-5 w-5" style={{ accentColor: activeTheme.accent }} /></label>)}</div></div>
               <div className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">Theme Mood</h3><div className="mt-4 grid grid-cols-2 gap-3">{Object.keys(THEME_STYLES).map((themeName) => { const themeStyle = getSafeTheme(themeName); return <button key={themeName} type="button" onClick={() => updatePreference('themeMood', themeName)} className="rounded-2xl border px-4 py-4 text-sm font-semibold transition" style={monthData.preferences.themeMood === themeName ? { borderColor: themeStyle.accent, backgroundColor: themeStyle.soft, color: themeStyle.text } : undefined}>{themeName}</button>; })}</div></div><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">Financial Operating Mode</h3><div className="mt-4 space-y-3">{['Survival', 'Stable', 'Growth', 'Wealth Building'].map((mode) => { const config = getFinancialModeConfig(mode); return <button key={mode} type="button" onClick={() => updatePreference('financialMode', mode)} className="w-full rounded-2xl border px-4 py-4 text-right transition" style={monthData.preferences.financialMode === mode ? { borderColor: activeTheme.accent, backgroundColor: activeTheme.soft } : undefined}><div className="font-semibold text-neutral-900">{mode}</div><div className="mt-1 text-sm text-neutral-500">{operatingModeMessages[mode]}</div><div className="mt-3 grid gap-2 text-xs text-neutral-500 md:grid-cols-3"><span>יעד חיסכון {formatPercent(config.savingsTarget)}</span><span>התראה ב־{config.budgetWarningAt}%</span><span>{config.notificationTone}</span></div></button>; })}</div></div></div>
-              <div className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Smart Notifications</h3><div className="mt-4 space-y-3">{[['budget80', 'התראה לפי מצב פיננסי'], ['woltSpike', 'התראה כשוולט עולה משמעותית'], ['savingsDrop', 'התראה כששיעור החיסכון יורד']].map(([field, label]) => <label key={field} className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700"><span>{label}</span><input type="checkbox" checked={Boolean(monthData.preferences.notifications?.[field])} onChange={(event) => updatePreference('notifications', { ...monthData.preferences.notifications, [field]: event.target.checked })} className="h-5 w-5" style={{ accentColor: activeTheme.accent }} /></label>)}</div></div><div className="rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Privacy & Sync</h3><div className="mt-4 grid gap-3">{['Cloud Sync', 'Local Only', 'Auto Backup'].map((mode) => <button key={mode} type="button" onClick={() => updatePreference('syncMode', mode)} className="rounded-2xl border px-4 py-4 text-right text-sm font-semibold transition" style={monthData.preferences.syncMode === mode ? { borderColor: activeTheme.accent, backgroundColor: activeTheme.soft, color: activeTheme.text } : undefined}>{mode}</button>)}</div><div className="mt-5 grid gap-3 md:grid-cols-3"><PrimaryButton theme={activeTheme} onClick={exportBackup}>ייצוא גיבוי JSON</PrimaryButton><label className="cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-center text-sm font-semibold text-neutral-700">ייבוא גיבוי<input type="file" accept="application/json" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importBackupFile(file); }} /></label><GhostButton onClick={resetCurrentMonth}>איפוס חודש נוכחי</GhostButton></div><p className="mt-4 text-xs leading-6 text-neutral-500">Cloud Sync עובד רק אם Supabase מוגדר. Local Only שומר בדפדפן. ייצוא/ייבוא JSON עובד תמיד.</p></div></div>
+              <div className="mt-6 rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Production Setup Health</h3><div className="mt-4 grid gap-3 md:grid-cols-4"><div className="rounded-2xl bg-neutral-50 p-4 text-sm"><strong>LocalStorage</strong><div className="mt-1 text-neutral-500">{setupHealth.localStorage ? 'פעיל' : 'לא זמין'}</div></div><div className="rounded-2xl bg-neutral-50 p-4 text-sm"><strong>Supabase ENV</strong><div className="mt-1 text-neutral-500">{setupHealth.supabaseEnv ? 'מוגדר' : 'לא מוגדר'}</div></div><div className="rounded-2xl bg-neutral-50 p-4 text-sm"><strong>Excel Parser</strong><div className="mt-1 text-neutral-500">{setupHealth.xlsxParser ? 'פעיל' : 'חסר xlsx'}</div></div><div className="rounded-2xl bg-neutral-50 p-4 text-sm"><strong>Household</strong><div className="mt-1 text-neutral-500">{setupHealth.householdProfileId}</div></div></div><p className="mt-4 text-xs leading-6 text-neutral-500">זה לא דמו: כל סטטוס כאן משקף חיבור אמיתי בקוד. אם Supabase ENV לא מוגדר, המערכת עובדת במצב LocalStorage + JSON Backup.</p></div><div className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Smart Notifications</h3><div className="mt-4 space-y-3">{[['budget80', 'התראה לפי מצב פיננסי'], ['woltSpike', 'התראה כשוולט עולה משמעותית'], ['savingsDrop', 'התראה כששיעור החיסכון יורד']].map(([field, label]) => <label key={field} className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700"><span>{label}</span><input type="checkbox" checked={Boolean(monthData.preferences.notifications?.[field])} onChange={(event) => updatePreference('notifications', { ...monthData.preferences.notifications, [field]: event.target.checked })} className="h-5 w-5" style={{ accentColor: activeTheme.accent }} /></label>)}</div></div><div className="rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Privacy & Sync</h3><div className="mt-4 grid gap-3">{['Cloud Sync', 'Local Only', 'Auto Backup'].map((mode) => <button key={mode} type="button" onClick={() => updatePreference('syncMode', mode)} className="rounded-2xl border px-4 py-4 text-right text-sm font-semibold transition" style={monthData.preferences.syncMode === mode ? { borderColor: activeTheme.accent, backgroundColor: activeTheme.soft, color: activeTheme.text } : undefined}>{mode}</button>)}</div><div className="mt-5 grid gap-3 md:grid-cols-3"><PrimaryButton theme={activeTheme} onClick={exportBackup}>ייצוא גיבוי JSON</PrimaryButton><label className="cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-center text-sm font-semibold text-neutral-700">ייבוא גיבוי<input type="file" accept="application/json" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importBackupFile(file); }} /></label><GhostButton onClick={resetCurrentMonth}>איפוס חודש נוכחי</GhostButton></div><p className="mt-4 text-xs leading-6 text-neutral-500">Cloud Sync עובד רק אם Supabase מוגדר. Local Only שומר בדפדפן. ייצוא/ייבוא JSON עובד תמיד.</p></div></div>
             </Section>
 
             <Section><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">חיפוש ופילטרים</h2><div className="mt-5 grid gap-3"><Field value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="חיפוש בית עסק, למשל וולט" /><SelectField value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option>הכול</option>{EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</SelectField><div className="grid gap-3 md:grid-cols-2"><Field value={minAmount} onChange={(event) => setMinAmount(event.target.value)} type="number" placeholder="סכום מינימום" /><Field value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} type="number" placeholder="סכום מקסימום" /></div></div></Section>
