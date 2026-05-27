@@ -465,6 +465,8 @@ function runSmokeTests() {
   console.assert(detectCategory('My Shop', { shop: 'קניות' }) === 'קניות', 'learned rule failed');
   console.assert(splitCsvLine('a,b,c').length === 3, 'csv split failed');
   console.assert(parseCsvText(['date,merchant,amount', '2026-01-01,Wolt,55'].join(String.fromCharCode(10))).length === 1, 'csv parse failed');
+  console.assert(parseCsvText('date,merchant,amount\r\n2026-01-01,Wolt,55').length === 1, 'csv CRLF parse failed');
+  console.assert(splitCsvLine('"a,b",c').length === 2, 'quoted csv parsing failed');
   console.assert(getCategoryTotals([{ category: 'קניות', amount: 10 }, { category: 'קניות', amount: 20 }]).קניות === 30, 'category totals failed');
   console.assert(buildRealInsights([{ merchant: 'Wolt', category: 'מסעדות / וולט', amount: 900 }], [], 0, 'Survival').some((insight) => insight.includes('Survival')), 'real budget insight failed');
   console.assert(detectRecurringTransactions([{ merchant: 'Netflix', amount: 50 }]).length === 1, 'recurring detection failed');
@@ -496,10 +498,12 @@ function StatCard({ title, value, note, tone = 'neutral' }) {
   }[tone] || 'text-neutral-500';
 
   return (
-    <div className={`rounded-[24px] border ${toneClass} p-5 shadow-sm transition hover:shadow-md`}>
-      <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">{title}</div>
-      <div className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">{value}</div>
-      <div className={`mt-2 text-sm font-medium ${noteClass}`}>{note}</div>
+    <div className={`min-h-[220px] rounded-[24px] border ${toneClass} p-5 shadow-sm transition hover:shadow-md`}>
+      <div className="text-center text-xs font-semibold uppercase tracking-widest text-neutral-400">{title}</div>
+      <div className="mt-6 text-center text-3xl font-semibold tracking-tight text-neutral-950">{value}</div>
+      <div className={`mt-6 px-2 text-center text-sm leading-7 font-medium ${noteClass} no-single-word-lines`}>
+        {noSingleWordLine(note)}
+      </div>
     </div>
   );
 }
@@ -1119,7 +1123,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               </div>
             </div>
           </div>
-          <div className="dark-surface grid gap-4 border-t border-neutral-100 bg-white p-6 md:grid-cols-2 xl:grid-cols-7" style={monthData.preferences.themeMood === 'Dark' ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
+          <div className="dark-surface grid gap-4 border-t border-neutral-100 bg-white p-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-7" style={monthData.preferences.themeMood === 'Dark' ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
             <StatCard title="סה״כ הכנסות" value={SHEKEL.format(totalIncome)} note="כל מקורות ההכנסה" tone="good" />
             <StatCard title="סה״כ הוצאות" value={SHEKEL.format(totalExpenses)} note={monthlyBudgetTarget ? `${formatPercent(budgetUsageRate)} מתוך יעד חודשי` : `${totalIncome ? formatPercent((totalExpenses / totalIncome) * 100) : '0%'} מההכנסה`} tone={(monthlyBudgetTarget && totalExpenses > monthlyBudgetTarget) || (totalIncome && totalExpenses > totalIncome) ? 'danger' : 'neutral'} />
             <StatCard title="סה״כ אשראי" value={SHEKEL.format(totalCreditCards)} note="מכרטיסי האשראי" />
@@ -1132,7 +1136,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
         {activeTab === 'dashboard' ? (
           <>
-            {monthData.preferences.showMonthlyStory || monthData.preferences.showFinancialHealth || activeNotifications.length > 0 ? <Section>
+            {(monthData.preferences.showMonthlyStory || monthData.preferences.showFinancialHealth || activeNotifications.length > 0) ? (
+            <Section>
               <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
                 {activeNotifications.length > 0 ? (
                   <div className="grid gap-3 md:grid-cols-3 lg:col-span-2">
