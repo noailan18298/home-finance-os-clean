@@ -272,8 +272,10 @@ function normalizeImportedRows(rows, learnedRules = {}) {
 }
 
 function parseCsvText(text, learnedRules = {}) {
-  const normalizedText = String(text || '').replaceAll(String.fromCharCode(13), '');
-  const rawLines = normalizedText.split(String.fromCharCode(10));
+  const carriageReturn = String.fromCharCode(13);
+  const lineFeed = String.fromCharCode(10);
+  const normalizedText = String(text || '').split(carriageReturn).join('');
+  const rawLines = normalizedText.split(lineFeed);
   const lines = rawLines.map((line) => line.trim()).filter(Boolean);
   return normalizeImportedRows(lines.map((line) => splitCsvLine(line)), learnedRules);
 }
@@ -331,7 +333,8 @@ function detectRecurringTransactions(transactions, historicalMonths = {}, select
   const historicalMerchants = new Set();
   Object.entries(historicalMonths || {}).forEach(([month, data]) => {
     if (month === selectedMonth) return;
-    (data.creditCards || []).forEach((card) => {
+    const monthData = normalizeMonthData(data);
+    monthData.creditCards.forEach((card) => {
       (card.transactions || []).forEach((transaction) => historicalMerchants.add(normalizeMerchantName(transaction.merchant)));
     });
   });
