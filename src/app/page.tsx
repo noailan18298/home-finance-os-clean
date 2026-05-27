@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { supabase } from '../lib/supabase';
 
-const STORAGE_KEY = 'family-finance-os-full-intelligence-v1';
+const STORAGE_KEY = 'family-finance-os-full-intelligence-v2';
 const SUPABASE_PROFILE_ID = 'default-household';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 const SHEKEL = new Intl.NumberFormat('he-IL', {
   style: 'currency',
@@ -124,7 +125,7 @@ function normalizeMerchantName(merchant = '') {
 function detectCategory(merchant = '', learnedRules = {}) {
   const lower = normalizeMerchantName(merchant);
 
-  for (const [key, category] of Object.entries(learnedRules)) {
+  for (const [key, category] of Object.entries(learnedRules || {})) {
     if (lower.includes(normalizeMerchantName(key))) return category;
   }
 
@@ -196,9 +197,14 @@ function normalizeImportedRows(rows, learnedRules = {}) {
 }
 
 function parseCsvText(text, learnedRules = {}) {
-  const cleanText = String(text || '').replace(/\r/g, '');
-  const lines = cleanText.split('\n').map((line) => line.trim()).filter(Boolean);
+  const cleanText = String(text || '').split(String.fromCharCode(13)).join('');
+  const lines = cleanText
+    .split(String.fromCharCode(10))
+    .map((line) => line.trim())
+    .filter(Boolean);
+
   if (lines.length === 0) return [];
+
   const rows = lines.map(splitCsvLine).filter((row) => row.length > 0);
   return normalizeImportedRows(rows, learnedRules);
 }
@@ -262,7 +268,7 @@ function calculateFinancialHealthScore(transactions) {
 function detectRecurringTransactions(transactions, historicalMonths = {}, selectedMonth = '') {
   const historicalMerchants = new Set();
 
-  Object.entries(historicalMonths).forEach(([month, data]) => {
+  Object.entries(historicalMonths || {}).forEach(([month, data]) => {
     if (month === selectedMonth) return;
     (data.creditCards || []).forEach((card) => {
       (card.transactions || []).forEach((transaction) => {
@@ -280,7 +286,7 @@ function detectRecurringTransactions(transactions, historicalMonths = {}, select
 }
 
 function getMonthlyTrend(months) {
-  return Object.entries(months)
+  return Object.entries(months || {})
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([month, data]) => {
       const creditTotal = (data.creditCards || []).reduce(
@@ -342,27 +348,42 @@ function buildRealInsights(transactions, recurringTransactions = [], totalIncome
 }
 
 async function loadFinanceStateFromSupabase() {
-  const { data, error } = await supabase
-    .from('finance_app_state')
-    .select('months, learned_rules')
-    .eq('profile_id', SUPABASE_PROFILE_ID)
-    .maybeSingle();
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
 
-  if (error) throw error;
-  return data;
+  const url = `${SUPABASE_URL}/rest/v1/finance_app_state?profile_id=eq.${encodeURIComponent(SUPABASE_PROFILE_ID)}&select=months,learned_rules`;
+  const response = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+  });
+
+  if (!response.ok) throw new Error('Supabase load failed');
+
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows[0] || null : null;
 }
 
 async function saveFinanceStateToSupabase(months, learnedRules) {
-  const { error } = await supabase
-    .from('finance_app_state')
-    .upsert({
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/finance_app_state`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates',
+    },
+    body: JSON.stringify({
       profile_id: SUPABASE_PROFILE_ID,
       months,
       learned_rules: learnedRules,
       updated_at: new Date().toISOString(),
-    });
+    }),
+  });
 
-  if (error) throw error;
+  if (!response.ok) throw new Error('Supabase save failed');
 }
 
 function runSmokeTests() {
@@ -370,9 +391,11 @@ function runSmokeTests() {
   console.assert(detectCategory('Wolt TLV') === 'מסעדות / וולט', 'wolt category failed');
   console.assert(detectCategory('My Shop', { shop: 'קניות' }) === 'קניות', 'learned rule failed');
   console.assert(splitCsvLine('a,b,c').length === 3, 'csv split failed');
-  console.assert(parseCsvText('date,merchant,amount\n2026-01-01,Wolt,55').length === 1, 'csv parse failed');
+  const csvSample = ['date,merchant,amount', '2026-01-01,Wolt,55'].join(String.fromCharCode(10));
+  console.assert(parseCsvText(csvSample).length === 1, 'csv parse failed');
   console.assert(getCategoryTotals([{ category: 'קניות', amount: 10 }, { category: 'קניות', amount: 20 }]).קניות === 30, 'category totals failed');
   console.assert(buildRealInsights([{ merchant: 'Wolt', category: 'מסעדות / וולט', amount: 900 }]).some((insight) => insight.includes('חרגה')), 'real budget insight failed');
+  console.assert(detectRecurringTransactions([{ merchant: 'Netflix', amount: 50 }]).length === 1, 'recurring detection failed');
 }
 
 if (typeof window !== 'undefined') runSmokeTests();
@@ -486,13 +509,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       try {
         const data = await loadFinanceStateFromSupabase();
 
-        if (data?.months) {
-          setMonths(data.months);
-        }
-
-        if (data?.learned_rules) {
-          setLearnedRules(data.learned_rules);
-        }
+        if (data?.months) setMonths(data.months);
+        if (data?.learned_rules) setLearnedRules(data.learned_rules);
 
         setCloudStatus(data?.months ? 'מסונכרן מהענן' : 'אין עדיין נתוני ענן, עובדים מקומית');
       } catch {
@@ -520,7 +538,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     const saveTimeout = window.setTimeout(async () => {
       try {
         await saveFinanceStateToSupabase(months, learnedRules);
-        setCloudStatus('נשמר בענן');
+        setCloudStatus(SUPABASE_URL && SUPABASE_ANON_KEY ? 'נשמר בענן' : 'לא הוגדר Supabase, נשמר מקומית');
       } catch {
         setCloudStatus('לא נשמר בענן, נשמר מקומית');
       }
@@ -535,9 +553,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
   function ensureMonth(monthKey) {
     setSelectedMonth(monthKey);
-    if (!months[monthKey]) {
-      setMonths((current) => ({ ...current, [monthKey]: createDefaultMonth() }));
-    }
+    if (!months[monthKey]) setMonths((current) => ({ ...current, [monthKey]: createDefaultMonth() }));
   }
 
   function updateMonthField(field, value) {
@@ -588,33 +604,14 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-
-      const response = await fetch('/api/salary-slip-ocr', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('OCR failed');
-      }
-
+      const response = await fetch('/api/salary-slip-ocr', { method: 'POST', body: formData });
+      if (!response.ok) throw new Error('OCR failed');
       const data = await response.json();
 
       if (data?.salaryNet) {
         const updatedIncomes = [...monthData.incomes];
-
-        if (updatedIncomes[0]) {
-          updatedIncomes[0] = {
-            ...updatedIncomes[0],
-            amount: toNumber(data.salaryNet),
-          };
-        }
-
-        setSelectedMonthData({
-          ...monthData,
-          lastSalaryImport: file.name,
-          incomes: updatedIncomes,
-        });
+        if (updatedIncomes[0]) updatedIncomes[0] = { ...updatedIncomes[0], amount: toNumber(data.salaryNet) };
+        setSelectedMonthData({ ...monthData, lastSalaryImport: file.name, incomes: updatedIncomes });
       }
     } catch {
       alert('התלוש נשמר, אבל OCR עדיין לא מחובר בשרת. אפשר להזין ידנית בינתיים.');
@@ -637,11 +634,9 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     const lower = file.name.toLowerCase();
     let importedTransactions = [];
 
-    if (lower.endsWith('.csv')) {
-      importedTransactions = parseCsvText(await file.text(), learnedRules);
-    } else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
-      importedTransactions = parseExcelArrayBuffer(await file.arrayBuffer(), learnedRules);
-    } else {
+    if (lower.endsWith('.csv')) importedTransactions = parseCsvText(await file.text(), learnedRules);
+    else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) importedTransactions = parseExcelArrayBuffer(await file.arrayBuffer(), learnedRules);
+    else {
       alert('נא להעלות CSV או Excel');
       return;
     }
@@ -781,12 +776,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const merchantTotals = useMemo(() => getMerchantTotals(allCreditTransactions), [allCreditTransactions]);
   const recurringTransactions = useMemo(() => detectRecurringTransactions(allCreditTransactions, months, selectedMonth), [allCreditTransactions, months, selectedMonth]);
   const realInsights = useMemo(() => buildRealInsights(allCreditTransactions, recurringTransactions, totalIncome), [allCreditTransactions, recurringTransactions, totalIncome]);
-  const healthScore = useMemo(() => calculateFinancialHealthScore(allCreditTransactions), [allCreditTransactions]);
   const trend = useMemo(() => getMonthlyTrend(months), [months]);
   const maxTrend = Math.max(1, ...trend.map((item) => item.total));
   const burnRate = trend.length ? trend.reduce((sum, item) => sum + item.total, 0) / trend.length : 0;
   const cashFlow = totalPlannedSavings;
-  const topMerchants = useMemo(() => Object.entries(merchantTotals).sort((a, b) => b[1] - a[1]).slice(0, 5), [merchantTotals]);
   const topCategories = useMemo(() => Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).slice(0, 6), [categoryTotals]);
 
   const filteredTransactions = useMemo(() => {
@@ -821,9 +814,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               <div>
                 <input value={monthData.dashboardTitle} onChange={(event) => updateMonthField('dashboardTitle', event.target.value)} className="w-full max-w-3xl rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-4xl font-bold tracking-tight text-white outline-none transition placeholder:text-white/70 focus:bg-white/20 md:text-5xl" placeholder="שם הדשבורד המשפחתי" />
                 <p className="mt-4 max-w-2xl text-base text-[#f3f0e8]">ממלאים הכנסות, הוצאות, אשראי, עצמאי, קרנות ויעדים. המערכת מחשבת תזרים, חיסכון ותובנות אמיתיות.</p>
-                <div className="mt-4 inline-flex rounded-2xl bg-white/15 px-4 py-2 text-sm font-semibold text-white">
-                  {cloudStatus}
-                </div>
+                <div className="mt-4 inline-flex rounded-2xl bg-white/15 px-4 py-2 text-sm font-semibold text-white">{cloudStatus}</div>
               </div>
               <div className="rounded-3xl bg-[#f7f5ef]/20 p-6 backdrop-blur-sm">
                 <label className="text-sm uppercase tracking-widest text-[#f3f0e8]">חודש</label>
