@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
-const STORAGE_KEY = 'family-finance-os-stable-v10';
+const STORAGE_KEY = 'family-finance-os-stable-v11';
 const SUPABASE_PROFILE_ID = 'default-household';
 
 const TABS = [
@@ -11,7 +11,7 @@ const TABS = [
   { id: 'income', label: 'הכנסות' },
   { id: 'credit', label: 'אשראי' },
   { id: 'savings', label: 'חיסכון' },
-  { id: 'ai', label: 'תובנות חכמות' },
+  { id: 'insights', label: 'תובנות חכמות' },
   { id: 'settings', label: 'הגדרות' },
 ];
 
@@ -20,6 +20,45 @@ const THEME_STYLES = {
   Warm: { accent: '#C49A6C', accentHover: '#B3875A', soft: '#FBF4EC', text: '#8A6742', page: 'bg-[#FCFAF7] text-neutral-800' },
   Minimal: { accent: '#111111', accentHover: '#2B2B2B', soft: '#F5F5F5', text: '#404040', page: 'bg-[#FAFAFA] text-neutral-900' },
   Dark: { accent: '#4E5B52', accentHover: '#647267', soft: '#1F1F1F', text: '#D1D5DB', page: 'bg-[#111111] text-white' },
+};
+
+const FINANCIAL_MODES = {
+  Survival: {
+    label: 'Survival',
+    savingsTarget: 5,
+    budgetWarningAt: 65,
+    strictness: 1.35,
+    focus: 'קיצוץ הוצאות ושמירה על תזרים חיובי',
+    priorityMetric: 'burnRate',
+    notificationTone: 'אגרסיבי',
+  },
+  Stable: {
+    label: 'Stable',
+    savingsTarget: 20,
+    budgetWarningAt: 80,
+    strictness: 1,
+    focus: 'איזון בין איכות חיים לחיסכון יציב',
+    priorityMetric: 'savingsRate',
+    notificationTone: 'מאוזן',
+  },
+  Growth: {
+    label: 'Growth',
+    savingsTarget: 25,
+    budgetWarningAt: 90,
+    strictness: 0.85,
+    focus: 'הגדלת הכנסות, השקעה בצמיחה ושיפור Cash Flow',
+    priorityMetric: 'cashFlow',
+    notificationTone: 'צמיחה',
+  },
+  'Wealth Building': {
+    label: 'Wealth Building',
+    savingsTarget: 35,
+    budgetWarningAt: 95,
+    strictness: 0.75,
+    focus: 'בניית הון, הגדלת נכסים ואופטימיזציה פיננסית',
+    priorityMetric: 'netWorth',
+    notificationTone: 'אופטימיזציה',
+  },
 };
 
 const EXPENSE_CATEGORIES = [
@@ -77,31 +116,11 @@ const MERCHANT_CATEGORY_MAP = {
 };
 
 const RECURRING_KEYWORDS = [
-  'netflix',
-  'spotify',
-  'icloud',
-  'google',
-  'apple',
-  'cellcom',
-  'partner',
-  'pelephone',
-  'hot',
-  'yes',
-  'ביטוח',
-  'הראל',
-  'מגדל',
-  'כלל',
-  'סלקום',
-  'פרטנר',
-  'פלאפון',
-  'שכירות',
+  'netflix', 'spotify', 'icloud', 'google', 'apple', 'cellcom', 'partner', 'pelephone', 'hot', 'yes',
+  'ביטוח', 'הראל', 'מגדל', 'כלל', 'סלקום', 'פרטנר', 'פלאפון', 'שכירות',
 ];
 
-const SHEKEL = new Intl.NumberFormat('he-IL', {
-  style: 'currency',
-  currency: 'ILS',
-  maximumFractionDigits: 0,
-});
+const SHEKEL = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 });
 
 function getPublicEnv(key) {
   if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
@@ -110,6 +129,14 @@ function getPublicEnv(key) {
 
 const SUPABASE_URL = getPublicEnv('NEXT_PUBLIC_SUPABASE_URL');
 const SUPABASE_ANON_KEY = getPublicEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+
+function getFinancialModeConfig(mode) {
+  return FINANCIAL_MODES[mode] || FINANCIAL_MODES.Stable;
+}
+
+function getSafeTheme(themeName) {
+  return THEME_STYLES[themeName] || THEME_STYLES.Sage;
+}
 
 function makeId(prefix = 'id') {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -140,7 +167,9 @@ function noSingleWordLine(text) {
   const parts = cleanText.split(' ').filter(Boolean);
   if (parts.length < 4) return cleanText.replace(/ /g, String.fromCharCode(160));
   const chunks = [];
-  for (let index = 0; index < parts.length; index += 2) chunks.push(parts.slice(index, index + 2).join(String.fromCharCode(160)));
+  for (let index = 0; index < parts.length; index += 2) {
+    chunks.push(parts.slice(index, index + 2).join(String.fromCharCode(160)));
+  }
   if (chunks.length >= 2 && !chunks[chunks.length - 1].includes(String.fromCharCode(160))) {
     chunks[chunks.length - 2] = `${chunks[chunks.length - 2]}${String.fromCharCode(160)}${chunks.pop()}`;
   }
@@ -148,11 +177,7 @@ function noSingleWordLine(text) {
 }
 
 function normalizeMerchantName(merchant = '') {
-  return String(merchant)
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .replace(/[.,:;|()\[\]{}]/g, '')
-    .trim();
+  return String(merchant).toLowerCase().replace(/\s+/g, ' ').replace(/[.,:;|()\[\]{}]/g, '').trim();
 }
 
 function detectCategory(merchant = '', learnedRules = {}) {
@@ -170,6 +195,7 @@ function splitCsvLine(line) {
   const result = [];
   let current = '';
   let insideQuotes = false;
+
   for (let index = 0; index < line.length; index += 1) {
     const char = line[index];
     const nextChar = line[index + 1];
@@ -185,6 +211,7 @@ function splitCsvLine(line) {
       current += char;
     }
   }
+
   result.push(current.trim());
   return result.map((cell) => cell.replace(/^"|"$/g, '').trim());
 }
@@ -194,6 +221,7 @@ function normalizeImportedRows(rows, learnedRules = {}) {
   const firstRow = rows[0].join(' ').toLowerCase();
   const hasHeader = ['date', 'תאריך', 'amount', 'סכום', 'merchant', 'בית עסק', 'שם בית עסק'].some((word) => firstRow.includes(word));
   const dataRows = hasHeader ? rows.slice(1) : rows;
+
   return dataRows
     .map((row) => {
       const cells = row.map((cell) => String(cell || '').trim());
@@ -240,7 +268,7 @@ function getMerchantTotals(transactions) {
   }, {});
 }
 
-function calculateFinancialHealthScore(transactions) {
+function calculateFinancialHealthScore(transactions, modeConfig = FINANCIAL_MODES.Stable) {
   if (!transactions.length) return null;
   const total = transactions.reduce((sum, item) => sum + toNumber(item.amount), 0) || 1;
   const categoryTotals = getCategoryTotals(transactions);
@@ -248,15 +276,20 @@ function calculateFinancialHealthScore(transactions) {
   const uncategorizedAmount = categoryTotals['אחר'] || 0;
   const largestTransaction = Math.max(...transactions.map((item) => toNumber(item.amount)));
   const largestMerchantAmount = Math.max(...Object.values(merchantTotals).map(toNumber));
+  const strictness = modeConfig?.strictness || 1;
   let score = 100;
-  if (uncategorizedAmount / total > 0.2) score -= 15;
-  if (largestTransaction / total > 0.25) score -= 12;
-  if (largestMerchantAmount / total > 0.35) score -= 10;
+
+  if (uncategorizedAmount / total > 0.2) score -= Math.round(15 * strictness);
+  if (largestTransaction / total > 0.25) score -= Math.round(12 * strictness);
+  if (largestMerchantAmount / total > 0.35) score -= Math.round(10 * strictness);
+
   Object.entries(CATEGORY_BUDGETS).forEach(([category, budget]) => {
     const spent = categoryTotals[category] || 0;
-    if (spent > budget) score -= 8;
-    else if (spent >= budget * 0.8) score -= 4;
+    const adjustedBudget = budget / strictness;
+    if (spent > adjustedBudget) score -= Math.round(8 * strictness);
+    else if (spent >= adjustedBudget * ((modeConfig?.budgetWarningAt || 80) / 100)) score -= Math.round(4 * strictness);
   });
+
   return Math.max(0, Math.min(100, score));
 }
 
@@ -268,6 +301,7 @@ function detectRecurringTransactions(transactions, historicalMonths = {}, select
       (card.transactions || []).forEach((transaction) => historicalMerchants.add(normalizeMerchantName(transaction.merchant)));
     });
   });
+
   return transactions.filter((transaction) => {
     const normalized = normalizeMerchantName(transaction.merchant);
     const keywordHit = RECURRING_KEYWORDS.some((keyword) => normalized.includes(normalizeMerchantName(keyword)));
@@ -279,45 +313,69 @@ function getMonthlyTrend(months) {
   return Object.entries(months || {})
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([month, data]) => {
-      const creditTotal = (data.creditCards || []).reduce((sum, card) => sum + (card.transactions || []).reduce((inner, item) => inner + toNumber(item.amount), 0), 0);
+      const creditTotal = (data.creditCards || []).reduce((sum, card) => {
+        return sum + (card.transactions || []).reduce((inner, item) => inner + toNumber(item.amount), 0);
+      }, 0);
       const manualTotal = (data.manualExpenses || []).reduce((sum, item) => sum + toNumber(item.amount), 0);
       return { month, total: creditTotal + manualTotal };
     });
 }
 
-function buildRealInsights(transactions, recurringTransactions = [], totalIncome = 0, financialMode = 'Stable') {
-  if (!transactions.length) return ['עדיין אין נתוני אשראי. העלו CSV או Excel בתוך אזור פירוט האשראי כדי לקבל תובנות.'];
-  const modePrefix = {
-    Survival: 'במצב Survival הדגש הוא על קיצוץ הוצאות לא חיוניות.',
-    Stable: 'במצב Stable הדגש הוא על איזון ושגרה פיננסית בריאה.',
-    Growth: 'במצב Growth הדגש הוא על צמיחה והגדלת יכולת חיסכון.',
-    'Wealth Building': 'במצב Wealth Building הדגש הוא על אופטימיזציה ובניית הון.',
-  }[financialMode] || 'במצב Stable הדגש הוא על איזון ושגרה פיננסית בריאה.';
+function buildRealInsights(transactions, recurringTransactions = [], totalIncome = 0, financialMode = 'Stable', context = {}) {
+  const modeConfig = getFinancialModeConfig(financialMode);
+  if (!transactions.length) return [`מצב ${modeConfig.label}: ${modeConfig.focus}. העלו CSV או Excel כדי לקבל תובנות.`];
+
   const total = transactions.reduce((sum, item) => sum + toNumber(item.amount), 0) || 1;
   const categoryTotals = getCategoryTotals(transactions);
   const merchantTotals = getMerchantTotals(transactions);
   const sortedCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
   const sortedMerchants = Object.entries(merchantTotals).sort((a, b) => b[1] - a[1]);
-  const insights = [modePrefix, `ציון בריאות הוצאות אשראי: ${calculateFinancialHealthScore(transactions)}/100.`];
+  const healthScore = calculateFinancialHealthScore(transactions, modeConfig);
+  const insights = [
+    `מצב ${modeConfig.label}: ${modeConfig.focus}. רמת התראות: ${modeConfig.notificationTone}.`,
+    `ציון בריאות הוצאות אשראי לפי מצב ${modeConfig.label}: ${healthScore}/100.`,
+  ];
+
+  if (typeof context.savingsRate === 'number') {
+    const gap = modeConfig.savingsTarget - context.savingsRate;
+    if (gap > 0) insights.push(`שיעור החיסכון נמוך מהיעד של מצב ${modeConfig.label} ב־${formatPercent(gap)}.`);
+    else insights.push(`שיעור החיסכון עומד ביעד של מצב ${modeConfig.label} ואף גבוה ממנו ב־${formatPercent(Math.abs(gap))}.`);
+  }
+
   const [topCategory, topCategoryAmount] = sortedCategories[0] || [];
   if (topCategory) insights.push(`הקטגוריה הגדולה ביותר באשראי היא ${topCategory}: ${SHEKEL.format(topCategoryAmount)}, שהם ${Math.round((topCategoryAmount / total) * 100)}% מהחיובים.`);
+
   const [topMerchant, topMerchantAmount] = sortedMerchants[0] || [];
   if (topMerchant) insights.push(`בית העסק הדומיננטי ביותר הוא ${topMerchant}: ${SHEKEL.format(topMerchantAmount)}.`);
+
   insights.push(`גובה עסקת אשראי ממוצעת: ${SHEKEL.format(total / transactions.length)}.`);
   if (totalIncome > 0) insights.push(`חיובי האשראי הם ${formatPercent((total / totalIncome) * 100)} מההכנסה שהוזנה החודש.`);
+
   Object.entries(CATEGORY_BUDGETS).forEach(([category, budget]) => {
     const spent = categoryTotals[category] || 0;
-    if (spent > budget) insights.push(`${category} חרגה מהתקציב ב־${SHEKEL.format(spent - budget)}.`);
-    else if (spent >= budget * 0.8) insights.push(`${category} מתקרבת לתקציב: ${SHEKEL.format(spent)} מתוך ${SHEKEL.format(budget)}.`);
+    const adjustedBudget = budget / modeConfig.strictness;
+    const warningPoint = adjustedBudget * (modeConfig.budgetWarningAt / 100);
+    if (spent > adjustedBudget) insights.push(`${category} חרגה מהתקציב המותאם למצב ${modeConfig.label} ב־${SHEKEL.format(spent - adjustedBudget)}.`);
+    else if (spent >= warningPoint) insights.push(`${category} מתקרבת לתקציב לפי מצב ${modeConfig.label}: ${SHEKEL.format(spent)} מתוך ${SHEKEL.format(adjustedBudget)}.`);
   });
+
   const uncategorized = categoryTotals['אחר'] || 0;
   if (uncategorized > 0) insights.push(`${SHEKEL.format(uncategorized)} עדיין מסווגים כ״אחר״. שינוי ידני של קטגוריה ילמד את המערכת לפעמים הבאות.`);
-  const largeTransactions = transactions.filter((transaction) => toNumber(transaction.amount) >= Math.max(500, total * 0.08)).sort((a, b) => toNumber(b.amount) - toNumber(a.amount));
+
+  const largeTransactions = transactions
+    .filter((transaction) => toNumber(transaction.amount) >= Math.max(500, total * 0.08))
+    .sort((a, b) => toNumber(b.amount) - toNumber(a.amount));
   if (largeTransactions.length > 0) insights.push(`זוהו ${largeTransactions.length} עסקאות גדולות יחסית. הגדולה ביותר: ${largeTransactions[0].merchant} בסך ${SHEKEL.format(largeTransactions[0].amount)}.`);
+
   if (recurringTransactions.length > 0) {
     const recurringTotal = recurringTransactions.reduce((sum, item) => sum + toNumber(item.amount), 0);
     insights.push(`זוהו ${recurringTransactions.length} עסקאות חוזרות/מנויים בסך כולל של ${SHEKEL.format(recurringTotal)}.`);
   }
+
+  if (modeConfig.priorityMetric === 'burnRate' && context.burnRate) insights.push(`במצב Survival כדאי להוריד Burn Rate מתחת ל־${SHEKEL.format(context.burnRate * 0.9)} בחודש הבא.`);
+  if (modeConfig.priorityMetric === 'cashFlow' && context.cashFlow) insights.push(`במצב Growth הדגש הוא להגדיל Cash Flow פנוי מעל ${SHEKEL.format(context.cashFlow + 1000)}.`);
+  if (modeConfig.priorityMetric === 'netWorth' && context.totalAssets) insights.push(`במצב Wealth Building הדגש הוא להגדיל שווי שהוזן מעבר ל־${SHEKEL.format(context.totalAssets * 1.05)}.`);
+
   return insights;
 }
 
@@ -401,7 +459,6 @@ function createDefaultMonth() {
       showRecurringDetection: true,
       themeMood: 'Sage',
       financialMode: 'Stable',
-      compactMode: false,
       syncMode: 'Cloud Sync',
       notifications: { budget80: true, woltSpike: true, savingsDrop: true },
     },
@@ -422,12 +479,12 @@ function normalizeMonthData(data) {
     creditCards: (safe.creditCards || base.creditCards).map((card) => ({ transactions: [], pendingTransactions: [], importedFile: '', ...card })),
     attachedDocuments: safe.attachedDocuments || base.attachedDocuments,
     selfEmployed: { ...base.selfEmployed, ...(safe.selfEmployed || {}) },
-    preferences: { ...base.preferences, ...safePreferences, notifications: { ...base.preferences.notifications, ...(safePreferences.notifications || {}) } },
+    preferences: {
+      ...base.preferences,
+      ...safePreferences,
+      notifications: { ...base.preferences.notifications, ...(safePreferences.notifications || {}) },
+    },
   };
-}
-
-function getSafeTheme(themeName) {
-  return THEME_STYLES[themeName] || THEME_STYLES.Sage;
 }
 
 function runSmokeTests() {
@@ -441,18 +498,18 @@ function runSmokeTests() {
   console.assert(splitCsvLine('"a,b",c').length === 2, 'quoted csv parsing failed');
   console.assert(getCategoryTotals([{ category: 'קניות', amount: 10 }, { category: 'קניות', amount: 20 }]).קניות === 30, 'category totals failed');
   console.assert(buildRealInsights([{ merchant: 'Wolt', category: 'מסעדות / וולט', amount: 900 }], [], 0, 'Survival').some((insight) => insight.includes('Survival')), 'real budget insight failed');
+  console.assert(getFinancialModeConfig('Growth').savingsTarget === 25, 'financial mode config failed');
   console.assert(detectRecurringTransactions([{ merchant: 'Netflix', amount: 50 }]).length === 1, 'recurring detection failed');
   console.assert(normalizeMonthData({}).creditCards.length === 2, 'month normalizer failed');
   console.assert(Array.isArray(normalizeMonthData({}).attachedDocuments), 'attached documents normalizer failed');
   console.assert(getMonthlyTrend({ '2026-01': createDefaultMonth() }).length === 1, 'monthly trend failed');
   console.assert(parseExcelArrayBuffer instanceof Function, 'excel parser exists');
   console.assert(TABS[1].id === 'income', 'income tab should be second');
-  console.assert(TABS.some((tab) => tab.id === 'ai' && tab.label === 'תובנות חכמות'), 'smart insights tab label failed');
+  console.assert(TABS.some((tab) => tab.id === 'insights' && tab.label === 'תובנות חכמות'), 'smart insights tab label failed');
   console.assert(normalizeMonthData({ preferences: { showTrendChart: false } }).preferences.showTrendChart === false, 'preferences override failed');
   console.assert(getSafeTheme('Missing').accent === THEME_STYLES.Sage.accent, 'theme fallback failed');
   console.assert(getSafeTheme('Dark').page.includes('111111'), 'dark theme page exists');
   console.assert(noSingleWordLine('אחת שתיים שלוש').includes(String.fromCharCode(160)), 'no orphan text helper failed');
-  console.assert(noSingleWordLine('מע״מ, מס וביטוח לאומי').includes(String.fromCharCode(160)), 'stat card note orphan helper failed');
 }
 
 if (typeof window !== 'undefined') runSmokeTests();
@@ -470,6 +527,7 @@ function StatCard({ title, value, note, tone = 'neutral' }) {
     warn: 'text-amber-700',
     danger: 'text-red-700',
   }[tone] || 'text-neutral-500';
+
   return (
     <div className={`min-h-[220px] rounded-[24px] border ${toneClass} p-5 shadow-sm transition hover:shadow-md`}>
       <div className="text-center text-xs font-semibold uppercase tracking-widest text-neutral-400">{title}</div>
@@ -522,6 +580,10 @@ function SelectField({ children, className = '', ...props }) {
   return <select {...props} className={`rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-100 ${className}`}>{children}</select>;
 }
 
+function InputRow({ children }) {
+  return <div className="grid gap-3 rounded-[24px] border border-neutral-200 p-4 md:grid-cols-[1fr_160px_44px]">{children}</div>;
+}
+
 function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
   const isPending = mode === 'pending';
   return (
@@ -532,19 +594,13 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
           <div>{isPending ? 'בית עסק' : 'עסקה'}</div>
           <div>{isPending ? 'קטגוריה' : 'קטגוריה לומדת'}</div>
           <div>סכום</div>
-          <div></div>
+          <div />
         </div>
         {rows.map((transaction) => (
           <div key={transaction.id} className="grid grid-cols-[110px_minmax(180px,1fr)_170px_120px_44px] gap-4 border-t border-neutral-100 p-4">
             {isPending ? <Field value={transaction.date || ''} onChange={(event) => onUpdate(cardId, transaction.id, 'date', event.target.value)} /> : <div className="px-3 py-3 text-sm text-neutral-500">{transaction.date}</div>}
             {isPending ? <Field value={transaction.merchant} onChange={(event) => onUpdate(cardId, transaction.id, 'merchant', event.target.value)} /> : <Field value={transaction.merchant} readOnly className="bg-neutral-50" />}
-            <SelectField
-              value={transaction.category}
-              onChange={(event) => {
-                if (isPending) onUpdate(cardId, transaction.id, 'category', event.target.value);
-                else onUpdate(transaction.id, event.target.value);
-              }}
-            >
+            <SelectField value={transaction.category} onChange={(event) => isPending ? onUpdate(cardId, transaction.id, 'category', event.target.value) : onUpdate(transaction.id, event.target.value)}>
               {EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
             </SelectField>
             {isPending ? <Field type="number" value={transaction.amount} onChange={(event) => onUpdate(cardId, transaction.id, 'amount', event.target.value)} /> : <div className="px-3 py-3 text-sm font-semibold text-neutral-900">{SHEKEL.format(transaction.amount)}</div>}
@@ -557,10 +613,25 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
   );
 }
 
-function CreditCardPanel({ card, cardTotal, onUpdateCard, onRemoveCard, onImportFile, onUpdatePending, onRemovePending, onApprovePending, onAddTransaction, onRemoveTransaction, onUpdateCategory, theme }) {
+function CreditCardPanel(props) {
+  const {
+    card,
+    cardTotal,
+    onUpdateCard,
+    onRemoveCard,
+    onImportFile,
+    onUpdatePending,
+    onRemovePending,
+    onApprovePending,
+    onAddTransaction,
+    onRemoveTransaction,
+    onUpdateCategory,
+    theme,
+  } = props;
   const safeTheme = theme || THEME_STYLES.Sage;
   const pendingRows = card.pendingTransactions || [];
   const approvedRows = card.transactions || [];
+
   return (
     <div className="rounded-[28px] border border-neutral-200 bg-white p-6 shadow-sm">
       <div className="grid gap-3 md:grid-cols-[minmax(180px,1fr)_minmax(140px,1fr)_110px_40px]">
@@ -569,6 +640,7 @@ function CreditCardPanel({ card, cardTotal, onUpdateCard, onRemoveCard, onImport
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800">{SHEKEL.format(cardTotal)}</div>
         <GhostButton onClick={() => onRemoveCard(card.id)} className="px-0">×</GhostButton>
       </div>
+
       <div className="mt-5 rounded-[24px] border border-dashed border-neutral-300 bg-neutral-50 p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -582,6 +654,7 @@ function CreditCardPanel({ card, cardTotal, onUpdateCard, onRemoveCard, onImport
         </div>
         {card.importedFile ? <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm text-neutral-600">נקלט קובץ: <strong>{card.importedFile}</strong></div> : null}
       </div>
+
       {pendingRows.length > 0 ? (
         <div className="mt-4 rounded-[24px] border border-neutral-200 bg-neutral-50 p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -594,14 +667,11 @@ function CreditCardPanel({ card, cardTotal, onUpdateCard, onRemoveCard, onImport
           <TransactionEditorTable rows={pendingRows} cardId={card.id} mode="pending" onUpdate={onUpdatePending} onRemove={onRemovePending} />
         </div>
       ) : null}
+
       <TransactionEditorTable rows={approvedRows} cardId={card.id} mode="approved" onUpdate={onUpdateCategory} onRemove={onRemoveTransaction} />
       <PrimaryButton theme={safeTheme} onClick={() => onAddTransaction(card.id)} className="mt-4">+ הוספת עסקה</PrimaryButton>
     </div>
   );
-}
-
-function InputRow({ children }) {
-  return <div className="grid gap-3 rounded-[24px] border border-neutral-200 p-4 md:grid-cols-[1fr_160px_44px]">{children}</div>;
 }
 
 export default function PersonalIsraeliFamilyFinanceDashboard() {
@@ -632,6 +702,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const monthData = normalizeMonthData(months[selectedMonth]);
   const activeTheme = getSafeTheme(monthData.preferences.themeMood);
   const isDark = monthData.preferences.themeMood === 'Dark';
+  const modeConfig = getFinancialModeConfig(monthData.preferences.financialMode);
 
   useEffect(() => {
     async function loadCloudState() {
@@ -742,19 +813,11 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   }
 
   function removeAttachedDocument(documentId) {
-    setSelectedMonthData({
-      ...monthData,
-      attachedDocuments: (monthData.attachedDocuments || []).filter((document) => document.id !== documentId),
-    });
+    setSelectedMonthData({ ...monthData, attachedDocuments: (monthData.attachedDocuments || []).filter((document) => document.id !== documentId) });
   }
 
   function exportBackup() {
-    const backup = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      months,
-      learnedRules,
-    };
+    const backup = { version: 1, exportedAt: new Date().toISOString(), months, learnedRules };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -847,19 +910,31 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   }
 
   function removePendingTransaction(cardId, transactionId) {
-    setSelectedMonthData({ ...monthData, creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, pendingTransactions: (card.pendingTransactions || []).filter((transaction) => transaction.id !== transactionId) } : card)) });
+    setSelectedMonthData({
+      ...monthData,
+      creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, pendingTransactions: (card.pendingTransactions || []).filter((transaction) => transaction.id !== transactionId) } : card)),
+    });
   }
 
   function approvePendingTransactions(cardId) {
-    setSelectedMonthData({ ...monthData, creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, transactions: [...(card.transactions || []), ...(card.pendingTransactions || [])], pendingTransactions: [] } : card)) });
+    setSelectedMonthData({
+      ...monthData,
+      creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, transactions: [...(card.transactions || []), ...(card.pendingTransactions || [])], pendingTransactions: [] } : card)),
+    });
   }
 
   function addTransaction(cardId) {
-    setSelectedMonthData({ ...monthData, creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, transactions: [...(card.transactions || []), { id: makeId('tx'), date: '', merchant: 'עסקה חדשה', category: 'אחר', amount: 0 }] } : card)) });
+    setSelectedMonthData({
+      ...monthData,
+      creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, transactions: [...(card.transactions || []), { id: makeId('tx'), date: '', merchant: 'עסקה חדשה', category: 'אחר', amount: 0 }] } : card)),
+    });
   }
 
   function removeTransaction(cardId, transactionId) {
-    setSelectedMonthData({ ...monthData, creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, transactions: (card.transactions || []).filter((transaction) => transaction.id !== transactionId) } : card)) });
+    setSelectedMonthData({
+      ...monthData,
+      creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, transactions: (card.transactions || []).filter((transaction) => transaction.id !== transactionId) } : card)),
+    });
   }
 
   const totalIncome = monthData.incomes.reduce((sum, item) => sum + toNumber(item.amount), 0);
@@ -878,7 +953,6 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const totalAssets = toNumber(monthData.emergencyFund) + monthData.savingsProducts.reduce((sum, item) => sum + toNumber(item.currentBalance), 0) + monthData.savingGoals.reduce((sum, item) => sum + toNumber(item.currentAmount), 0);
   const categoryTotals = useMemo(() => getCategoryTotals(allCreditTransactions), [allCreditTransactions]);
   const recurringTransactions = useMemo(() => detectRecurringTransactions(allCreditTransactions, months, selectedMonth), [allCreditTransactions, months, selectedMonth]);
-  const realInsights = useMemo(() => buildRealInsights(allCreditTransactions, recurringTransactions, totalIncome, monthData.preferences.financialMode), [allCreditTransactions, recurringTransactions, totalIncome, monthData.preferences.financialMode]);
   const trend = useMemo(() => getMonthlyTrend(months), [months]);
   const maxTrend = Math.max(1, ...trend.map((item) => item.total));
   const burnRate = trend.length ? trend.reduce((sum, item) => sum + item.total, 0) / trend.length : 0;
@@ -894,30 +968,39 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     });
   }, [allCreditTransactions, searchTerm, categoryFilter, minAmount, maxAmount]);
 
-  const financialHealthScore = calculateFinancialHealthScore(allCreditTransactions) || 0;
+  const financialHealthScore = calculateFinancialHealthScore(allCreditTransactions, modeConfig) || 0;
   const monthlyBudgetTarget = toNumber(monthData.preferences.monthlyBudgetTarget);
-  const budgetUsageRate = monthlyBudgetTarget ? (totalExpenses / monthlyBudgetTarget) * 100 : 0;
-  const targetSavingsRate = toNumber(monthData.preferences.savingsRateTarget);
+  const effectiveBudgetTarget = monthlyBudgetTarget ? monthlyBudgetTarget / modeConfig.strictness : 0;
+  const budgetUsageRate = effectiveBudgetTarget ? (totalExpenses / effectiveBudgetTarget) * 100 : 0;
+  const targetSavingsRate = toNumber(monthData.preferences.savingsRateTarget) || modeConfig.savingsTarget;
+  const realInsights = useMemo(
+    () => buildRealInsights(allCreditTransactions, recurringTransactions, totalIncome, monthData.preferences.financialMode, { savingsRate, burnRate, cashFlow, totalAssets }),
+    [allCreditTransactions, recurringTransactions, totalIncome, monthData.preferences.financialMode, savingsRate, burnRate, cashFlow, totalAssets]
+  );
+
   const operatingModeMessages = {
     Survival: 'המערכת מתמקדת כרגע בצמצום הוצאות ושמירה על יציבות.',
     Stable: 'המערכת מתמקדת באיזון פיננסי וחיסכון יציב.',
     Growth: 'המערכת מתמקדת בצמיחה, הגדלת הכנסות והשקעות.',
     'Wealth Building': 'המערכת מתמקדת באופטימיזציה ובניית הון ארוך טווח.',
   };
+
   const modeInsight = {
     Survival: 'המיקוד כרגע הוא הורדת burn rate וצמצום הוצאות לא חיוניות.',
     Stable: 'המיקוד כרגע הוא איזון בין איכות חיים לחיסכון יציב.',
     Growth: 'המיקוד כרגע הוא הגדלת הכנסות והשקעה בצמיחה.',
     'Wealth Building': 'המיקוד כרגע הוא בניית הון ואופטימיזציה פיננסית ארוכת טווח.',
   };
+
   const activeNotifications = [
-    monthData.preferences.notifications?.budget80 && budgetUsageRate >= 80 ? 'הגעתם ל־80% מהתקציב החודשי.' : null,
+    monthData.preferences.notifications?.budget80 && budgetUsageRate >= modeConfig.budgetWarningAt ? `הגעתם ל־${modeConfig.budgetWarningAt}% מהתקציב לפי מצב ${modeConfig.label}.` : null,
     monthData.preferences.notifications?.woltSpike && (categoryTotals['מסעדות / וולט'] || 0) > (CATEGORY_BUDGETS['מסעדות / וולט'] || 0) ? 'וולט חרג מהתקציב שהוגדר.' : null,
     monthData.preferences.notifications?.savingsDrop && savingsRate < targetSavingsRate ? 'שיעור החיסכון נמוך מהיעד שהוגדר.' : null,
   ].filter(Boolean);
+
   const monthlyStory = totalIncome
-    ? `החודש הוצאתם ${SHEKEL.format(totalExpenses)} שהם ${formatPercent((totalExpenses / totalIncome) * 100)} מההכנסה. הקטגוריה הבולטת ביותר היא ${topCategories[0]?.[0] || 'ללא נתונים'}, והיתרה אחרי הכול היא ${SHEKEL.format(monthlySavings)}.`
-    : 'התחילו להזין הכנסות והוצאות כדי לקבל סיפור פיננסי חודשי מותאם.';
+    ? `במצב ${modeConfig.label}, החודש הוצאתם ${SHEKEL.format(totalExpenses)} שהם ${formatPercent((totalExpenses / totalIncome) * 100)} מההכנסה. יעד החיסכון למצב הזה הוא ${formatPercent(targetSavingsRate)}, והיתרה אחרי הכול היא ${SHEKEL.format(monthlySavings)}.`
+    : `מצב ${modeConfig.label} פעיל. התחילו להזין הכנסות והוצאות כדי לקבל סיפור פיננסי חודשי מותאם.`;
 
   function getBudgetHeatColor(category, amount) {
     const budget = CATEGORY_BUDGETS[category];
@@ -971,11 +1054,20 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         .no-single-word-lines { white-space: normal; word-break: keep-all; overflow-wrap: normal; hyphens: none; }
         .nowrap-chip { white-space: nowrap; }
       `}</style>
+
       <div className="mx-auto max-w-7xl space-y-7">
         <div className="dark-nav sticky top-0 z-40 rounded-2xl border border-neutral-200 bg-white/95 p-2 shadow-sm backdrop-blur-xl" style={isDark ? { backgroundColor: 'rgba(18, 18, 18, 0.96)', borderColor: '#333333' } : undefined}>
           <div className="flex flex-wrap gap-1">
             {TABS.map((tab) => (
-              <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${activeTab === tab.id ? 'text-white shadow-sm' : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950'}`} style={activeTab === tab.id ? { backgroundColor: activeTheme.accent } : undefined}>{tab.label}</button>
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${activeTab === tab.id ? 'text-white shadow-sm' : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950'}`}
+                style={activeTab === tab.id ? { backgroundColor: activeTheme.accent } : undefined}
+              >
+                {tab.label}
+              </button>
             ))}
           </div>
         </div>
@@ -986,7 +1078,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               <div>
                 <input value={monthData.dashboardTitle} onChange={(event) => updateMonthField('dashboardTitle', event.target.value)} className="w-full max-w-3xl rounded-xl border border-transparent bg-transparent px-0 py-2 text-4xl font-semibold tracking-tight text-neutral-950 outline-none transition placeholder:text-neutral-400 md:text-5xl" placeholder="שם הדשבורד המשפחתי" />
                 <p className="mt-4 max-w-4xl text-base leading-8 text-neutral-500 no-orphans no-single-word-lines">{noSingleWordLine('ממלאים הכנסות, הוצאות, אשראי, עצמאי, קרנות ויעדים. המערכת מחשבת תזרים, חיסכון ותובנות אמיתיות.')}</p>
-                <div className="nowrap-chip mt-4 inline-flex max-w-full rounded-full px-4 py-2 text-sm font-semibold no-orphans" style={{ backgroundColor: activeTheme.soft, color: activeTheme.text }}>{noSingleWordLine(modeInsight[monthData.preferences.financialMode] || modeInsight.Stable)}</div>
+                <div className="nowrap-chip mt-4 inline-flex max-w-full rounded-full px-4 py-2 text-sm font-semibold no-orphans" style={{ backgroundColor: activeTheme.soft, color: activeTheme.text }}>{noSingleWordLine(`${modeInsight[monthData.preferences.financialMode] || modeInsight.Stable} יעד חיסכון: ${formatPercent(targetSavingsRate)} | התראה ב־${modeConfig.budgetWarningAt}%`)}</div>
                 <div className="nowrap-chip mt-5 inline-flex max-w-full rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-600 no-orphans">{noSingleWordLine(cloudStatus)}</div>
               </div>
               <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
@@ -995,14 +1087,15 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               </div>
             </div>
           </div>
+
           <div className="dark-surface grid grid-cols-1 gap-4 border-t border-neutral-100 bg-white p-6 md:grid-cols-2 xl:grid-cols-7" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
             <StatCard title="סה״כ הכנסות" value={SHEKEL.format(totalIncome)} note="כל מקורות ההכנסה" tone="good" />
-            <StatCard title="סה״כ הוצאות" value={SHEKEL.format(totalExpenses)} note={monthlyBudgetTarget ? `${formatPercent(budgetUsageRate)} מתוך יעד חודשי` : `${totalIncome ? formatPercent((totalExpenses / totalIncome) * 100) : '0%'} מההכנסה`} tone={(monthlyBudgetTarget && totalExpenses > monthlyBudgetTarget) || (totalIncome && totalExpenses > totalIncome) ? 'danger' : 'neutral'} />
+            <StatCard title="סה״כ הוצאות" value={SHEKEL.format(totalExpenses)} note={effectiveBudgetTarget ? `${formatPercent(budgetUsageRate)} מתוך יעד ${modeConfig.label}` : `${totalIncome ? formatPercent((totalExpenses / totalIncome) * 100) : '0%'} מההכנסה`} tone={(effectiveBudgetTarget && totalExpenses > effectiveBudgetTarget) || (totalIncome && totalExpenses > totalIncome) ? 'danger' : budgetUsageRate >= modeConfig.budgetWarningAt ? 'warn' : 'neutral'} />
             <StatCard title="סה״כ אשראי" value={SHEKEL.format(totalCreditCards)} note="מכרטיסי האשראי" />
             <StatCard title="עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note="מע״מ, מס וביטוח לאומי" />
             <StatCard title="חסכונות" value={SHEKEL.format(totalPlannedSavings)} note="קרנות, פנסיה ויעדים" tone="good" />
             <StatCard title="יתרה אחרי הכול" value={SHEKEL.format(monthlySavings)} note={`${formatPercent(savingsRate)} חיסכון / יעד ${formatPercent(targetSavingsRate)}`} tone={monthlySavings >= 0 && savingsRate >= targetSavingsRate ? 'good' : monthlySavings < 0 ? 'danger' : 'neutral'} />
-            <StatCard title="שווי שהוזן" value={SHEKEL.format(totalAssets)} note={`${emergencyMonths.toFixed(1)} חודשי חירום`} tone="neutral" />
+            <StatCard title="שווי שהוזן" value={SHEKEL.format(totalAssets)} note={`${emergencyMonths.toFixed(1)} חודשי חירום`} />
           </div>
         </section>
 
@@ -1026,6 +1119,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       ))}
                     </div>
                   ) : null}
+
                   {monthData.preferences.showMonthlyStory ? (
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">MONTHLY STORY</div>
@@ -1038,12 +1132,13 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       </div>
                     </div>
                   ) : null}
+
                   {monthData.preferences.showFinancialHealth ? (
                     <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-6">
                       <div className="text-sm font-semibold text-neutral-500">Financial Health</div>
                       <div className="mt-4 text-6xl font-semibold text-neutral-950">{financialHealthScore}</div>
                       <div className="mt-5 h-3 overflow-hidden rounded-full bg-neutral-200"><div className="h-full rounded-full" style={{ width: `${financialHealthScore}%`, backgroundColor: activeTheme.accent }} /></div>
-                      <div className="mt-3 text-sm leading-7 text-neutral-500">ציון מקומי לפי חריגות תקציב, פיזור הוצאות ועסקאות גדולות.</div>
+                      <div className="mt-3 text-sm leading-7 text-neutral-500">ציון לפי מצב {modeConfig.label}: קשיחות תקציב, חריגות, פיזור הוצאות ועסקאות גדולות.</div>
                     </div>
                   ) : null}
                 </div>
@@ -1061,6 +1156,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                     </div>
                   </Section>
                 ) : null}
+
                 {monthData.preferences.showTrendChart ? (
                   <Section className="lg:col-span-2">
                     <div className="flex items-center justify-between gap-4"><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">מגמת הוצאות חודשית</h2><span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">Trend</span></div>
@@ -1078,17 +1174,54 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         {activeTab === 'credit' ? (
           <>
             <Section>
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">סיכום כרטיסי אשראי</h2><p className="mt-2 text-sm text-neutral-500">כאן מעלים CSV/Excel לכל כרטיס, בודקים קטגוריות, ואז מאשרים הכנסה להוצאות.</p></div><PrimaryButton theme={activeTheme} onClick={addCreditCard}>+ הוספת כרטיס</PrimaryButton></div>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">סיכום כרטיסי אשראי</h2><p className="mt-2 text-sm text-neutral-500">כאן מעלים CSV/Excel לכל כרטיס, בודקים קטגוריות, ואז מאשרים הכנסה להוצאות.</p></div>
+                <PrimaryButton theme={activeTheme} onClick={addCreditCard}>+ הוספת כרטיס</PrimaryButton>
+              </div>
               <div className="mt-7 grid gap-8 xl:grid-cols-2">
                 {monthData.creditCards.map((card) => {
                   const cardTotal = (card.transactions || []).reduce((sum, item) => sum + toNumber(item.amount), 0);
-                  return <CreditCardPanel key={card.id} card={card} cardTotal={cardTotal} onUpdateCard={updateCreditCard} onRemoveCard={removeCreditCard} onImportFile={importCreditFile} onUpdatePending={updatePendingTransaction} onRemovePending={removePendingTransaction} onApprovePending={approvePendingTransactions} onAddTransaction={addTransaction} onRemoveTransaction={removeTransaction} onUpdateCategory={updateTransactionCategory} theme={activeTheme} />;
+                  return (
+                    <CreditCardPanel
+                      key={card.id}
+                      card={card}
+                      cardTotal={cardTotal}
+                      onUpdateCard={updateCreditCard}
+                      onRemoveCard={removeCreditCard}
+                      onImportFile={importCreditFile}
+                      onUpdatePending={updatePendingTransaction}
+                      onRemovePending={removePendingTransaction}
+                      onApprovePending={approvePendingTransactions}
+                      onAddTransaction={addTransaction}
+                      onRemoveTransaction={removeTransaction}
+                      onUpdateCategory={updateTransactionCategory}
+                      theme={activeTheme}
+                    />
+                  );
                 })}
               </div>
             </Section>
+
             <Section>
               <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">כל עסקאות האשראי המסוננות</h2>
-              <div className="mt-6 overflow-x-auto rounded-[24px] border border-neutral-200 bg-white"><div className="min-w-[860px]"><div className="grid grid-cols-[110px_1fr_170px_120px_90px] bg-neutral-100 px-6 py-4 text-sm font-semibold text-neutral-700"><div>תאריך</div><div>בית עסק</div><div>קטגוריה לומדת</div><div>סכום</div><div>זיהוי</div></div>{filteredTransactions.map((transaction) => { const isRecurring = recurringTransactions.some((item) => item.id === transaction.id); return <div key={transaction.id} className="grid grid-cols-[110px_1fr_170px_120px_90px] gap-4 border-t border-neutral-100 px-6 py-4"><div>{transaction.date}</div><div>{transaction.merchant}</div><SelectField value={transaction.category} onChange={(event) => updateTransactionCategory(transaction.id, event.target.value)}>{EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</SelectField><div className="font-semibold">{SHEKEL.format(transaction.amount)}</div><div>{isRecurring ? 'חוזר קבוע' : '—'}</div></div>; })}{filteredTransactions.length === 0 ? <div className="p-16 text-center text-neutral-400">לא נמצאו עסקאות לפי החיפוש והפילטרים שבחרתם.</div> : null}</div></div>
+              <div className="mt-6 overflow-x-auto rounded-[24px] border border-neutral-200 bg-white">
+                <div className="min-w-[860px]">
+                  <div className="grid grid-cols-[110px_1fr_170px_120px_90px] bg-neutral-100 px-6 py-4 text-sm font-semibold text-neutral-700"><div>תאריך</div><div>בית עסק</div><div>קטגוריה לומדת</div><div>סכום</div><div>זיהוי</div></div>
+                  {filteredTransactions.map((transaction) => {
+                    const isRecurring = recurringTransactions.some((item) => item.id === transaction.id);
+                    return (
+                      <div key={transaction.id} className="grid grid-cols-[110px_1fr_170px_120px_90px] gap-4 border-t border-neutral-100 px-6 py-4">
+                        <div>{transaction.date}</div>
+                        <div>{transaction.merchant}</div>
+                        <SelectField value={transaction.category} onChange={(event) => updateTransactionCategory(transaction.id, event.target.value)}>{EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</SelectField>
+                        <div className="font-semibold">{SHEKEL.format(transaction.amount)}</div>
+                        <div>{isRecurring ? 'חוזר קבוע' : '—'}</div>
+                      </div>
+                    );
+                  })}
+                  {filteredTransactions.length === 0 ? <div className="p-16 text-center text-neutral-400">לא נמצאו עסקאות לפי החיפוש והפילטרים שבחרתם.</div> : null}
+                </div>
+              </div>
             </Section>
           </>
         ) : null}
@@ -1097,8 +1230,20 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
           <>
             <Section>
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">קרנות, פנסיה וחסכונות</h2><p className="mt-2 text-sm text-neutral-500">הפרשות חודשיות לקרן השתלמות, פנסיה וחסכונות קבועים.</p></div><PrimaryButton theme={activeTheme} onClick={addSavingsProduct}>+ הוספת חיסכון</PrimaryButton></div>
-              <div className="mt-7 grid gap-3">{monthData.savingsProducts.map((product) => <div key={product.id} className="grid gap-3 rounded-[24px] border border-neutral-200 p-4 md:grid-cols-[1fr_140px_120px_150px_150px_44px]"><Field value={product.name} onChange={(event) => updateRow('savingsProducts', product.id, 'name', event.target.value)} /><SelectField value={product.type} onChange={(event) => updateRow('savingsProducts', product.id, 'type', event.target.value)}><option>קרן השתלמות</option><option>פנסיה</option><option>קופת גמל</option><option>חיסכון</option><option>השקעות</option></SelectField><Field value={product.owner} onChange={(event) => updateRow('savingsProducts', product.id, 'owner', event.target.value)} /><Field type="number" value={product.monthlyDeposit} onChange={(event) => updateRow('savingsProducts', product.id, 'monthlyDeposit', event.target.value)} /><Field type="number" value={product.currentBalance} onChange={(event) => updateRow('savingsProducts', product.id, 'currentBalance', event.target.value)} /><GhostButton onClick={() => removeRow('savingsProducts', product.id)} className="px-0">×</GhostButton></div>)}</div>
+              <div className="mt-7 grid gap-3">
+                {monthData.savingsProducts.map((product) => (
+                  <div key={product.id} className="grid gap-3 rounded-[24px] border border-neutral-200 p-4 md:grid-cols-[1fr_140px_120px_150px_150px_44px]">
+                    <Field value={product.name} onChange={(event) => updateRow('savingsProducts', product.id, 'name', event.target.value)} />
+                    <SelectField value={product.type} onChange={(event) => updateRow('savingsProducts', product.id, 'type', event.target.value)}><option>קרן השתלמות</option><option>פנסיה</option><option>קופת גמל</option><option>חיסכון</option><option>השקעות</option></SelectField>
+                    <Field value={product.owner} onChange={(event) => updateRow('savingsProducts', product.id, 'owner', event.target.value)} />
+                    <Field type="number" value={product.monthlyDeposit} onChange={(event) => updateRow('savingsProducts', product.id, 'monthlyDeposit', event.target.value)} />
+                    <Field type="number" value={product.currentBalance} onChange={(event) => updateRow('savingsProducts', product.id, 'currentBalance', event.target.value)} />
+                    <GhostButton onClick={() => removeRow('savingsProducts', product.id)} className="px-0">×</GhostButton>
+                  </div>
+                ))}
+              </div>
             </Section>
+
             <Section>
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">יעדי חיסכון</h2><p className="mt-2 text-sm text-neutral-500">טיסה ליפן, חתונה, קרן חירום וכל יעד אחר.</p></div><PrimaryButton theme={activeTheme} onClick={addSavingGoal}>+ הוספת יעד</PrimaryButton></div>
               <div className="mt-6 grid gap-5 md:grid-cols-3">
@@ -1108,10 +1253,23 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   const monthlyDeposit = Math.max(1, toNumber(goal.monthlyDeposit));
                   const etaMonths = Math.ceil(remaining / monthlyDeposit);
                   const boostedEta = Math.ceil(remaining / (monthlyDeposit + 500));
-                  return <div key={goal.id} className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><Field value={goal.name} onChange={(event) => updateRow('savingGoals', goal.id, 'name', event.target.value)} className="w-full font-semibold" /><div className="mt-3 grid gap-3"><Field type="number" value={goal.targetAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'targetAmount', event.target.value)} placeholder="יעד" /><Field type="number" value={goal.currentAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'currentAmount', event.target.value)} placeholder="נצבר" /><Field type="number" value={goal.monthlyDeposit} onChange={(event) => updateRow('savingGoals', goal.id, 'monthlyDeposit', event.target.value)} placeholder="הפקדה חודשית" /></div><div className="mt-4 flex justify-between text-sm font-semibold"><span>{progress}%</span><button onClick={() => removeRow('savingGoals', goal.id)} className="text-neutral-700">מחיקה</button></div><div className="mt-3 rounded-2xl border border-neutral-200 bg-white p-3 text-sm leading-7 text-neutral-600"><div>ETA ליעד: <strong>{Number.isFinite(etaMonths) ? `${etaMonths} חודשים` : 'לא מוגדר'}</strong></div><div className="mt-1">אם תגדילו ב־₪500 בחודש תגיעו בערך תוך <strong>{Number.isFinite(boostedEta) ? `${boostedEta} חודשים` : '—'}</strong>.</div></div><div className="mt-2 h-3 overflow-hidden rounded-full bg-white"><div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: activeTheme.accent }} /></div></div>;
+                  return (
+                    <div key={goal.id} className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
+                      <Field value={goal.name} onChange={(event) => updateRow('savingGoals', goal.id, 'name', event.target.value)} className="w-full font-semibold" />
+                      <div className="mt-3 grid gap-3">
+                        <Field type="number" value={goal.targetAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'targetAmount', event.target.value)} placeholder="יעד" />
+                        <Field type="number" value={goal.currentAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'currentAmount', event.target.value)} placeholder="נצבר" />
+                        <Field type="number" value={goal.monthlyDeposit} onChange={(event) => updateRow('savingGoals', goal.id, 'monthlyDeposit', event.target.value)} placeholder="הפקדה חודשית" />
+                      </div>
+                      <div className="mt-4 flex justify-between text-sm font-semibold"><span>{progress}%</span><button onClick={() => removeRow('savingGoals', goal.id)} className="text-neutral-700">מחיקה</button></div>
+                      <div className="mt-3 rounded-2xl border border-neutral-200 bg-white p-3 text-sm leading-7 text-neutral-600"><div>ETA ליעד: <strong>{Number.isFinite(etaMonths) ? `${etaMonths} חודשים` : 'לא מוגדר'}</strong></div><div className="mt-1">אם תגדילו ב־₪500 בחודש תגיעו בערך תוך <strong>{Number.isFinite(boostedEta) ? `${boostedEta} חודשים` : '—'}</strong>.</div></div>
+                      <div className="mt-2 h-3 overflow-hidden rounded-full bg-white"><div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: activeTheme.accent }} /></div>
+                    </div>
+                  );
                 })}
               </div>
             </Section>
+
             <Section><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">קרן חירום</h2><p className="mt-2 text-sm text-neutral-500">מלאו סכום חיסכון נזיל נוכחי.</p><Field type="number" value={monthData.emergencyFund} onChange={(event) => updateMonthField('emergencyFund', toNumber(event.target.value))} className="mt-6 w-full text-xl font-semibold" /></Section>
           </>
         ) : null}
@@ -1123,6 +1281,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               {(monthData.attachedDocuments || []).length ? <div className="mt-4 space-y-2 rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-600">{monthData.attachedDocuments.map((document) => <div key={document.id} className="flex items-center justify-between gap-3"><span>תלוש מצורף: <strong>{document.name}</strong></span><button type="button" onClick={() => removeAttachedDocument(document.id)} className="font-semibold text-neutral-700">הסרה</button></div>)}</div> : null}
               <div className="mt-6 space-y-3">{monthData.incomes.map((income) => <InputRow key={income.id}><Field value={income.name} onChange={(event) => updateRow('incomes', income.id, 'name', event.target.value)} /><Field type="number" value={income.amount} onChange={(event) => updateRow('incomes', income.id, 'amount', event.target.value)} /><GhostButton onClick={() => removeRow('incomes', income.id)} className="px-0">×</GhostButton></InputRow>)}</div>
             </Section>
+
             <Section>
               <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">עצמאי: מע״מ, מס הכנסה וביטוח לאומי</h2><p className="mt-2 text-sm text-neutral-500">אזור לאורן כעצמאי. נספר בנפרד כדי שלא יתערבב עם הוצאות הבית.</p>
               <div className="mt-6 grid gap-4 md:grid-cols-2">{[['owner', 'בעל העסק', 'text'], ['grossRevenue', 'הכנסה עסקית ברוטו', 'number'], ['vatCollected', 'מע״מ שנגבה מלקוחות', 'number'], ['vatPaidOnExpenses', 'מע״מ על הוצאות מוכרות', 'number'], ['incomeTaxAdvance', 'מקדמת מס הכנסה', 'number'], ['nationalInsurance', 'ביטוח לאומי', 'number'], ['businessExpenses', 'הוצאות עסקיות ששולמו החודש', 'number']].map(([field, label, type]) => <label key={field} className="text-sm font-semibold text-neutral-600">{label}<Field type={type} value={monthData.selfEmployed[field]} onChange={(event) => updateSelfEmployedField(field, event.target.value)} className="mt-2 w-full" /></label>)}</div>
@@ -1131,7 +1290,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
           </section>
         ) : null}
 
-        {activeTab === 'ai' ? (
+        {activeTab === 'insights' ? (
           <section className="grid gap-6 lg:grid-cols-2">
             {monthData.preferences.showSmartInsightCards ? <Section><div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">תובנות חכמות</h2><p className="mt-2 text-sm text-neutral-500">תובנות מחושבות ישירות מהנתונים: חריגות, תקציבים, בתי עסק מובילים, חיובים חוזרים ודפוסים חודשיים.</p></div><div className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: activeTheme.soft, color: activeTheme.text }}>מתעדכן אוטומטית</div></div><div className="mt-5 grid gap-4">{realInsights.map((insight, index) => <div key={insight} className="flex items-start gap-4 rounded-[24px] border border-neutral-200 bg-white p-5 shadow-sm"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-100 text-lg font-semibold text-neutral-500">{index % 3 === 0 ? '◔' : index % 3 === 1 ? '▲' : '✦'}</div><div className="flex-1 text-sm leading-7 text-neutral-700 no-orphans">{noSingleWordLine(insight)}</div></div>)}</div></Section> : null}
             {monthData.preferences.showRecurringDetection ? <Section><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">זיהוי חיובים קבועים</h2><p className="mt-2 text-sm text-neutral-500">זיהוי מנויים, ביטוחים, סלולר ושכירות לפי מילות מפתח וחזרה בין חודשים.</p><div className="mt-5 space-y-3">{recurringTransactions.length ? recurringTransactions.map((item) => <div key={item.id} className="flex justify-between rounded-2xl bg-neutral-50 p-4 text-sm"><span>{item.merchant}</span><strong>{SHEKEL.format(item.amount)}</strong></div>) : <EmptyState title="אין עדיין חיובים קבועים" text="העלי פירוטים של כמה חודשים כדי שנוכל לזהות מנויים ותשלומים חוזרים בצורה חכמה." />}</div></Section> : null}
@@ -1144,11 +1303,13 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               <div className="flex flex-col gap-2"><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">התאמה אישית</h2><p className="text-sm leading-7 text-neutral-500">כאן מגדירים איך הטופס והדשבורד יתנהגו: שמות, יעדים ומה יוצג במסך הראשי.</p></div>
               <div className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">פרטי הבית</h3><div className="mt-4 grid gap-3"><label className="text-sm font-semibold text-neutral-600">שם הדשבורד<Field value={monthData.dashboardTitle} onChange={(event) => updateMonthField('dashboardTitle', event.target.value)} className="mt-2 w-full" /></label><div className="grid gap-3 md:grid-cols-2"><label className="text-sm font-semibold text-neutral-600">משתמש/ת ראשון/ה<Field value={monthData.preferences.primaryPerson} onChange={(event) => updatePreference('primaryPerson', event.target.value)} className="mt-2 w-full" /></label><label className="text-sm font-semibold text-neutral-600">משתמש/ת שני/ה<Field value={monthData.preferences.secondaryPerson} onChange={(event) => updatePreference('secondaryPerson', event.target.value)} className="mt-2 w-full" /></label></div></div></div><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">יעדים חודשיים</h3><div className="mt-4 grid gap-3 md:grid-cols-2"><label className="text-sm font-semibold text-neutral-600">יעד הוצאות חודשי<Field type="number" value={monthData.preferences.monthlyBudgetTarget} onChange={(event) => updatePreference('monthlyBudgetTarget', event.target.value)} className="mt-2 w-full" /></label><label className="text-sm font-semibold text-neutral-600">יעד שיעור חיסכון באחוזים<Field type="number" value={monthData.preferences.savingsRateTarget} onChange={(event) => updatePreference('savingsRateTarget', event.target.value)} className="mt-2 w-full" /></label></div></div></div>
               <div className="mt-6 rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Home Widgets</h3><div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">{[['showMonthlyStory', 'Monthly Story'], ['showFinancialHealth', 'Financial Health'], ['showCategoryChart', 'גרף קטגוריות'], ['showTrendChart', 'גרף מגמה'], ['showSmartInsightCards', 'כרטיסי תובנות'], ['showRecurringDetection', 'זיהוי חיובים קבועים']].map(([field, label]) => <label key={field} className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700"><span>{label}</span><input type="checkbox" checked={Boolean(monthData.preferences[field])} onChange={(event) => updatePreference(field, event.target.checked)} className="h-5 w-5" style={{ accentColor: activeTheme.accent }} /></label>)}</div></div>
-              <div className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">Theme Mood</h3><div className="mt-4 grid grid-cols-2 gap-3">{Object.keys(THEME_STYLES).map((themeName) => { const themeStyle = getSafeTheme(themeName); return <button key={themeName} type="button" onClick={() => updatePreference('themeMood', themeName)} className="rounded-2xl border px-4 py-4 text-sm font-semibold transition" style={monthData.preferences.themeMood === themeName ? { borderColor: themeStyle.accent, backgroundColor: themeStyle.soft, color: themeStyle.text } : undefined}>{themeName}</button>; })}</div></div><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">Financial Operating Mode</h3><div className="mt-4 space-y-3">{['Survival', 'Stable', 'Growth', 'Wealth Building'].map((mode) => <button key={mode} type="button" onClick={() => updatePreference('financialMode', mode)} className="w-full rounded-2xl border px-4 py-4 text-right transition" style={monthData.preferences.financialMode === mode ? { borderColor: activeTheme.accent, backgroundColor: activeTheme.soft } : undefined}><div className="font-semibold text-neutral-900">{mode}</div><div className="mt-1 text-sm text-neutral-500">{operatingModeMessages[mode]}</div></button>)}</div></div></div>
-              <div className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Smart Notifications</h3><div className="mt-4 space-y-3">{[['budget80', 'התראה ב־80% מהתקציב'], ['woltSpike', 'התראה כשוולט עולה משמעותית'], ['savingsDrop', 'התראה כששיעור החיסכון יורד']].map(([field, label]) => <label key={field} className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700"><span>{label}</span><input type="checkbox" checked={Boolean(monthData.preferences.notifications?.[field])} onChange={(event) => updatePreference('notifications', { ...monthData.preferences.notifications, [field]: event.target.checked })} className="h-5 w-5" style={{ accentColor: activeTheme.accent }} /></label>)}</div></div><div className="rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Privacy & Sync</h3><div className="mt-4 grid gap-3">{['Cloud Sync', 'Local Only', 'Auto Backup'].map((mode) => <button key={mode} type="button" onClick={() => updatePreference('syncMode', mode)} className="rounded-2xl border px-4 py-4 text-right text-sm font-semibold transition" style={monthData.preferences.syncMode === mode ? { borderColor: activeTheme.accent, backgroundColor: activeTheme.soft, color: activeTheme.text } : undefined}>{mode}</button>)}</div><div className="mt-5 grid gap-3 md:grid-cols-3"><PrimaryButton theme={activeTheme} onClick={exportBackup}>ייצוא גיבוי JSON</PrimaryButton><label className="cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-center text-sm font-semibold text-neutral-700">ייבוא גיבוי<input type="file" accept="application/json" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importBackupFile(file); }} /></label><GhostButton onClick={resetCurrentMonth}>איפוס חודש נוכחי</GhostButton></div><p className="mt-4 text-xs leading-6 text-neutral-500">Cloud Sync עובד רק אם Supabase מוגדר. Local Only שומר בדפדפן. ייצוא/ייבוא JSON עובד תמיד.</p></div></div>
+              <div className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">Theme Mood</h3><div className="mt-4 grid grid-cols-2 gap-3">{Object.keys(THEME_STYLES).map((themeName) => { const themeStyle = getSafeTheme(themeName); return <button key={themeName} type="button" onClick={() => updatePreference('themeMood', themeName)} className="rounded-2xl border px-4 py-4 text-sm font-semibold transition" style={monthData.preferences.themeMood === themeName ? { borderColor: themeStyle.accent, backgroundColor: themeStyle.soft, color: themeStyle.text } : undefined}>{themeName}</button>; })}</div></div><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">Financial Operating Mode</h3><div className="mt-4 space-y-3">{['Survival', 'Stable', 'Growth', 'Wealth Building'].map((mode) => { const config = getFinancialModeConfig(mode); return <button key={mode} type="button" onClick={() => updatePreference('financialMode', mode)} className="w-full rounded-2xl border px-4 py-4 text-right transition" style={monthData.preferences.financialMode === mode ? { borderColor: activeTheme.accent, backgroundColor: activeTheme.soft } : undefined}><div className="font-semibold text-neutral-900">{mode}</div><div className="mt-1 text-sm text-neutral-500">{operatingModeMessages[mode]}</div><div className="mt-3 grid gap-2 text-xs text-neutral-500 md:grid-cols-3"><span>יעד חיסכון {formatPercent(config.savingsTarget)}</span><span>התראה ב־{config.budgetWarningAt}%</span><span>{config.notificationTone}</span></div></button>; })}</div></div></div>
+              <div className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Smart Notifications</h3><div className="mt-4 space-y-3">{[['budget80', 'התראה לפי מצב פיננסי'], ['woltSpike', 'התראה כשוולט עולה משמעותית'], ['savingsDrop', 'התראה כששיעור החיסכון יורד']].map(([field, label]) => <label key={field} className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700"><span>{label}</span><input type="checkbox" checked={Boolean(monthData.preferences.notifications?.[field])} onChange={(event) => updatePreference('notifications', { ...monthData.preferences.notifications, [field]: event.target.checked })} className="h-5 w-5" style={{ accentColor: activeTheme.accent }} /></label>)}</div></div><div className="rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Privacy & Sync</h3><div className="mt-4 grid gap-3">{['Cloud Sync', 'Local Only', 'Auto Backup'].map((mode) => <button key={mode} type="button" onClick={() => updatePreference('syncMode', mode)} className="rounded-2xl border px-4 py-4 text-right text-sm font-semibold transition" style={monthData.preferences.syncMode === mode ? { borderColor: activeTheme.accent, backgroundColor: activeTheme.soft, color: activeTheme.text } : undefined}>{mode}</button>)}</div><div className="mt-5 grid gap-3 md:grid-cols-3"><PrimaryButton theme={activeTheme} onClick={exportBackup}>ייצוא גיבוי JSON</PrimaryButton><label className="cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-center text-sm font-semibold text-neutral-700">ייבוא גיבוי<input type="file" accept="application/json" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importBackupFile(file); }} /></label><GhostButton onClick={resetCurrentMonth}>איפוס חודש נוכחי</GhostButton></div><p className="mt-4 text-xs leading-6 text-neutral-500">Cloud Sync עובד רק אם Supabase מוגדר. Local Only שומר בדפדפן. ייצוא/ייבוא JSON עובד תמיד.</p></div></div>
             </Section>
+
             <Section><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">חיפוש ופילטרים</h2><div className="mt-5 grid gap-3"><Field value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="חיפוש בית עסק, למשל וולט" /><SelectField value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option>הכול</option>{EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</SelectField><div className="grid gap-3 md:grid-cols-2"><Field value={minAmount} onChange={(event) => setMinAmount(event.target.value)} type="number" placeholder="סכום מינימום" /><Field value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} type="number" placeholder="סכום מקסימום" /></div></div></Section>
-            <Section><div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">הוצאות ידניות</h2><p className="mt-2 text-sm text-neutral-500">הוצאות שלא נכנסות מכרטיסי האשראי. הטבלה רחבה ואפשר לגלול אופקית.</p></div><PrimaryButton theme={activeTheme} onClick={addManualExpense}>+ הוספת הוצאה</PrimaryButton></div><div className="mt-7 overflow-x-auto rounded-[24px] border border-neutral-200 bg-white"><div className="min-w-[720px]"><div className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700"><div>קטגוריה</div><div>סוג</div><div>סכום</div><div></div></div>{monthData.manualExpenses.map((expense) => <div key={expense.id} className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 border-t border-neutral-100 p-4"><Field value={expense.category} onChange={(event) => updateRow('manualExpenses', expense.id, 'category', event.target.value)} className="w-full" /><SelectField value={expense.type} onChange={(event) => updateRow('manualExpenses', expense.id, 'type', event.target.value)} className="w-full"><option>קבועה</option><option>משתנה</option><option>חיסכון</option><option>חד פעמית</option></SelectField><Field type="number" value={expense.amount} onChange={(event) => updateRow('manualExpenses', expense.id, 'amount', event.target.value)} className="w-full" /><GhostButton onClick={() => removeRow('manualExpenses', expense.id)} className="px-0">×</GhostButton></div>)}</div></div></Section>
+
+            <Section><div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">הוצאות ידניות</h2><p className="mt-2 text-sm text-neutral-500">הוצאות שלא נכנסות מכרטיסי האשראי. הטבלה רחבה ואפשר לגלול אופקית.</p></div><PrimaryButton theme={activeTheme} onClick={addManualExpense}>+ הוספת הוצאה</PrimaryButton></div><div className="mt-7 overflow-x-auto rounded-[24px] border border-neutral-200 bg-white"><div className="min-w-[720px]"><div className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700"><div>קטגוריה</div><div>סוג</div><div>סכום</div><div /></div>{monthData.manualExpenses.map((expense) => <div key={expense.id} className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 border-t border-neutral-100 p-4"><Field value={expense.category} onChange={(event) => updateRow('manualExpenses', expense.id, 'category', event.target.value)} className="w-full" /><SelectField value={expense.type} onChange={(event) => updateRow('manualExpenses', expense.id, 'type', event.target.value)} className="w-full"><option>קבועה</option><option>משתנה</option><option>חיסכון</option><option>חד פעמית</option></SelectField><Field type="number" value={expense.amount} onChange={(event) => updateRow('manualExpenses', expense.id, 'amount', event.target.value)} className="w-full" /><GhostButton onClick={() => removeRow('manualExpenses', expense.id)} className="px-0">×</GhostButton></div>)}</div></div></Section>
           </>
         ) : null}
       </div>
