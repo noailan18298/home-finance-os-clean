@@ -515,9 +515,43 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     });
   }
 
-  function importSalarySlipFile(fileName) {
-    alert(`התלוש ${fileName} נשמר כרפרנס לחודש הזה. חילוץ נתונים אוטומטי יופעל רק אחרי שנחבר OCR שרת אמיתי.`);
-    setSelectedMonthData({ ...monthData, lastSalaryImport: fileName });
+  async function importSalarySlipFile(file) {
+    setSelectedMonthData({ ...monthData, lastSalaryImport: file.name });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/salary-slip-ocr', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('OCR failed');
+      }
+
+      const data = await response.json();
+
+      if (data?.salaryNet) {
+        const updatedIncomes = [...monthData.incomes];
+
+        if (updatedIncomes[0]) {
+          updatedIncomes[0] = {
+            ...updatedIncomes[0],
+            amount: toNumber(data.salaryNet),
+          };
+        }
+
+        setSelectedMonthData({
+          ...monthData,
+          lastSalaryImport: file.name,
+          incomes: updatedIncomes,
+        });
+      }
+    } catch {
+      alert('התלוש נשמר, אבל OCR עדיין לא מחובר בשרת. אפשר להזין ידנית בינתיים.');
+    }
   }
 
   function addCreditCard() {
@@ -741,10 +775,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         <section className="grid gap-6 lg:grid-cols-2">
           <Section>
             <div className="flex items-center justify-between gap-4">
-              <div><h2 className="text-3xl font-bold">הכנסות</h2><p className="mt-2 text-sm text-slate-500">משכורות, הכנסות עצמאיות וכל מקור נוסף.</p></div>
-              <div className="flex gap-3"><label className="cursor-pointer rounded-2xl bg-[#7c9780] px-4 py-3 text-sm font-semibold text-white shadow-sm">שמירת תלוש לחודש<input type="file" accept="application/pdf" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importSalarySlipFile(file.name); }} /></label><button onClick={addIncome} className="rounded-2xl bg-[#7a9b76] px-4 py-3 text-sm font-semibold text-white shadow-sm">+ הוספה</button></div>
+              <div><h2 className="text-3xl font-bold">הכנסות</h2><p className="mt-2 text-sm text-slate-500">אפשר להעלות גם תלוש PDF. כשה־OCR יחובר בשרת, נטו מהתלוש ייכנס אוטומטית להכנסות.</p></div>
+              <div className="flex gap-3"><label className="cursor-pointer rounded-2xl bg-[#7c9780] px-4 py-3 text-sm font-semibold text-white shadow-sm">שמירת תלוש לחודש<input type="file" accept="application/pdf" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importSalarySlipFile(file); }} /></label><button onClick={addIncome} className="rounded-2xl bg-[#7a9b76] px-4 py-3 text-sm font-semibold text-white shadow-sm">+ הוספה</button></div>
             </div>
-            {monthData.lastSalaryImport ? <div className="mt-4 rounded-2xl bg-[#f3f5ef] p-4 text-sm text-[#4f6854]">תלוש שמור לחודש: {monthData.lastSalaryImport}</div> : null}
+            {monthData.lastSalaryImport ? <div className="mt-4 rounded-2xl bg-[#f3f5ef] p-4 text-sm text-[#4f6854]">תלוש שנקלט לחודש: {monthData.lastSalaryImport}</div> : null}
             <div className="mt-6 space-y-3">{monthData.incomes.map((income) => <div key={income.id} className="grid gap-3 rounded-2xl border border-slate-100 p-4 md:grid-cols-[1fr_160px_44px]"><input value={income.name} onChange={(event) => updateRow('incomes', income.id, 'name', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#8fa88c]" /><input type="number" value={income.amount} onChange={(event) => updateRow('incomes', income.id, 'amount', event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#8fa88c]" /><button onClick={() => removeRow('incomes', income.id)} className="rounded-xl bg-slate-100 text-sm font-bold text-slate-500">×</button></div>)}</div>
           </Section>
 
