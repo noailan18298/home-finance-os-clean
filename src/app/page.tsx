@@ -465,7 +465,7 @@ function runSmokeTests() {
   console.assert(detectCategory('My Shop', { shop: 'קניות' }) === 'קניות', 'learned rule failed');
   console.assert(splitCsvLine('a,b,c').length === 3, 'csv split failed');
   console.assert(parseCsvText(['date,merchant,amount', '2026-01-01,Wolt,55'].join(String.fromCharCode(10))).length === 1, 'csv parse failed');
-  console.assert(parseCsvText('date,merchant,amount\r\n2026-01-01,Wolt,55').length === 1, 'csv CRLF parse failed');
+  console.assert(parseCsvText(['date,merchant,amount', '2026-01-01,Wolt,55'].join('\\r\\n')).length === 1, 'csv CRLF parse failed');
   console.assert(splitCsvLine('"a,b",c').length === 2, 'quoted csv parsing failed');
   console.assert(getCategoryTotals([{ category: 'קניות', amount: 10 }, { category: 'קניות', amount: 20 }]).קניות === 30, 'category totals failed');
   console.assert(buildRealInsights([{ merchant: 'Wolt', category: 'מסעדות / וולט', amount: 900 }], [], 0, 'Survival').some((insight) => insight.includes('Survival')), 'real budget insight failed');
