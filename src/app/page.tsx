@@ -6,10 +6,18 @@ import * as XLSX from 'xlsx';
 const STORAGE_KEY = 'family-finance-os-stable-v11';
 const DEFAULT_SUPABASE_PROFILE_ID = 'default-household';
 
+const COMPARE_PERIODS = [
+  { id: 'previous', label: 'חודש קודם', months: 1 },
+  { id: 'quarter', label: '3 חודשים', months: 3 },
+  { id: 'halfYear', label: '6 חודשים', months: 6 },
+  { id: 'year', label: 'שנה', months: 12 },
+  { id: 'all', label: 'כל התקופה', months: Infinity },
+];
+
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'income', label: 'הכנסות' },
-  { id: 'credit', label: 'אשראי' },
+  { id: 'credit', label: 'הוצאות' },
   { id: 'savings', label: 'חיסכון' },
   { id: 'insights', label: 'תובנות חכמות' },
   { id: 'settings', label: 'הגדרות' },
@@ -125,6 +133,33 @@ const SHEKEL = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'IL
 function getPublicEnv(key) {
   if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
   return '';
+}
+
+function safeJsonParse(value, fallback) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function getStorageItem(key) {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function setStorageItem(key, value) {
+  if (typeof window === 'undefined' || !window.localStorage) return false;
+  try {
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 const SUPABASE_URL = getPublicEnv('NEXT_PUBLIC_SUPABASE_URL');
@@ -309,15 +344,101 @@ function detectRecurringTransactions(transactions, historicalMonths = {}, select
   });
 }
 
+function getMonthTotals(data) {
+  const safeData = normalizeMonthData(data);
+  const income = safeData.incomes.reduce((sum, item) => sum + toNumber(item.amount), 0);
+  const credit = safeData.creditCards.reduce((sum, card) => sum + (card.transactions || []).reduce((inner, item) => inner + toNumber(item.amount), 0), 0);
+  const manual = safeData.manualExpenses.reduce((sum, item) => sum + toNumber(item.amount), 0);
+  const savingsProducts = safeData.savingsProducts.reduce((sum, item) => sum + toNumber(item.monthlyDeposit), 0);
+  const savingGoals = safeData.savingGoals.reduce((sum, item) => sum + toNumber(item.monthlyDeposit), 0);
+  const selfEmployedVatDue = Math.max(0, toNumber(safeData.selfEmployed.vatCollected) - toNumber(safeData.selfEmployed.vatPaidOnExpenses));
+  const selfEmployed = selfEmployedVatDue + toNumber(safeData.selfEmployed.incomeTaxAdvance) + toNumber(safeData.selfEmployed.nationalInsurance) + toNumber(safeData.selfEmployed.businessExpenses);
+  const savings = savingsProducts + savingGoals;
+  const expenses = credit + manual + savings + selfEmployed;
+  const net = income - expenses;
+  const savingsRate = income ? (net / income) * 100 : 0;
+  return { income, credit, manual, savings, selfEmployed, expenses, net, savingsRate };
+}
+
+function getPreviousMonthKey(monthKey) {
+  if (!monthKey || !monthKey.includes('-')) return '';
+  const [year, month] = monthKey.split('-').map(Number);
+  const date = new Date(year, month - 2, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getCompareMonthKeys(months, selectedMonth, periodId = 'previous') {
+  const period = COMPARE_PERIODS.find((item) => item.id === periodId) || COMPARE_PERIODS[0];
+  const sortedMonths = Object.keys(months || {}).filter((month) => month < selectedMonth).sort((a, b) => b.localeCompare(a));
+  if (period.id === 'all') return sortedMonths;
+  return sortedMonths.slice(0, period.months);
+}
+
+function averageTotals(months, monthKeys) {
+  const empty = { income: 0, credit: 0, manual: 0, savings: 0, selfEmployed: 0, expenses: 0, net: 0, savingsRate: 0 };
+  if (!monthKeys.length) return empty;
+  const totals = monthKeys.reduce((acc, monthKey) => {
+    const monthTotals = getMonthTotals(months[monthKey]);
+    Object.keys(empty).forEach((key) => {
+      acc[key] += monthTotals[key] || 0;
+    });
+    return acc;
+  }, { ...empty });
+  Object.keys(totals).forEach((key) => {
+    totals[key] = totals[key] / monthKeys.length;
+  });
+  return totals;
+}
+
+function getMonthlyCompare(months, selectedMonth, periodId = 'previous') {
+  const current = getMonthTotals(months[selectedMonth]);
+  const compareMonthKeys = getCompareMonthKeys(months, selectedMonth, periodId);
+  const period = COMPARE_PERIODS.find((item) => item.id === periodId) || COMPARE_PERIODS[0];
+  if (!compareMonthKeys.length) {
+    return {
+      period,
+      compareMonthKeys,
+      hasPrevious: false,
+      previousMonth: getPreviousMonthKey(selectedMonth),
+      current,
+      previous: null,
+      rows: [],
+    };
+  }
+  const previous = averageTotals(months, compareMonthKeys);
+  const buildRow = (label, key, type = 'currency') => {
+    const currentValue = current[key] || 0;
+    const previousValue = previous[key] || 0;
+    const diff = currentValue - previousValue;
+    const percent = previousValue ? (diff / previousValue) * 100 : null;
+    return { label, key, type, currentValue, previousValue, diff, percent };
+  };
+  return {
+    period,
+    compareMonthKeys,
+    previousMonth: compareMonthKeys[0] || '',
+    hasPrevious: true,
+    current,
+    previous,
+    rows: [
+      buildRow('הכנסות', 'income'),
+      buildRow('הוצאות', 'expenses'),
+      buildRow('אשראי', 'credit'),
+      buildRow('הוצאות ידניות', 'manual'),
+      buildRow('חיסכון', 'savings'),
+      buildRow('עצמאי', 'selfEmployed'),
+      buildRow('יתרה', 'net'),
+      buildRow('שיעור חיסכון', 'savingsRate', 'percent'),
+    ],
+  };
+}
+
 function getMonthlyTrend(months) {
   return Object.entries(months || {})
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([month, data]) => {
-      const creditTotal = (data.creditCards || []).reduce((sum, card) => {
-        return sum + (card.transactions || []).reduce((inner, item) => inner + toNumber(item.amount), 0);
-      }, 0);
-      const manualTotal = (data.manualExpenses || []).reduce((sum, item) => sum + toNumber(item.amount), 0);
-      return { month, total: creditTotal + manualTotal };
+      const totals = getMonthTotals(data);
+      return { month, total: totals.credit + totals.manual };
     });
 }
 
@@ -474,12 +595,12 @@ function normalizeMonthData(data) {
   return {
     ...base,
     ...safe,
-    incomes: safe.incomes || base.incomes,
-    manualExpenses: safe.manualExpenses || base.manualExpenses,
-    savingsProducts: safe.savingsProducts || base.savingsProducts,
-    savingGoals: safe.savingGoals || base.savingGoals,
-    creditCards: (safe.creditCards || base.creditCards).map((card) => ({ transactions: [], pendingTransactions: [], importedFile: '', ...card })),
-    attachedDocuments: safe.attachedDocuments || base.attachedDocuments,
+    incomes: Array.isArray(safe.incomes) ? safe.incomes : base.incomes,
+    manualExpenses: Array.isArray(safe.manualExpenses) ? safe.manualExpenses : base.manualExpenses,
+    savingsProducts: Array.isArray(safe.savingsProducts) ? safe.savingsProducts : base.savingsProducts,
+    savingGoals: Array.isArray(safe.savingGoals) ? safe.savingGoals : base.savingGoals,
+    creditCards: (Array.isArray(safe.creditCards) ? safe.creditCards : base.creditCards).map((card) => ({ transactions: [], pendingTransactions: [], importedFile: '', ...card })),
+    attachedDocuments: Array.isArray(safe.attachedDocuments) ? safe.attachedDocuments : base.attachedDocuments,
     selfEmployed: { ...base.selfEmployed, ...(safe.selfEmployed || {}) },
     preferences: {
       ...base.preferences,
@@ -487,6 +608,20 @@ function normalizeMonthData(data) {
       notifications: { ...base.preferences.notifications, ...(safePreferences.notifications || {}) },
     },
   };
+}
+
+function getInitialMonths() {
+  const currentMonth = getCurrentMonthKey();
+  const saved = safeJsonParse(getStorageItem(STORAGE_KEY), null);
+  if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+    return saved[currentMonth] ? saved : { ...saved, [currentMonth]: createDefaultMonth() };
+  }
+  return { [currentMonth]: createDefaultMonth() };
+}
+
+function getInitialLearnedRules() {
+  const saved = safeJsonParse(getStorageItem(`${STORAGE_KEY}-rules`), {});
+  return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
 }
 
 function runSmokeTests() {
@@ -503,8 +638,14 @@ function runSmokeTests() {
   console.assert(getFinancialModeConfig('Growth').savingsTarget === 25, 'financial mode config failed');
   console.assert(detectRecurringTransactions([{ merchant: 'Netflix', amount: 50 }]).length === 1, 'recurring detection failed');
   console.assert(normalizeMonthData({}).creditCards.length === 2, 'month normalizer failed');
+  console.assert(normalizeMonthData({ creditCards: null }).creditCards.length === 2, 'month normalizer array fallback failed');
+  console.assert(getMonthTotals(undefined).expenses === 0, 'month totals fallback failed');
   console.assert(Array.isArray(normalizeMonthData({}).attachedDocuments), 'attached documents normalizer failed');
   console.assert(getMonthlyTrend({ '2026-01': createDefaultMonth() }).length === 1, 'monthly trend failed');
+  console.assert(getPreviousMonthKey('2026-03') === '2026-02', 'previous month helper failed');
+  console.assert(getMonthlyCompare({ '2026-01': createDefaultMonth(), '2026-02': createDefaultMonth() }, '2026-02').hasPrevious === true, 'monthly compare failed');
+  console.assert(getCompareMonthKeys({ '2026-01': {}, '2026-02': {}, '2026-03': {}, '2026-04': {} }, '2026-04', 'quarter').length === 3, 'quarter compare failed');
+  console.assert(getMonthlyCompare({ '2026-01': createDefaultMonth(), '2026-02': createDefaultMonth(), '2026-03': createDefaultMonth() }, '2026-03', 'all').compareMonthKeys.length === 2, 'all period compare failed');
   console.assert(parseExcelArrayBuffer instanceof Function, 'excel parser exists');
   console.assert(TABS[1].id === 'income', 'income tab should be second');
   console.assert(TABS.some((tab) => tab.id === 'insights' && tab.label === 'תובנות חכמות'), 'smart insights tab label failed');
@@ -513,6 +654,7 @@ function runSmokeTests() {
   console.assert(getSafeTheme('Missing').accent === THEME_STYLES.Sage.accent, 'theme fallback failed');
   console.assert(getSafeTheme('Dark').page.includes('111111'), 'dark theme page exists');
   console.assert(noSingleWordLine('אחת שתיים שלוש').includes(String.fromCharCode(160)), 'no orphan text helper failed');
+  console.assert(getInitialLearnedRules() && typeof getInitialLearnedRules() === 'object', 'initial learned rules failed');
 }
 
 if (typeof window !== 'undefined') runSmokeTests();
@@ -679,21 +821,8 @@ function CreditCardPanel(props) {
 
 export default function PersonalIsraeliFamilyFinanceDashboard() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthKey());
-  const [months, setMonths] = useState(() => {
-    try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : { [getCurrentMonthKey()]: createDefaultMonth() };
-    } catch {
-      return { [getCurrentMonthKey()]: createDefaultMonth() };
-    }
-  });
-  const [learnedRules, setLearnedRules] = useState(() => {
-    try {
-      return JSON.parse(window.localStorage.getItem(`${STORAGE_KEY}-rules`) || '{}');
-    } catch {
-      return {};
-    }
-  });
+  const [months, setMonths] = useState(getInitialMonths);
+  const [learnedRules, setLearnedRules] = useState(getInitialLearnedRules);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('הכול');
   const [minAmount, setMinAmount] = useState('');
@@ -701,6 +830,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const [cloudStatus, setCloudStatus] = useState('טוען מהענן…');
   const [hasLoadedCloud, setHasLoadedCloud] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [comparePeriod, setComparePeriod] = useState('previous');
 
   const monthData = normalizeMonthData(months[selectedMonth]);
   const activeTheme = getSafeTheme(monthData.preferences.themeMood);
@@ -718,7 +848,12 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     async function loadCloudState() {
       try {
         const data = await loadFinanceStateFromSupabase(householdProfileId);
-        if (data?.months) setMonths(data.months);
+        if (data?.months) {
+          setMonths((current) => {
+            const nextMonths = data.months && typeof data.months === 'object' && !Array.isArray(data.months) ? data.months : current;
+            return nextMonths[selectedMonth] ? nextMonths : { ...nextMonths, [selectedMonth]: current[selectedMonth] || createDefaultMonth() };
+          });
+        }
         if (data?.learned_rules) setLearnedRules(data.learned_rules);
         setCloudStatus(data?.months ? 'מסונכרן מהענן' : 'אין עדיין נתוני ענן, עובדים מקומית');
       } catch {
@@ -728,15 +863,11 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       }
     }
     loadCloudState();
-  }, [householdProfileId]);
+  }, [householdProfileId, selectedMonth]);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(months));
-      window.localStorage.setItem(`${STORAGE_KEY}-rules`, JSON.stringify(learnedRules));
-    } catch {
-      // localStorage can be blocked. The app still works in memory.
-    }
+    setStorageItem(STORAGE_KEY, JSON.stringify(months));
+    setStorageItem(`${STORAGE_KEY}-rules`, JSON.stringify(learnedRules));
   }, [months, learnedRules]);
 
   useEffect(() => {
@@ -827,6 +958,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   }
 
   function exportBackup() {
+    if (typeof document === 'undefined' || typeof URL === 'undefined') return;
     const backup = { version: 1, exportedAt: new Date().toISOString(), months, learnedRules };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -852,7 +984,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   }
 
   function resetCurrentMonth() {
-    const confirmed = window.confirm('לאפס את החודש הנוכחי? הפעולה תמחק נתונים של החודש בלבד.');
+    const confirmed = typeof window === 'undefined' ? false : window.confirm('לאפס את החודש הנוכחי? הפעולה תמחק נתונים של החודש בלבד.');
     if (!confirmed) return;
     setSelectedMonthData(createDefaultMonth());
   }
@@ -963,6 +1095,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const totalAssets = toNumber(monthData.emergencyFund) + monthData.savingsProducts.reduce((sum, item) => sum + toNumber(item.currentBalance), 0) + monthData.savingGoals.reduce((sum, item) => sum + toNumber(item.currentAmount), 0);
   const categoryTotals = useMemo(() => getCategoryTotals(allCreditTransactions), [allCreditTransactions]);
   const recurringTransactions = useMemo(() => detectRecurringTransactions(allCreditTransactions, months, selectedMonth), [allCreditTransactions, months, selectedMonth]);
+  const monthlyCompare = useMemo(() => getMonthlyCompare(months, selectedMonth, comparePeriod), [months, selectedMonth, comparePeriod]);
   const trend = useMemo(() => getMonthlyTrend(months), [months]);
   const maxTrend = Math.max(1, ...trend.map((item) => item.total));
   const burnRate = trend.length ? trend.reduce((sum, item) => sum + item.total, 0) / trend.length : 0;
@@ -1011,6 +1144,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const monthlyStory = totalIncome
     ? `במצב ${modeConfig.label}, החודש הוצאתם ${SHEKEL.format(totalExpenses)} שהם ${formatPercent((totalExpenses / totalIncome) * 100)} מההכנסה. יעד החיסכון למצב הזה הוא ${formatPercent(targetSavingsRate)}, והיתרה אחרי הכול היא ${SHEKEL.format(monthlySavings)}.`
     : `מצב ${modeConfig.label} פעיל. התחילו להזין הכנסות והוצאות כדי לקבל סיפור פיננסי חודשי מותאם.`;
+
+  const monthlyCompareStory = monthlyCompare.hasPrevious
+    ? `לעומת ממוצע ${monthlyCompare.period.label} (${monthlyCompare.compareMonthKeys.length} חודשים), ההוצאות ${monthlyCompare.current.expenses >= monthlyCompare.previous.expenses ? 'עלו' : 'ירדו'} ב־${SHEKEL.format(Math.abs(monthlyCompare.current.expenses - monthlyCompare.previous.expenses))}, והיתרה ${monthlyCompare.current.net >= monthlyCompare.previous.net ? 'השתפרה' : 'נחלשה'} ב־${SHEKEL.format(Math.abs(monthlyCompare.current.net - monthlyCompare.previous.net))}.`
+    : `אין עדיין מספיק חודשים להשוואת ${monthlyCompare.period.label}. הוסיפי עוד חודשים כדי לקבל Monthly Compare אמיתי ורחב יותר.`;
 
   function getBudgetHeatColor(category, amount) {
     const budget = CATEGORY_BUDGETS[category];
@@ -1155,6 +1292,50 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               </Section>
             ) : null}
 
+            <Section>
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">MONTHLY COMPARE</div>
+                  <h2 className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">השוואה לאורך זמן</h2>
+                  <p className="mt-3 max-w-3xl text-sm leading-7 text-neutral-500 no-orphans">{noSingleWordLine(monthlyCompareStory)}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {COMPARE_PERIODS.map((period) => (
+                    <button
+                      key={period.id}
+                      type="button"
+                      onClick={() => setComparePeriod(period.id)}
+                      className="rounded-full border px-4 py-2 text-sm font-semibold transition"
+                      style={comparePeriod === period.id ? { backgroundColor: activeTheme.soft, color: activeTheme.text, borderColor: activeTheme.accent } : undefined}
+                    >
+                      {period.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {monthlyCompare.hasPrevious ? (
+                <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  {monthlyCompare.rows.map((row) => {
+                    const isGoodDirection = row.key === 'income' || row.key === 'net' || row.key === 'savingsRate' || row.key === 'savings';
+                    const improved = isGoodDirection ? row.diff >= 0 : row.diff <= 0;
+                    const value = row.type === 'percent' ? formatPercent(row.currentValue) : SHEKEL.format(row.currentValue);
+                    const diff = row.type === 'percent' ? formatPercent(Math.abs(row.diff)) : SHEKEL.format(Math.abs(row.diff));
+                    return (
+                      <div key={row.key} className={`rounded-[24px] border p-5 ${improved ? 'border-[#D6DDCF] bg-[#F4F6F1] text-[#66725E]' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+                        <div className="text-xs font-semibold uppercase tracking-widest opacity-70">{row.label}</div>
+                        <div className="mt-3 text-2xl font-semibold text-neutral-950">{value}</div>
+                        <div className="mt-2 text-sm font-semibold">{improved ? 'שיפור' : 'דורש תשומת לב'}: {diff}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="mt-6">
+                  <EmptyState title="אין עדיין מספיק חודשים" text="צרי או מלאי נתונים בעוד חודשים כדי לראות השוואה אוטומטית מול 3 חודשים, 6 חודשים, שנה או כל התקופה." />
+                </div>
+              )}
+            </Section>
+
             {(monthData.preferences.showCategoryChart || monthData.preferences.showTrendChart) ? (
               <section className="grid gap-6 lg:grid-cols-3">
                 {monthData.preferences.showCategoryChart ? (
@@ -1209,6 +1390,29 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                     />
                   );
                 })}
+              </div>
+            </Section>
+
+            <Section>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">הוצאות ידניות</h2>
+                  <p className="mt-2 text-sm text-neutral-500">הוצאות שלא נכנסות מכרטיסי האשראי ונחשבות יחד עם ההוצאות החודשיות.</p>
+                </div>
+                <PrimaryButton theme={activeTheme} onClick={addManualExpense}>+ הוספת הוצאה</PrimaryButton>
+              </div>
+              <div className="mt-7 overflow-x-auto rounded-[24px] border border-neutral-200 bg-white">
+                <div className="min-w-[720px]">
+                  <div className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700"><div>קטגוריה</div><div>סוג</div><div>סכום</div><div /></div>
+                  {monthData.manualExpenses.map((expense) => (
+                    <div key={expense.id} className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 border-t border-neutral-100 p-4">
+                      <Field value={expense.category} onChange={(event) => updateRow('manualExpenses', expense.id, 'category', event.target.value)} className="w-full" />
+                      <SelectField value={expense.type} onChange={(event) => updateRow('manualExpenses', expense.id, 'type', event.target.value)} className="w-full"><option>קבועה</option><option>משתנה</option><option>חיסכון</option><option>חד פעמית</option></SelectField>
+                      <Field type="number" value={expense.amount} onChange={(event) => updateRow('manualExpenses', expense.id, 'amount', event.target.value)} className="w-full" />
+                      <GhostButton onClick={() => removeRow('manualExpenses', expense.id)} className="px-0">×</GhostButton>
+                    </div>
+                  ))}
+                </div>
               </div>
             </Section>
 
@@ -1310,16 +1514,257 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         {activeTab === 'settings' ? (
           <>
             <Section>
-              <div className="flex flex-col gap-2"><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">התאמה אישית</h2><p className="text-sm leading-7 text-neutral-500">כאן מגדירים איך הטופס והדשבורד יתנהגו: שמות, יעדים ומה יוצג במסך הראשי.</p></div>
-              <div className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">פרטי הבית</h3><div className="mt-4 grid gap-3"><label className="text-sm font-semibold text-neutral-600">שם הדשבורד<Field value={monthData.dashboardTitle} onChange={(event) => updateMonthField('dashboardTitle', event.target.value)} className="mt-2 w-full" /></label><label className="text-sm font-semibold text-neutral-600">מזהה בית / Household ID<Field value={householdProfileId} onChange={(event) => updatePreference('householdProfileId', event.target.value || DEFAULT_SUPABASE_PROFILE_ID)} className="mt-2 w-full" /></label><div className="grid gap-3 md:grid-cols-2"><label className="text-sm font-semibold text-neutral-600">משתמש/ת ראשון/ה<Field value={monthData.preferences.primaryPerson} onChange={(event) => updatePreference('primaryPerson', event.target.value)} className="mt-2 w-full" /></label><label className="text-sm font-semibold text-neutral-600">משתמש/ת שני/ה<Field value={monthData.preferences.secondaryPerson} onChange={(event) => updatePreference('secondaryPerson', event.target.value)} className="mt-2 w-full" /></label></div></div></div><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">יעדים חודשיים</h3><div className="mt-4 grid gap-3 md:grid-cols-2"><label className="text-sm font-semibold text-neutral-600">יעד הוצאות חודשי<Field type="number" value={monthData.preferences.monthlyBudgetTarget} onChange={(event) => updatePreference('monthlyBudgetTarget', event.target.value)} className="mt-2 w-full" /></label><label className="text-sm font-semibold text-neutral-600">יעד שיעור חיסכון באחוזים<Field type="number" value={monthData.preferences.savingsRateTarget} onChange={(event) => updatePreference('savingsRateTarget', event.target.value)} className="mt-2 w-full" /></label></div></div></div>
-              <div className="mt-6 rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Home Widgets</h3><div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">{[['showMonthlyStory', 'Monthly Story'], ['showFinancialHealth', 'Financial Health'], ['showCategoryChart', 'גרף קטגוריות'], ['showTrendChart', 'גרף מגמה'], ['showSmartInsightCards', 'כרטיסי תובנות'], ['showRecurringDetection', 'זיהוי חיובים קבועים']].map(([field, label]) => <label key={field} className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700"><span>{label}</span><input type="checkbox" checked={Boolean(monthData.preferences[field])} onChange={(event) => updatePreference(field, event.target.checked)} className="h-5 w-5" style={{ accentColor: activeTheme.accent }} /></label>)}</div></div>
-              <div className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">Theme Mood</h3><div className="mt-4 grid grid-cols-2 gap-3">{Object.keys(THEME_STYLES).map((themeName) => { const themeStyle = getSafeTheme(themeName); return <button key={themeName} type="button" onClick={() => updatePreference('themeMood', themeName)} className="rounded-2xl border px-4 py-4 text-sm font-semibold transition" style={monthData.preferences.themeMood === themeName ? { borderColor: themeStyle.accent, backgroundColor: themeStyle.soft, color: themeStyle.text } : undefined}>{themeName}</button>; })}</div></div><div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5"><h3 className="text-lg font-semibold text-neutral-950">Financial Operating Mode</h3><div className="mt-4 space-y-3">{['Survival', 'Stable', 'Growth', 'Wealth Building'].map((mode) => { const config = getFinancialModeConfig(mode); return <button key={mode} type="button" onClick={() => updatePreference('financialMode', mode)} className="w-full rounded-2xl border px-4 py-4 text-right transition" style={monthData.preferences.financialMode === mode ? { borderColor: activeTheme.accent, backgroundColor: activeTheme.soft } : undefined}><div className="font-semibold text-neutral-900">{mode}</div><div className="mt-1 text-sm text-neutral-500">{operatingModeMessages[mode]}</div><div className="mt-3 grid gap-2 text-xs text-neutral-500 md:grid-cols-3"><span>יעד חיסכון {formatPercent(config.savingsTarget)}</span><span>התראה ב־{config.budgetWarningAt}%</span><span>{config.notificationTone}</span></div></button>; })}</div></div></div>
-              <div className="mt-6 rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Production Setup Health</h3><div className="mt-4 grid gap-3 md:grid-cols-4"><div className="rounded-2xl bg-neutral-50 p-4 text-sm"><strong>LocalStorage</strong><div className="mt-1 text-neutral-500">{setupHealth.localStorage ? 'פעיל' : 'לא זמין'}</div></div><div className="rounded-2xl bg-neutral-50 p-4 text-sm"><strong>Supabase ENV</strong><div className="mt-1 text-neutral-500">{setupHealth.supabaseEnv ? 'מוגדר' : 'לא מוגדר'}</div></div><div className="rounded-2xl bg-neutral-50 p-4 text-sm"><strong>Excel Parser</strong><div className="mt-1 text-neutral-500">{setupHealth.xlsxParser ? 'פעיל' : 'חסר xlsx'}</div></div><div className="rounded-2xl bg-neutral-50 p-4 text-sm"><strong>Household</strong><div className="mt-1 text-neutral-500">{setupHealth.householdProfileId}</div></div></div><p className="mt-4 text-xs leading-6 text-neutral-500">זה לא דמו: כל סטטוס כאן משקף חיבור אמיתי בקוד. אם Supabase ENV לא מוגדר, המערכת עובדת במצב LocalStorage + JSON Backup.</p></div><div className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Smart Notifications</h3><div className="mt-4 space-y-3">{[['budget80', 'התראה לפי מצב פיננסי'], ['woltSpike', 'התראה כשוולט עולה משמעותית'], ['savingsDrop', 'התראה כששיעור החיסכון יורד']].map(([field, label]) => <label key={field} className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700"><span>{label}</span><input type="checkbox" checked={Boolean(monthData.preferences.notifications?.[field])} onChange={(event) => updatePreference('notifications', { ...monthData.preferences.notifications, [field]: event.target.checked })} className="h-5 w-5" style={{ accentColor: activeTheme.accent }} /></label>)}</div></div><div className="rounded-[24px] border border-neutral-200 bg-white p-5"><h3 className="text-lg font-semibold text-neutral-950">Privacy & Sync</h3><div className="mt-4 grid gap-3">{['Cloud Sync', 'Local Only', 'Auto Backup'].map((mode) => <button key={mode} type="button" onClick={() => updatePreference('syncMode', mode)} className="rounded-2xl border px-4 py-4 text-right text-sm font-semibold transition" style={monthData.preferences.syncMode === mode ? { borderColor: activeTheme.accent, backgroundColor: activeTheme.soft, color: activeTheme.text } : undefined}>{mode}</button>)}</div><div className="mt-5 grid gap-3 md:grid-cols-3"><PrimaryButton theme={activeTheme} onClick={exportBackup}>ייצוא גיבוי JSON</PrimaryButton><label className="cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-center text-sm font-semibold text-neutral-700">ייבוא גיבוי<input type="file" accept="application/json" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importBackupFile(file); }} /></label><GhostButton onClick={resetCurrentMonth}>איפוס חודש נוכחי</GhostButton></div><p className="mt-4 text-xs leading-6 text-neutral-500">Cloud Sync עובד רק אם Supabase מוגדר. Local Only שומר בדפדפן. ייצוא/ייבוא JSON עובד תמיד.</p></div></div>
+              <div className="flex flex-col gap-2">
+                <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">התאמה אישית</h2>
+                <p className="text-sm leading-7 text-neutral-500">
+                  כאן מגדירים איך הטופס והדשבורד יתנהגו: שמות, יעדים ומה יוצג במסך הראשי.
+                </p>
+              </div>
+
+              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
+                  <h3 className="text-lg font-semibold text-neutral-950">פרטי הבית</h3>
+                  <div className="mt-4 grid gap-3">
+                    <label className="text-sm font-semibold text-neutral-600">
+                      שם הדשבורד
+                      <Field
+                        value={monthData.dashboardTitle}
+                        onChange={(event) => updateMonthField('dashboardTitle', event.target.value)}
+                        className="mt-2 w-full"
+                      />
+                    </label>
+                    <label className="text-sm font-semibold text-neutral-600">
+                      מזהה בית / Household ID
+                      <Field
+                        value={householdProfileId}
+                        onChange={(event) => updatePreference('householdProfileId', event.target.value || DEFAULT_SUPABASE_PROFILE_ID)}
+                        className="mt-2 w-full"
+                      />
+                    </label>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="text-sm font-semibold text-neutral-600">
+                        משתמש/ת ראשון/ה
+                        <Field
+                          value={monthData.preferences.primaryPerson}
+                          onChange={(event) => updatePreference('primaryPerson', event.target.value)}
+                          className="mt-2 w-full"
+                        />
+                      </label>
+                      <label className="text-sm font-semibold text-neutral-600">
+                        משתמש/ת שני/ה
+                        <Field
+                          value={monthData.preferences.secondaryPerson}
+                          onChange={(event) => updatePreference('secondaryPerson', event.target.value)}
+                          className="mt-2 w-full"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
+                  <h3 className="text-lg font-semibold text-neutral-950">יעדים חודשיים</h3>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <label className="text-sm font-semibold text-neutral-600">
+                      יעד הוצאות חודשי
+                      <Field
+                        type="number"
+                        value={monthData.preferences.monthlyBudgetTarget}
+                        onChange={(event) => updatePreference('monthlyBudgetTarget', event.target.value)}
+                        className="mt-2 w-full"
+                      />
+                    </label>
+                    <label className="text-sm font-semibold text-neutral-600">
+                      יעד שיעור חיסכון באחוזים
+                      <Field
+                        type="number"
+                        value={monthData.preferences.savingsRateTarget}
+                        onChange={(event) => updatePreference('savingsRateTarget', event.target.value)}
+                        className="mt-2 w-full"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-[24px] border border-neutral-200 bg-white p-5">
+                <h3 className="text-lg font-semibold text-neutral-950">Home Widgets</h3>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {[
+                    ['showMonthlyStory', 'Monthly Story'],
+                    ['showFinancialHealth', 'Financial Health'],
+                    ['showCategoryChart', 'גרף קטגוריות'],
+                    ['showTrendChart', 'גרף מגמה'],
+                    ['showSmartInsightCards', 'כרטיסי תובנות'],
+                    ['showRecurringDetection', 'זיהוי חיובים קבועים'],
+                  ].map(([field, label]) => (
+                    <label key={field} className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700">
+                      <span>{label}</span>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(monthData.preferences[field])}
+                        onChange={(event) => updatePreference(field, event.target.checked)}
+                        className="h-5 w-5"
+                        style={{ accentColor: activeTheme.accent }}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
+                  <h3 className="text-lg font-semibold text-neutral-950">Theme Mood</h3>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    {Object.keys(THEME_STYLES).map((themeName) => {
+                      const themeStyle = getSafeTheme(themeName);
+                      const isSelected = monthData.preferences.themeMood === themeName;
+                      return (
+                        <button
+                          key={themeName}
+                          type="button"
+                          onClick={() => updatePreference('themeMood', themeName)}
+                          className="rounded-2xl border px-4 py-4 text-sm font-semibold transition"
+                          style={isSelected ? { borderColor: themeStyle.accent, backgroundColor: themeStyle.soft, color: themeStyle.text } : undefined}
+                        >
+                          {themeName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
+                  <h3 className="text-lg font-semibold text-neutral-950">Financial Operating Mode</h3>
+                  <div className="mt-4 space-y-3">
+                    {['Survival', 'Stable', 'Growth', 'Wealth Building'].map((mode) => {
+                      const config = getFinancialModeConfig(mode);
+                      const isSelected = monthData.preferences.financialMode === mode;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => updatePreference('financialMode', mode)}
+                          className="w-full rounded-2xl border px-4 py-4 text-right transition"
+                          style={isSelected ? { borderColor: activeTheme.accent, backgroundColor: activeTheme.soft } : undefined}
+                        >
+                          <div className="font-semibold text-neutral-900">{mode}</div>
+                          <div className="mt-1 text-sm text-neutral-500">{operatingModeMessages[mode]}</div>
+                          <div className="mt-3 grid gap-2 text-xs text-neutral-500 md:grid-cols-3">
+                            <span>יעד חיסכון {formatPercent(config.savingsTarget)}</span>
+                            <span>התראה ב־{config.budgetWarningAt}%</span>
+                            <span>{config.notificationTone}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-[24px] border border-neutral-200 bg-white p-5">
+                <h3 className="text-lg font-semibold text-neutral-950">Production Setup Health</h3>
+                <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  <div className="rounded-2xl bg-neutral-50 p-4 text-sm">
+                    <strong>LocalStorage</strong>
+                    <div className="mt-1 text-neutral-500">{setupHealth.localStorage ? 'פעיל' : 'לא זמין'}</div>
+                  </div>
+                  <div className="rounded-2xl bg-neutral-50 p-4 text-sm">
+                    <strong>Supabase ENV</strong>
+                    <div className="mt-1 text-neutral-500">{setupHealth.supabaseEnv ? 'מוגדר' : 'לא מוגדר'}</div>
+                  </div>
+                  <div className="rounded-2xl bg-neutral-50 p-4 text-sm">
+                    <strong>Excel Parser</strong>
+                    <div className="mt-1 text-neutral-500">{setupHealth.xlsxParser ? 'פעיל' : 'חסר xlsx'}</div>
+                  </div>
+                  <div className="rounded-2xl bg-neutral-50 p-4 text-sm">
+                    <strong>Household</strong>
+                    <div className="mt-1 text-neutral-500">{setupHealth.householdProfileId}</div>
+                  </div>
+                </div>
+                <p className="mt-4 text-xs leading-6 text-neutral-500">
+                  זה לא דמו: כל סטטוס כאן משקף חיבור אמיתי בקוד. אם Supabase ENV לא מוגדר, המערכת עובדת במצב LocalStorage + JSON Backup.
+                </p>
+              </div>
+
+              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                <div className="rounded-[24px] border border-neutral-200 bg-white p-5">
+                  <h3 className="text-lg font-semibold text-neutral-950">Smart Notifications</h3>
+                  <div className="mt-4 space-y-3">
+                    {[
+                      ['budget80', 'התראה לפי מצב פיננסי'],
+                      ['woltSpike', 'התראה כשוולט עולה משמעותית'],
+                      ['savingsDrop', 'התראה כששיעור החיסכון יורד'],
+                    ].map(([field, label]) => (
+                      <label key={field} className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700">
+                        <span>{label}</span>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(monthData.preferences.notifications?.[field])}
+                          onChange={(event) => updatePreference('notifications', { ...monthData.preferences.notifications, [field]: event.target.checked })}
+                          className="h-5 w-5"
+                          style={{ accentColor: activeTheme.accent }}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-neutral-200 bg-white p-5">
+                  <h3 className="text-lg font-semibold text-neutral-950">Privacy & Sync</h3>
+                  <div className="mt-4 grid gap-3">
+                    {['Cloud Sync', 'Local Only', 'Auto Backup'].map((mode) => {
+                      const isSelected = monthData.preferences.syncMode === mode;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => updatePreference('syncMode', mode)}
+                          className="rounded-2xl border px-4 py-4 text-right text-sm font-semibold transition"
+                          style={isSelected ? { borderColor: activeTheme.accent, backgroundColor: activeTheme.soft, color: activeTheme.text } : undefined}
+                        >
+                          {mode}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-5 grid gap-3 md:grid-cols-3">
+                    <PrimaryButton theme={activeTheme} onClick={exportBackup}>ייצוא גיבוי JSON</PrimaryButton>
+                    <label className="cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-center text-sm font-semibold text-neutral-700">
+                      ייבוא גיבוי
+                      <input
+                        type="file"
+                        accept="application/json"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) importBackupFile(file);
+                        }}
+                      />
+                    </label>
+                    <GhostButton onClick={resetCurrentMonth}>איפוס חודש נוכחי</GhostButton>
+                  </div>
+                  <p className="mt-4 text-xs leading-6 text-neutral-500">
+                    Cloud Sync עובד רק אם Supabase מוגדר. Local Only שומר בדפדפן. ייצוא/ייבוא JSON עובד תמיד.
+                  </p>
+                </div>
+              </div>
             </Section>
 
-            <Section><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">חיפוש ופילטרים</h2><div className="mt-5 grid gap-3"><Field value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="חיפוש בית עסק, למשל וולט" /><SelectField value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option>הכול</option>{EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</SelectField><div className="grid gap-3 md:grid-cols-2"><Field value={minAmount} onChange={(event) => setMinAmount(event.target.value)} type="number" placeholder="סכום מינימום" /><Field value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} type="number" placeholder="סכום מקסימום" /></div></div></Section>
-
-            <Section><div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">הוצאות ידניות</h2><p className="mt-2 text-sm text-neutral-500">הוצאות שלא נכנסות מכרטיסי האשראי. הטבלה רחבה ואפשר לגלול אופקית.</p></div><PrimaryButton theme={activeTheme} onClick={addManualExpense}>+ הוספת הוצאה</PrimaryButton></div><div className="mt-7 overflow-x-auto rounded-[24px] border border-neutral-200 bg-white"><div className="min-w-[720px]"><div className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700"><div>קטגוריה</div><div>סוג</div><div>סכום</div><div /></div>{monthData.manualExpenses.map((expense) => <div key={expense.id} className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 border-t border-neutral-100 p-4"><Field value={expense.category} onChange={(event) => updateRow('manualExpenses', expense.id, 'category', event.target.value)} className="w-full" /><SelectField value={expense.type} onChange={(event) => updateRow('manualExpenses', expense.id, 'type', event.target.value)} className="w-full"><option>קבועה</option><option>משתנה</option><option>חיסכון</option><option>חד פעמית</option></SelectField><Field type="number" value={expense.amount} onChange={(event) => updateRow('manualExpenses', expense.id, 'amount', event.target.value)} className="w-full" /><GhostButton onClick={() => removeRow('manualExpenses', expense.id)} className="px-0">×</GhostButton></div>)}</div></div></Section>
+            <Section>
+              <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">חיפוש ופילטרים</h2>
+              <div className="mt-5 grid gap-3">
+                <Field value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="חיפוש בית עסק, למשל וולט" />
+                <SelectField value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                  <option>הכול</option>
+                  {EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+                </SelectField>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Field value={minAmount} onChange={(event) => setMinAmount(event.target.value)} type="number" placeholder="סכום מינימום" />
+                  <Field value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} type="number" placeholder="סכום מקסימום" />
+                </div>
+              </div>
+            </Section>
           </>
         ) : null}
       </div>
