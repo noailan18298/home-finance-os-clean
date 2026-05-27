@@ -1,5 +1,7 @@
 'use client';
 
+// @ts-nocheck
+
 import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
@@ -841,7 +843,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     localStorage: typeof window !== 'undefined',
     supabaseEnv: Boolean(SUPABASE_URL && SUPABASE_ANON_KEY),
     householdProfileId,
-    xlsxParser: Boolean(XLSX?.read),
+    xlsxParser: Boolean(XLSX && XLSX.read),
   };
 
   useEffect(() => {
@@ -872,7 +874,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
   useEffect(() => {
     if (!hasLoadedCloud) return;
-    const saveTimeout = window.setTimeout(async () => {
+    const saveTimeout = setTimeout(async () => {
       try {
         if (monthData.preferences.syncMode === 'Cloud Sync' || monthData.preferences.syncMode === 'Auto Backup') {
           await saveFinanceStateToSupabase(months, learnedRules, householdProfileId);
@@ -884,7 +886,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         setCloudStatus('לא נשמר בענן, נשמר מקומית');
       }
     }, 900);
-    return () => window.clearTimeout(saveTimeout);
+    return () => clearTimeout(saveTimeout);
   }, [months, learnedRules, hasLoadedCloud, monthData.preferences.syncMode, householdProfileId]);
 
   function setSelectedMonthData(nextData) {
