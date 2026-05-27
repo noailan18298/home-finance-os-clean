@@ -272,13 +272,10 @@ function normalizeImportedRows(rows, learnedRules = {}) {
 }
 
 function parseCsvText(text, learnedRules = {}) {
-  const lines = String(text || '')
-    .split(String.fromCharCode(13))
-    .join('')
-    .split(String.fromCharCode(10))
-    .map((line) => line.trim())
-    .filter(Boolean);
-  return normalizeImportedRows(lines.map(splitCsvLine), learnedRules);
+  const normalizedText = String(text || '').replaceAll(String.fromCharCode(13), '');
+  const rawLines = normalizedText.split(String.fromCharCode(10));
+  const lines = rawLines.map((line) => line.trim()).filter(Boolean);
+  return normalizeImportedRows(lines.map((line) => splitCsvLine(line)), learnedRules);
 }
 
 function parseExcelArrayBuffer(buffer, learnedRules = {}) {
@@ -637,7 +634,7 @@ function runSmokeTests() {
   console.assert(detectCategory('My Shop', { shop: 'קניות' }) === 'קניות', 'learned rule failed');
   console.assert(splitCsvLine('a,b,c').length === 3, 'csv split failed');
   console.assert(parseCsvText(['date,merchant,amount', '2026-01-01,Wolt,55'].join(String.fromCharCode(10))).length === 1, 'csv parse failed');
-  console.assert(parseCsvText(['date,merchant,amount', '2026-01-01,Wolt,55'].join('\r\n')).length === 1, 'csv CRLF parse failed');
+  console.assert(parseCsvText(['date,merchant,amount', '2026-01-01,Wolt,55'].join(String.fromCharCode(13) + String.fromCharCode(10))).length === 1, 'csv CRLF parse failed');
   console.assert(splitCsvLine('"a,b",c').length === 2, 'quoted csv parsing failed');
   console.assert(getCategoryTotals([{ category: 'קניות', amount: 10 }, { category: 'קניות', amount: 20 }]).קניות === 30, 'category totals failed');
   console.assert(buildRealInsights([{ merchant: 'Wolt', category: 'מסעדות / וולט', amount: 900 }], [], 0, 'Survival').some((insight) => insight.includes('Survival')), 'real budget insight failed');
