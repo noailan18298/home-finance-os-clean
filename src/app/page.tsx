@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
-const STORAGE_KEY = 'family-finance-os-stable-v14';
+const STORAGE_KEY = 'family-finance-os-stable-v13';
 const DEFAULT_SUPABASE_PROFILE_ID = 'default-household';
 
 const COMPARE_PERIODS = [
@@ -453,8 +453,8 @@ function buildRealInsights(transactions, recurringTransactions = [], totalIncome
   const total = transactions.reduce((sum, item) => sum + toNumber(item.amount), 0) || 1;
   const categoryTotals = getCategoryTotals(transactions);
   const merchantTotals = getMerchantTotals(transactions);
-  const sortedCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
-  const sortedMerchants = Object.entries(merchantTotals).sort((a, b) => b[1] - a[1]);
+  const sortedCategories = Object.entries(categoryTotals).sort((a, b) => toNumber(b[1]) - toNumber(a[1]));
+  const sortedMerchants = Object.entries(merchantTotals).sort((a, b) => toNumber(b[1]) - toNumber(a[1]));
   const healthScore = calculateFinancialHealthScore(transactions, modeConfig);
   const insights = [
     `מצב ${modeConfig.label}: ${modeConfig.focus}. רמת התראות: ${modeConfig.notificationTone}.`,
@@ -1110,7 +1110,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const maxTrend = Math.max(1, ...trend.map((item) => item.total));
   const burnRate = trend.length ? trend.reduce((sum, item) => sum + item.total, 0) / trend.length : 0;
   const cashFlow = totalPlannedSavings;
-  const topCategories = useMemo(() => Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).slice(0, 6), [categoryTotals]);
+  const topCategories = useMemo(() => Object.entries(categoryTotals).sort((a, b) => toNumber(b[1]) - toNumber(a[1])).slice(0, 6), [categoryTotals]);
   const filteredTransactions = useMemo(() => {
     const normalizedSearch = normalizeMerchantName(searchTerm);
     return allCreditTransactions.filter((transaction) => {
