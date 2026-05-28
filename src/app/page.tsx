@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
-const STORAGE_KEY = 'family-finance-os-stable-v12';
+const STORAGE_KEY = 'family-finance-os-stable-v13';
 const DEFAULT_SUPABASE_PROFILE_ID = 'default-household';
 
 const COMPARE_PERIODS = [
