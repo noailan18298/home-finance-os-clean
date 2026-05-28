@@ -1,6 +1,6 @@
-'use client';
-
 // @ts-nocheck
+
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
