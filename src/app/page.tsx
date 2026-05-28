@@ -5,8 +5,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
-const STORAGE_KEY = 'family-finance-os-stable-v13';
+const STORAGE_KEY = 'family-finance-os-stable-v14';
 const DEFAULT_SUPABASE_PROFILE_ID = 'default-household';
+const APP_BUILD_MARKER = 'finance-dashboard-build-v14';
 
 const COMPARE_PERIODS = [
   { id: 'previous', label: 'חודש קודם', months: 1 },
@@ -631,6 +632,7 @@ function getInitialLearnedRules() {
 }
 
 function runSmokeTests() {
+  console.assert(APP_BUILD_MARKER === 'finance-dashboard-build-v14', 'build marker failed');
   console.assert(getPublicEnv('THIS_ENV_SHOULD_NOT_EXIST') === '', 'safe env fallback failed');
   console.assert(toNumber('₪1,250') === 1250, 'currency parsing failed');
   console.assert(detectCategory('Wolt TLV') === 'מסעדות / וולט', 'wolt category failed');
