@@ -5,12 +5,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
+// LocalStorage keys are versioned so structural changes do not collide with older saved data.
+// Monthly data is stored separately from global settings so switching months does not reset Supabase, theme, users, or dashboard preferences.
 const STORAGE_KEY = 'family-finance-os-stable-v14';
 const SETTINGS_STORAGE_KEY = 'family-finance-os-global-settings-v1';
 const AUTH_STORAGE_KEY = 'family-finance-os-auth-session-v1';
 const DEFAULT_SUPABASE_PROFILE_ID = 'default-household';
 const APP_BUILD_MARKER = 'finance-dashboard-build-v14';
 
+// Monthly compare periods determine how many previous months are averaged against the current month.
+// Controls the Monthly Compare ranges. Each option compares the current month against an average of earlier months.
 const COMPARE_PERIODS = [
   { id: 'previous', label: 'חודש קודם', months: 1 },
   { id: 'quarter', label: '3 חודשים', months: 3 },
@@ -35,6 +39,8 @@ const THEME_STYLES = {
   Dark: { accent: '#4E5B52', accentHover: '#647267', soft: '#1F1F1F', text: '#D1D5DB', page: 'bg-[#111111] text-white' },
 };
 
+// Each financial mode adjusts targets, warnings, and insight priority without changing raw data.
+// Financial modes change thresholds and priorities across insights, budget warnings, and savings targets.
 const FINANCIAL_MODES = {
   Survival: {
     label: 'Survival',
@@ -105,6 +111,8 @@ const CATEGORY_BUDGETS = {
   אחר: 1000,
 };
 
+// Merchant keywords are intentionally simple and editable: user corrections are saved in learnedRules.
+// First-pass categorization rules for imported card transactions. User edits later become learnedRules.
 const MERCHANT_CATEGORY_MAP = {
   wolt: 'מסעדות / וולט',
   tenbis: 'מסעדות / וולט',
@@ -140,6 +148,7 @@ function getPublicEnv(key) {
   return '';
 }
 
+// Safe parser prevents broken localStorage/backup JSON from crashing the app during startup.
 function safeJsonParse(value, fallback) {
   try {
     return value ? JSON.parse(value) : fallback;
@@ -167,6 +176,7 @@ function setStorageItem(key, value) {
   }
 }
 
+// These defaults stay empty because Supabase connection details are now stored in global settings.
 const DEFAULT_SUPABASE_URL = '';
 const DEFAULT_SUPABASE_ANON_KEY = '';
 const SUPABASE_URL = DEFAULT_SUPABASE_URL;
@@ -188,6 +198,7 @@ function getCurrentMonthKey() {
   return new Date().toISOString().slice(0, 7);
 }
 
+// Normalizes currency-like values from manual inputs and imported bank/card files into numbers.
 function toNumber(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
   const number = Number(String(value || '').replace(/[₪,]/g, '').replace(/\s/g, '').trim());
@@ -204,6 +215,8 @@ function monthLabel(monthKey) {
   return `${month}/${year}`;
 }
 
+// Keeps short Hebrew text from leaving a single word orphaned on its own line.
+// Keeps Hebrew UI copy from leaving a single orphan word on its own line.
 function noSingleWordLine(text) {
   const cleanText = String(text || '').replace(/[ \t]+/g, ' ').trim();
   const parts = cleanText.split(' ').filter(Boolean);
@@ -222,6 +235,7 @@ function normalizeMerchantName(merchant = '') {
   return String(merchant).toLowerCase().replace(/\s+/g, ' ').replace(/[.,:;|()\[\]{}]/g, '').trim();
 }
 
+// Category detection first uses user-learned merchant rules, then falls back to the built-in merchant map.
 function detectCategory(merchant = '', learnedRules = {}) {
   const normalized = normalizeMerchantName(merchant);
   for (const [key, category] of Object.entries(learnedRules || {})) {
@@ -233,6 +247,8 @@ function detectCategory(merchant = '', learnedRules = {}) {
   return 'אחר';
 }
 
+// A tiny CSV parser that supports quoted fields, commas, semicolons, and tabs.
+// Parses CSV rows while respecting quoted cells, commas, semicolons, tabs, and escaped quotes.
 function splitCsvLine(line) {
   const result = [];
   let current = '';
@@ -258,22 +274,55 @@ function splitCsvLine(line) {
   return result.map((cell) => cell.replace(/^"|"$/g, '').trim());
 }
 
+function findHeaderIndex(headers, keywords, fallbackIndex = -1) {
+  const normalizedHeaders = headers.map((header) => normalizeMerchantName(header));
+  const foundIndex = normalizedHeaders.findIndex((header) => keywords.some((keyword) => header.includes(normalizeMerchantName(keyword))));
+  return foundIndex >= 0 ? foundIndex : fallbackIndex;
+}
+
+// When the amount column is not clearly named, pick the column with the most numeric-looking values.
+// Finds the amount column by header names first, then falls back to the most numeric-looking column.
+function findAmountIndex(headers, sampleRows) {
+  const headerIndex = findHeaderIndex(headers, ['amount', 'סכום', 'חיוב', 'חובה', 'עסקה', 'debit', 'charge', 'total'], -1);
+  if (headerIndex >= 0) return headerIndex;
+  const rowScores = headers.map((_, index) => {
+    const numericCount = sampleRows.slice(0, 8).filter((row) => Math.abs(toNumber(row[index])) > 0).length;
+    return { index, numericCount };
+  });
+  rowScores.sort((a, b) => b.numericCount - a.numericCount);
+  return rowScores[0]?.numericCount > 0 ? rowScores[0].index : 2;
+}
+
+// Normalizes CSV/Excel rows into pending credit-card transactions.
+// Converts raw CSV/Excel rows into pending transactions, even when bank exports use different Hebrew/English column names.
 function normalizeImportedRows(rows, learnedRules = {}) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
-  const firstRow = rows[0].join(' ').toLowerCase();
-  const hasHeader = ['date', 'תאריך', 'amount', 'סכום', 'merchant', 'בית עסק', 'שם בית עסק'].some((word) => firstRow.includes(word));
-  const dataRows = hasHeader ? rows.slice(1) : rows;
+  const cleanedRows = rows.map((row) => (Array.isArray(row) ? row.map((cell) => String(cell || '').trim()) : [])).filter((row) => row.some(Boolean));
+  if (!cleanedRows.length) return [];
+
+  const headerCandidates = cleanedRows.slice(0, 8);
+  const headerRowIndex = headerCandidates.findIndex((row) => {
+    const joined = row.join(' ').toLowerCase();
+    return ['date', 'תאריך', 'amount', 'סכום', 'merchant', 'בית עסק', 'שם בית עסק', 'תיאור', 'פירוט', 'חיוב'].some((word) => joined.includes(word));
+  });
+  const hasHeader = headerRowIndex >= 0;
+  const headers = hasHeader ? cleanedRows[headerRowIndex] : [];
+  const dataRows = hasHeader ? cleanedRows.slice(headerRowIndex + 1) : cleanedRows;
+  const sampleRows = dataRows.slice(0, 10);
+
+  const dateIndex = hasHeader ? findHeaderIndex(headers, ['date', 'תאריך', 'תאריך עסקה', 'תאריך רכישה'], 0) : 0;
+  const merchantIndex = hasHeader ? findHeaderIndex(headers, ['merchant', 'בית עסק', 'שם בית עסק', 'ספק', 'תיאור', 'פירוט', 'שם'], 1) : 1;
+  const amountIndex = hasHeader ? findAmountIndex(headers, sampleRows) : -1;
 
   return dataRows
     .map((row) => {
-      const cells = row.map((cell) => String(cell || '').trim());
-      const date = cells[0] || '';
-      const merchant = cells[1] || cells[0] || 'עסקה';
-      const rawAmount = cells[2] || cells[cells.length - 1] || '0';
-      const amount = Math.abs(toNumber(rawAmount));
+      const amountCell = amountIndex >= 0 ? row[amountIndex] : [...row].reverse().find((cell) => Math.abs(toNumber(cell)) > 0);
+      const amount = Math.abs(toNumber(amountCell));
+      const date = row[dateIndex] || '';
+      const merchant = row[merchantIndex] || row.find((cell, index) => index !== dateIndex && index !== amountIndex && !toNumber(cell)) || 'עסקה';
       return { id: makeId('tx'), date, merchant, amount, category: detectCategory(merchant, learnedRules) };
     })
-    .filter((transaction) => transaction.amount > 0);
+    .filter((transaction) => transaction.amount > 0 && transaction.merchant !== 'עסקה');
 }
 
 function parseCsvText(text, learnedRules = {}) {
@@ -285,6 +334,7 @@ function parseCsvText(text, learnedRules = {}) {
   return normalizeImportedRows(lines.map((line) => splitCsvLine(line)), learnedRules);
 }
 
+// Reads the first sheet from an uploaded Excel file and sends it through the same transaction normalizer as CSV.
 function parseExcelArrayBuffer(buffer, learnedRules = {}) {
   const workbook = XLSX.read(buffer, { type: 'array' });
   const firstSheetName = workbook.SheetNames[0];
@@ -309,6 +359,8 @@ function getMerchantTotals(transactions) {
   }, {});
 }
 
+// This score is heuristic only: it highlights concentration, large transactions, and budget pressure.
+// Produces a simple 0-100 score based on concentration, uncategorized spend, large transactions, and mode strictness.
 function calculateFinancialHealthScore(transactions, modeConfig = FINANCIAL_MODES.Stable) {
   if (!transactions.length) return null;
   const total = transactions.reduce((sum, item) => sum + toNumber(item.amount), 0) || 1;
@@ -334,6 +386,7 @@ function calculateFinancialHealthScore(transactions, modeConfig = FINANCIAL_MODE
   return Math.max(0, Math.min(100, score));
 }
 
+// Detects recurring payments using recurring keywords plus merchants seen in previous months.
 function detectRecurringTransactions(transactions, historicalMonths = {}, selectedMonth = '') {
   const historicalMerchants = new Set();
   Object.entries(historicalMonths || {}).forEach(([month, data]) => {
@@ -351,6 +404,7 @@ function detectRecurringTransactions(transactions, historicalMonths = {}, select
   });
 }
 
+// Month totals include only month-specific financial data. Global settings are handled through preferences.
 function getMonthTotals(data) {
   const safeData = normalizeMonthData(data);
   const includeSelfEmployed = Boolean(safeData.preferences.includeSelfEmployed);
@@ -376,6 +430,7 @@ function getPreviousMonthKey(monthKey) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
+// Collects earlier months for comparison, newest first, according to the selected compare period.
 function getCompareMonthKeys(months, selectedMonth, periodId = 'previous') {
   const period = COMPARE_PERIODS.find((item) => item.id === periodId) || COMPARE_PERIODS[0];
   const sortedMonths = Object.keys(months || {}).filter((month) => month < selectedMonth).sort((a, b) => b.localeCompare(a));
@@ -383,6 +438,7 @@ function getCompareMonthKeys(months, selectedMonth, periodId = 'previous') {
   return sortedMonths.slice(0, period.months);
 }
 
+// Averages totals across selected months so compare can work against 3 months, 6 months, a year, or all history.
 function averageTotals(months, monthKeys) {
   const empty = { income: 0, credit: 0, manual: 0, savings: 0, selfEmployed: 0, expenses: 0, net: 0, savingsRate: 0 };
   if (!monthKeys.length) return empty;
@@ -451,6 +507,7 @@ function getMonthlyTrend(months) {
     });
 }
 
+// Builds deterministic insights from real user-entered/imported data without calling an external AI service.
 function buildRealInsights(transactions, recurringTransactions = [], totalIncome = 0, financialMode = 'Stable', context = {}) {
   const modeConfig = getFinancialModeConfig(financialMode);
   if (!transactions.length) return [`מצב ${modeConfig.label}: ${modeConfig.focus}. העלו CSV או Excel כדי לקבל תובנות.`];
@@ -509,6 +566,7 @@ function buildRealInsights(transactions, recurringTransactions = [], totalIncome
   return insights;
 }
 
+// Loads one household state row from Supabase. The optional accessToken is used later for authenticated mode.
 async function loadFinanceStateFromSupabase(profileId = DEFAULT_SUPABASE_PROFILE_ID, config = {}) {
   const supabaseUrl = config.url || SUPABASE_URL;
   const supabaseKey = config.key || SUPABASE_ANON_KEY;
@@ -524,6 +582,7 @@ async function loadFinanceStateFromSupabase(profileId = DEFAULT_SUPABASE_PROFILE
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
+// Upserts the full app state into Supabase by profile_id so one household keeps one cloud row.
 async function saveFinanceStateToSupabase(months, learnedRules, globalPreferences, profileId = DEFAULT_SUPABASE_PROFILE_ID, config = {}) {
   const supabaseUrl = config.url || SUPABASE_URL;
   const supabaseKey = config.key || SUPABASE_ANON_KEY;
@@ -544,6 +603,7 @@ async function saveFinanceStateToSupabase(months, learnedRules, globalPreference
   }
 }
 
+// Global preferences must live above months, otherwise changing month would reset Supabase and dashboard settings.
 function createDefaultPreferences() {
   return {
     primaryPerson: 'נועה',
@@ -567,6 +627,7 @@ function createDefaultPreferences() {
   };
 }
 
+// Month defaults contain financial records. The preferences field remains for backward compatibility with older saved data.
 function createDefaultMonth() {
   return {
     dashboardTitle: 'מערכת פיננסית משפחתית',
@@ -615,6 +676,8 @@ function createDefaultMonth() {
   };
 }
 
+// Monthly data is normalized defensively because old saved months may miss newly added fields.
+// Normalizes older saved months so missing arrays/objects never break rendering after schema changes.
 function normalizeMonthData(data) {
   const base = createDefaultMonth();
   const safe = data || {};
@@ -646,6 +709,7 @@ function getInitialLearnedRules() {
   return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
 }
 
+// Normalizes global settings and preserves nested notification defaults.
 function normalizePreferences(preferences) {
   const base = createDefaultPreferences();
   const safe = preferences && typeof preferences === 'object' && !Array.isArray(preferences) ? preferences : {};
@@ -661,6 +725,8 @@ function hasMeaningfulPreferences(preferences) {
   return Object.keys(preferences).some((key) => preferences[key] !== undefined && preferences[key] !== null && preferences[key] !== '');
 }
 
+// Cloud preferences are merged, not blindly applied, so an empty cloud row cannot erase a working local Supabase setup.
+// Merges cloud settings carefully so an empty cloud row cannot wipe a working local Supabase configuration.
 function mergeCloudPreferences(current, cloud) {
   const currentSafe = normalizePreferences(current);
   if (!hasMeaningfulPreferences(cloud)) return currentSafe;
@@ -691,6 +757,7 @@ function clearAuthSession() {
   setStorageItem(AUTH_STORAGE_KEY, '');
 }
 
+// Password login is prepared for Supabase Auth, but the login screen is currently disabled until global settings are stable.
 async function signInWithSupabasePassword(email, password, config = {}) {
   const supabaseUrl = config.url || SUPABASE_URL;
   const supabaseKey = config.key || SUPABASE_ANON_KEY;
@@ -723,6 +790,7 @@ async function signInWithSupabasePassword(email, password, config = {}) {
   return session;
 }
 
+// Lightweight runtime checks catch common parser/calculation regressions while developing in the browser canvas.
 function runSmokeTests() {
   console.assert(APP_BUILD_MARKER === 'finance-dashboard-build-v14', 'build marker failed');
   console.assert(getPublicEnv('THIS_ENV_SHOULD_NOT_EXIST') === '', 'safe env fallback failed');
@@ -931,6 +999,7 @@ function CreditCardPanel(props) {
 }
 
 export default function PersonalIsraeliFamilyFinanceDashboard() {
+  // selectedMonth switches the active month, while globalPreferences remains shared across all months.
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthKey());
   const [months, setMonths] = useState(getInitialMonths);
   const [learnedRules, setLearnedRules] = useState(getInitialLearnedRules);
@@ -967,7 +1036,9 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     xlsxParser: Boolean(XLSX && XLSX.read),
   };
 
+  // Initial cloud load merges cloud state into local state without wiping missing months or settings.
   useEffect(() => {
+    // Cloud load merges Supabase data into local state without deleting the currently selected month.
     async function loadCloudState() {
       try {
         const data = await loadFinanceStateFromSupabase(householdProfileId, supabaseConfig);
@@ -991,16 +1062,21 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     loadCloudState();
   }, [householdProfileId, selectedMonth, supabaseConfig.url, supabaseConfig.key]);
 
+  // LocalStorage is always updated as a fallback, even when Cloud Sync is enabled.
   useEffect(() => {
+    // Always keep a local copy so the dashboard still works if Supabase is unavailable.
     setStorageItem(STORAGE_KEY, JSON.stringify(months));
     setStorageItem(`${STORAGE_KEY}-rules`, JSON.stringify(learnedRules));
   }, [months, learnedRules]);
 
   useEffect(() => {
+    // Global preferences are persisted separately from months to prevent resets when creating a new month.
     setStorageItem(SETTINGS_STORAGE_KEY, JSON.stringify(globalPreferences));
   }, [globalPreferences]);
 
+  // Cloud saving is debounced so typing in a field does not fire a network request on every keystroke.
   useEffect(() => {
+    // Debounced cloud save prevents a Supabase write on every keystroke while still autosaving changes.
     if (!hasLoadedCloud) return;
     const saveTimeout = setTimeout(async () => {
       try {
@@ -1063,6 +1139,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     setSelectedMonthData({ ...monthData, selfEmployed: { ...monthData.selfEmployed, [field]: numericFields.includes(field) ? toNumber(value) : value } });
   }
 
+  // Preferences are global, not monthly, so changing months cannot reset connection details or dashboard settings.
+  // Updates global settings, not the current month. This keeps Supabase/theme/widgets consistent across months.
   function updatePreference(field, value) {
     const numericFields = ['monthlyBudgetTarget', 'savingsRateTarget'];
     setGlobalPreferences((current) => ({
@@ -1071,6 +1149,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     }));
   }
 
+  // Salary PDFs are attached for record keeping only. Net salary is still entered manually because there is no OCR parser here.
   function attachSalarySlipFile(file) {
     const nextDocument = {
       id: makeId('doc'),
@@ -1084,6 +1163,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       lastSalaryImport: file.name,
       attachedDocuments: [...(monthData.attachedDocuments || []), nextDocument],
     });
+    setCloudStatus('התלוש צורף לתיעוד. סכום הנטו לא מתפענח אוטומטית, הזיני אותו בשורת ההכנסה הרלוונטית.');
   }
 
   function removeAttachedDocument(documentId) {
@@ -1134,19 +1214,33 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     setSelectedMonthData({ ...monthData, creditCards: monthData.creditCards.filter((card) => card.id !== cardId) });
   }
 
+  // Imports CSV/XLS/XLSX into pending transactions first, so users can review before adding them to expenses.
   async function importCreditFile(cardId, file) {
-    const lower = file.name.toLowerCase();
-    let importedTransactions = [];
-    if (lower.endsWith('.csv')) importedTransactions = parseCsvText(await file.text(), learnedRules);
-    else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) importedTransactions = parseExcelArrayBuffer(await file.arrayBuffer(), learnedRules);
-    else {
-      alert('נא להעלות CSV או Excel');
-      return;
+    try {
+      const lower = file.name.toLowerCase();
+      let importedTransactions = [];
+      if (lower.endsWith('.csv')) importedTransactions = parseCsvText(await file.text(), learnedRules);
+      else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) importedTransactions = parseExcelArrayBuffer(await file.arrayBuffer(), learnedRules);
+      else {
+        alert('נא להעלות CSV או Excel');
+        return;
+      }
+
+      if (!importedTransactions.length) {
+        setCloudStatus('הקובץ נקלט, אבל לא זוהו עסקאות. בדקי שיש עמודות תאריך, בית עסק וסכום.');
+        alert('הקובץ נקלט, אבל לא זוהו עסקאות. אם זה פירוט בנק/אשראי בפורמט אחר, נצטרך להתאים את מבנה העמודות.');
+      } else {
+        setCloudStatus(`זוהו ${importedTransactions.length} עסקאות לאישור בכרטיס האשראי.`);
+      }
+
+      setSelectedMonthData({
+        ...monthData,
+        creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, importedFile: file.name, pendingTransactions: importedTransactions } : card)),
+      });
+    } catch (error) {
+      setCloudStatus(`שגיאה בייבוא הקובץ: ${error?.message || 'לא ידוע'}`);
+      alert(`שגיאה בייבוא הקובץ: ${error?.message || 'לא ידוע'}`);
     }
-    setSelectedMonthData({
-      ...monthData,
-      creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, importedFile: file.name, pendingTransactions: importedTransactions } : card)),
-    });
   }
 
   function updatePendingTransaction(cardId, transactionId, field, value) {
@@ -1212,6 +1306,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     });
   }
 
+  // Derived totals below power the dashboard cards, insights, charts, and warnings.
   const totalIncome = monthData.incomes.reduce((sum, item) => sum + toNumber(item.amount), 0);
   const allCreditTransactions = useMemo(() => monthData.creditCards.flatMap((card) => card.transactions || []), [monthData.creditCards]);
   const totalCreditCards = allCreditTransactions.reduce((sum, item) => sum + toNumber(item.amount), 0);
@@ -1270,6 +1365,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     'Wealth Building': 'המיקוד כרגע הוא בניית הון ואופטימיזציה פיננסית ארוכת טווח.',
   };
 
+  // Notifications are derived from current totals and global notification preferences.
   const activeNotifications = [
     preferences.notifications?.budget80 && budgetUsageRate >= modeConfig.budgetWarningAt ? `הגעתם ל־${modeConfig.budgetWarningAt}% מהתקציב לפי מצב ${modeConfig.label}.` : null,
     preferences.notifications?.woltSpike && (categoryTotals['מסעדות / וולט'] || 0) > (CATEGORY_BUDGETS['מסעדות / וולט'] || 0) ? 'וולט חרג מהתקציב שהוגדר.' : null,
@@ -1292,6 +1388,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     return 'bg-[#F4F6F1] border-[#D6DDCF] text-[#66725E]';
   }
 
+  // Conic gradient keeps the chart dependency-free while still showing category proportions.
   const pieChart = topCategories.length
     ? `conic-gradient(${topCategories.map(([, amount], index) => {
         const start = topCategories.slice(0, index).reduce((sum, [, value]) => sum + value, 0) / (totalCreditCards || 1);
@@ -1322,6 +1419,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     setCloudStatus('התנתקת, נשמר מקומית עד כניסה מחדש');
   }
 
+  // Auth UI is intentionally disabled for now until global settings and cloud sync are fully stable.
+  // Login UI is intentionally parked behind false until Supabase Auth is enabled as a separate step.
   if (false && !authSession && preferences.syncMode !== 'Local Only') {
     return (
       <div dir="rtl" className={`min-h-screen p-6 text-right transition-colors duration-300 ${activeTheme.page}`} style={{ fontFamily: 'Circular, Arial, Helvetica, sans-serif' }}>
