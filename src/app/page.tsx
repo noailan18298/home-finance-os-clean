@@ -656,6 +656,24 @@ function normalizePreferences(preferences) {
   };
 }
 
+function hasMeaningfulPreferences(preferences) {
+  if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) return false;
+  return Object.keys(preferences).some((key) => preferences[key] !== undefined && preferences[key] !== null && preferences[key] !== '');
+}
+
+function mergeCloudPreferences(current, cloud) {
+  const currentSafe = normalizePreferences(current);
+  if (!hasMeaningfulPreferences(cloud)) return currentSafe;
+  const cloudSafe = normalizePreferences(cloud);
+  return normalizePreferences({
+    ...currentSafe,
+    ...cloudSafe,
+    supabaseUrl: cloud.supabaseUrl || currentSafe.supabaseUrl,
+    supabaseAnonKey: cloud.supabaseAnonKey || currentSafe.supabaseAnonKey,
+    householdProfileId: cloud.householdProfileId || currentSafe.householdProfileId,
+  });
+}
+
 function getInitialGlobalPreferences() {
   const saved = safeJsonParse(getStorageItem(SETTINGS_STORAGE_KEY), null);
   return normalizePreferences(saved);
@@ -960,7 +978,9 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
           });
         }
         if (data?.learned_rules) setLearnedRules(data.learned_rules);
-        if (data?.global_preferences) setGlobalPreferences(normalizePreferences(data.global_preferences));
+        if (data?.global_preferences) {
+          setGlobalPreferences((current) => mergeCloudPreferences(current, data.global_preferences));
+        }
         setCloudStatus(data?.months ? 'מסונכרן מהענן' : 'אין עדיין נתוני ענן, עובדים מקומית');
       } catch (error) {
         setCloudStatus(`ענן לא זמין: ${error?.message || 'שגיאת Supabase'}`);
@@ -985,7 +1005,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     const saveTimeout = setTimeout(async () => {
       try {
         if (preferences.syncMode === 'Cloud Sync' || preferences.syncMode === 'Auto Backup') {
-          await saveFinanceStateToSupabase(months, learnedRules, globalPreferences, householdProfileId, supabaseConfig);
+          await saveFinanceStateToSupabase(months, learnedRules, preferences, householdProfileId, supabaseConfig);
           setCloudStatus(supabaseConfig.url && supabaseConfig.key ? 'נשמר בענן' : 'לא הוגדר Supabase, נשמר מקומית');
         } else {
           setCloudStatus('Local Only: נשמר רק בדפדפן');
@@ -1771,7 +1791,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                         onClick={async () => {
                           try {
                             setCloudStatus('שומר...');
-                            await saveFinanceStateToSupabase(months, learnedRules, globalPreferences, householdProfileId, supabaseConfig);
+                            await saveFinanceStateToSupabase(months, learnedRules, preferences, householdProfileId, supabaseConfig);
                             setCloudStatus('נשמר בענן');
                           } catch (error) {
                             setCloudStatus(`שגיאה בשמירה: ${error?.message || 'לא ידוע'}`);
@@ -1827,7 +1847,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       <span>{label}</span>
                       <input
                         type="checkbox"
-                        checked={Boolean(monthData.preferences[field])}
+                        checked={Boolean(preferences[field])}
                         onChange={(event) => updatePreference(field, event.target.checked)}
                         className="h-5 w-5"
                         style={{ accentColor: activeTheme.accent }}
