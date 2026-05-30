@@ -523,7 +523,7 @@ async function saveFinanceStateToSupabase(months, learnedRules, profileId = DEFA
   const supabaseUrl = config.url || SUPABASE_URL;
   const supabaseKey = config.key || SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseKey) return;
-  const response = await fetch(`${supabaseUrl}/rest/v1/finance_app_state`, {
+  const response = await fetch(`${supabaseUrl}/rest/v1/finance_app_state?on_conflict=profile_id`, {
     method: 'POST',
     headers: {
       apikey: supabaseKey,
