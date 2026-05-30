@@ -165,8 +165,8 @@ function setStorageItem(key, value) {
   }
 }
 
-const SUPABASE_URL = getPublicEnv('NEXT_PUBLIC_SUPABASE_URL');
-const SUPABASE_ANON_KEY = getPublicEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+const SUPABASE_URL = (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_SUPABASE_URL) || '';
+const SUPABASE_ANON_KEY = (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) || '';
 
 function getFinancialModeConfig(mode) {
   return FINANCIAL_MODES[mode] || FINANCIAL_MODES.Stable;
