@@ -1591,7 +1591,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       />
                     </label>
                     <label className="text-sm font-semibold text-neutral-600">
-                      Supabase Publishable Key
+                      SUPABASE TEST 123
                       <Field
                         value={monthData.preferences.supabaseAnonKey || ''}
                         onChange={(event) => updatePreference('supabaseAnonKey', event.target.value)}
