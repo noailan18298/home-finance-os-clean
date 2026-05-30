@@ -165,8 +165,10 @@ function setStorageItem(key, value) {
   }
 }
 
-const SUPABASE_URL = (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_SUPABASE_URL) || '';
-const SUPABASE_ANON_KEY = (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) || '';
+const DEFAULT_SUPABASE_URL = '';
+const DEFAULT_SUPABASE_ANON_KEY = '';
+const SUPABASE_URL = DEFAULT_SUPABASE_URL;
+const SUPABASE_ANON_KEY = DEFAULT_SUPABASE_ANON_KEY;
 
 function getFinancialModeConfig(mode) {
   return FINANCIAL_MODES[mode] || FINANCIAL_MODES.Stable;
@@ -505,23 +507,27 @@ function buildRealInsights(transactions, recurringTransactions = [], totalIncome
   return insights;
 }
 
-async function loadFinanceStateFromSupabase(profileId = DEFAULT_SUPABASE_PROFILE_ID) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+async function loadFinanceStateFromSupabase(profileId = DEFAULT_SUPABASE_PROFILE_ID, config = {}) {
+  const supabaseUrl = config.url || SUPABASE_URL;
+  const supabaseKey = config.key || SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) return null;
   const safeProfileId = profileId || DEFAULT_SUPABASE_PROFILE_ID;
-  const url = `${SUPABASE_URL}/rest/v1/finance_app_state?profile_id=eq.${encodeURIComponent(safeProfileId)}&select=months,learned_rules`;
-  const response = await fetch(url, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } });
+  const url = `${supabaseUrl}/rest/v1/finance_app_state?profile_id=eq.${encodeURIComponent(safeProfileId)}&select=months,learned_rules`;
+  const response = await fetch(url, { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } });
   if (!response.ok) throw new Error('Supabase load failed');
   const rows = await response.json();
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
-async function saveFinanceStateToSupabase(months, learnedRules, profileId = DEFAULT_SUPABASE_PROFILE_ID) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/finance_app_state`, {
+async function saveFinanceStateToSupabase(months, learnedRules, profileId = DEFAULT_SUPABASE_PROFILE_ID, config = {}) {
+  const supabaseUrl = config.url || SUPABASE_URL;
+  const supabaseKey = config.key || SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) return;
+  const response = await fetch(`${supabaseUrl}/rest/v1/finance_app_state`, {
     method: 'POST',
     headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
       'Content-Type': 'application/json',
       Prefer: 'resolution=merge-duplicates',
     },
@@ -590,6 +596,8 @@ function createDefaultMonth() {
       themeMood: 'Sage',
       financialMode: 'Stable',
       syncMode: 'Cloud Sync',
+      supabaseUrl: DEFAULT_SUPABASE_URL,
+      supabaseAnonKey: DEFAULT_SUPABASE_ANON_KEY,
       notifications: { budget80: true, woltSpike: true, savingsDrop: true },
     },
   };
@@ -735,6 +743,15 @@ function SelectField({ children, className = '', ...props }) {
   return <select {...props} className={`rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-100 ${className}`}>{children}</select>;
 }
 
+function LabeledField({ label, children }) {
+  return (
+    <label className="grid gap-2 text-xs font-semibold text-neutral-500">
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
+
 function InputRow({ children }) {
   return <div className="grid gap-3 rounded-[24px] border border-neutral-200 p-4 md:grid-cols-[1fr_160px_44px]">{children}</div>;
 }
@@ -847,9 +864,13 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const isDark = monthData.preferences.themeMood === 'Dark';
   const modeConfig = getFinancialModeConfig(monthData.preferences.financialMode);
   const householdProfileId = monthData.preferences.householdProfileId || DEFAULT_SUPABASE_PROFILE_ID;
+  const supabaseConfig = {
+    url: monthData.preferences.supabaseUrl || SUPABASE_URL,
+    key: monthData.preferences.supabaseAnonKey || SUPABASE_ANON_KEY,
+  };
   const setupHealth = {
     localStorage: typeof window !== 'undefined',
-    supabaseEnv: Boolean(SUPABASE_URL && SUPABASE_ANON_KEY),
+    supabaseEnv: Boolean(supabaseConfig.url && supabaseConfig.key),
     householdProfileId,
     xlsxParser: Boolean(XLSX && XLSX.read),
   };
@@ -857,7 +878,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   useEffect(() => {
     async function loadCloudState() {
       try {
-        const data = await loadFinanceStateFromSupabase(householdProfileId);
+        const data = await loadFinanceStateFromSupabase(householdProfileId, supabaseConfig);
         if (data?.months) {
           setMonths((current) => {
             const nextMonths = data.months && typeof data.months === 'object' && !Array.isArray(data.months) ? data.months : current;
@@ -873,7 +894,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       }
     }
     loadCloudState();
-  }, [householdProfileId, selectedMonth]);
+  }, [householdProfileId, selectedMonth, supabaseConfig.url, supabaseConfig.key]);
 
   useEffect(() => {
     setStorageItem(STORAGE_KEY, JSON.stringify(months));
@@ -885,8 +906,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     const saveTimeout = setTimeout(async () => {
       try {
         if (monthData.preferences.syncMode === 'Cloud Sync' || monthData.preferences.syncMode === 'Auto Backup') {
-          await saveFinanceStateToSupabase(months, learnedRules, householdProfileId);
-          setCloudStatus(SUPABASE_URL && SUPABASE_ANON_KEY ? 'נשמר בענן' : 'לא הוגדר Supabase, נשמר מקומית');
+          await saveFinanceStateToSupabase(months, learnedRules, householdProfileId, supabaseConfig);
+          setCloudStatus(supabaseConfig.url && supabaseConfig.key ? 'נשמר בענן' : 'לא הוגדר Supabase, נשמר מקומית');
         } else {
           setCloudStatus('Local Only: נשמר רק בדפדפן');
         }
@@ -895,7 +916,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       }
     }, 900);
     return () => clearTimeout(saveTimeout);
-  }, [months, learnedRules, hasLoadedCloud, monthData.preferences.syncMode, householdProfileId]);
+  }, [months, learnedRules, hasLoadedCloud, monthData.preferences.syncMode, householdProfileId, supabaseConfig.url, supabaseConfig.key]);
 
   function setSelectedMonthData(nextData) {
     setMonths((current) => ({ ...current, [selectedMonth]: nextData }));
@@ -1458,13 +1479,13 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">קרנות, פנסיה וחסכונות</h2><p className="mt-2 text-sm text-neutral-500">הפרשות חודשיות לקרן השתלמות, פנסיה וחסכונות קבועים.</p></div><PrimaryButton theme={activeTheme} onClick={addSavingsProduct}>+ הוספת חיסכון</PrimaryButton></div>
               <div className="mt-7 grid gap-3">
                 {monthData.savingsProducts.map((product) => (
-                  <div key={product.id} className="grid gap-3 rounded-[24px] border border-neutral-200 p-4 md:grid-cols-[1fr_140px_120px_150px_150px_44px]">
-                    <Field value={product.name} onChange={(event) => updateRow('savingsProducts', product.id, 'name', event.target.value)} />
-                    <SelectField value={product.type} onChange={(event) => updateRow('savingsProducts', product.id, 'type', event.target.value)}><option>קרן השתלמות</option><option>פנסיה</option><option>קופת גמל</option><option>חיסכון</option><option>השקעות</option></SelectField>
-                    <Field value={product.owner} onChange={(event) => updateRow('savingsProducts', product.id, 'owner', event.target.value)} />
-                    <Field type="number" value={product.monthlyDeposit} onChange={(event) => updateRow('savingsProducts', product.id, 'monthlyDeposit', event.target.value)} />
-                    <Field type="number" value={product.currentBalance} onChange={(event) => updateRow('savingsProducts', product.id, 'currentBalance', event.target.value)} />
-                    <GhostButton onClick={() => removeRow('savingsProducts', product.id)} className="px-0">×</GhostButton>
+                  <div key={product.id} className="grid gap-3 rounded-[24px] border border-neutral-200 p-4 md:grid-cols-[1.4fr_150px_130px_160px_160px_44px]">
+                    <LabeledField label="שם החיסכון"><Field value={product.name} onChange={(event) => updateRow('savingsProducts', product.id, 'name', event.target.value)} placeholder="למשל פנסיה נועה" /></LabeledField>
+                    <LabeledField label="סוג"><SelectField value={product.type} onChange={(event) => updateRow('savingsProducts', product.id, 'type', event.target.value)}><option>קרן השתלמות</option><option>פנסיה</option><option>קופת גמל</option><option>חיסכון</option><option>השקעות</option></SelectField></LabeledField>
+                    <LabeledField label="שייך ל"><Field value={product.owner} onChange={(event) => updateRow('savingsProducts', product.id, 'owner', event.target.value)} placeholder="נועה / אורן" /></LabeledField>
+                    <LabeledField label="הפקדה חודשית"><Field type="number" value={product.monthlyDeposit} onChange={(event) => updateRow('savingsProducts', product.id, 'monthlyDeposit', event.target.value)} placeholder="₪ לחודש" /></LabeledField>
+                    <LabeledField label="יתרה נוכחית"><Field type="number" value={product.currentBalance} onChange={(event) => updateRow('savingsProducts', product.id, 'currentBalance', event.target.value)} placeholder="כמה נצבר" /></LabeledField>
+                    <div className="flex items-end"><GhostButton onClick={() => removeRow('savingsProducts', product.id)} className="w-full px-0">×</GhostButton></div>
                   </div>
                 ))}
               </div>
@@ -1481,11 +1502,11 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   const boostedEta = Math.ceil(remaining / (monthlyDeposit + 500));
                   return (
                     <div key={goal.id} className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
-                      <Field value={goal.name} onChange={(event) => updateRow('savingGoals', goal.id, 'name', event.target.value)} className="w-full font-semibold" />
+                      <LabeledField label="שם היעד"><Field value={goal.name} onChange={(event) => updateRow('savingGoals', goal.id, 'name', event.target.value)} className="w-full font-semibold" placeholder="למשל טיסה ליפן" /></LabeledField>
                       <div className="mt-3 grid gap-3">
-                        <Field type="number" value={goal.targetAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'targetAmount', event.target.value)} placeholder="יעד" />
-                        <Field type="number" value={goal.currentAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'currentAmount', event.target.value)} placeholder="נצבר" />
-                        <Field type="number" value={goal.monthlyDeposit} onChange={(event) => updateRow('savingGoals', goal.id, 'monthlyDeposit', event.target.value)} placeholder="הפקדה חודשית" />
+                        <LabeledField label="סכום יעד"><Field type="number" value={goal.targetAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'targetAmount', event.target.value)} placeholder="כמה צריך להגיע" /></LabeledField>
+                        <LabeledField label="נצבר עד עכשיו"><Field type="number" value={goal.currentAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'currentAmount', event.target.value)} placeholder="כמה כבר יש" /></LabeledField>
+                        <LabeledField label="הפקדה חודשית"><Field type="number" value={goal.monthlyDeposit} onChange={(event) => updateRow('savingGoals', goal.id, 'monthlyDeposit', event.target.value)} placeholder="כמה מוסיפים כל חודש" /></LabeledField>
                       </div>
                       <div className="mt-4 flex justify-between text-sm font-semibold"><span>{progress}%</span><button onClick={() => removeRow('savingGoals', goal.id)} className="text-neutral-700">מחיקה</button></div>
                       <div className="mt-3 rounded-2xl border border-neutral-200 bg-white p-3 text-sm leading-7 text-neutral-600"><div>ETA ליעד: <strong>{Number.isFinite(etaMonths) ? `${etaMonths} חודשים` : 'לא מוגדר'}</strong></div><div className="mt-1">אם תגדילו ב־₪500 בחודש תגיעו בערך תוך <strong>{Number.isFinite(boostedEta) ? `${boostedEta} חודשים` : '—'}</strong>.</div></div>
@@ -1557,6 +1578,24 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       <Field
                         value={householdProfileId}
                         onChange={(event) => updatePreference('householdProfileId', event.target.value || DEFAULT_SUPABASE_PROFILE_ID)}
+                        className="mt-2 w-full"
+                      />
+                    </label>
+                    <label className="text-sm font-semibold text-neutral-600">
+                      Supabase URL
+                      <Field
+                        value={monthData.preferences.supabaseUrl || ''}
+                        onChange={(event) => updatePreference('supabaseUrl', event.target.value)}
+                        placeholder="https://xxxx.supabase.co"
+                        className="mt-2 w-full"
+                      />
+                    </label>
+                    <label className="text-sm font-semibold text-neutral-600">
+                      Supabase Publishable Key
+                      <Field
+                        value={monthData.preferences.supabaseAnonKey || ''}
+                        onChange={(event) => updatePreference('supabaseAnonKey', event.target.value)}
+                        placeholder="sb_publishable_..."
                         className="mt-2 w-full"
                       />
                     </label>
