@@ -514,7 +514,10 @@ async function loadFinanceStateFromSupabase(profileId = DEFAULT_SUPABASE_PROFILE
   const safeProfileId = profileId || DEFAULT_SUPABASE_PROFILE_ID;
   const url = `${supabaseUrl}/rest/v1/finance_app_state?profile_id=eq.${encodeURIComponent(safeProfileId)}&select=months,learned_rules`;
   const response = await fetch(url, { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } });
-  if (!response.ok) throw new Error('Supabase load failed');
+  if (!response.ok) {
+    const details = await response.text().catch(() => '');
+    throw new Error(`Supabase load failed: ${response.status} ${details}`);
+  }
   const rows = await response.json();
   return Array.isArray(rows) ? rows[0] || null : null;
 }
@@ -533,7 +536,10 @@ async function saveFinanceStateToSupabase(months, learnedRules, profileId = DEFA
     },
     body: JSON.stringify({ profile_id: profileId || DEFAULT_SUPABASE_PROFILE_ID, months, learned_rules: learnedRules, updated_at: new Date().toISOString() }),
   });
-  if (!response.ok) throw new Error('Supabase save failed');
+  if (!response.ok) {
+    const details = await response.text().catch(() => '');
+    throw new Error(`Supabase save failed: ${response.status} ${details}`);
+  }
 }
 
 function createDefaultMonth() {
@@ -887,8 +893,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         }
         if (data?.learned_rules) setLearnedRules(data.learned_rules);
         setCloudStatus(data?.months ? 'מסונכרן מהענן' : 'אין עדיין נתוני ענן, עובדים מקומית');
-      } catch {
-        setCloudStatus('ענן לא זמין כרגע, עובדים מקומית');
+      } catch (error) {
+        setCloudStatus(`ענן לא זמין: ${error?.message || 'שגיאת Supabase'}`);
       } finally {
         setHasLoadedCloud(true);
       }
@@ -911,8 +917,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         } else {
           setCloudStatus('Local Only: נשמר רק בדפדפן');
         }
-      } catch {
-        setCloudStatus('לא נשמר בענן, נשמר מקומית');
+      } catch (error) {
+        setCloudStatus(`לא נשמר בענן: ${error?.message || 'שגיאת Supabase'}`);
       }
     }, 900);
     return () => clearTimeout(saveTimeout);
@@ -1744,35 +1750,6 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   זה לא דמו: כל סטטוס כאן משקף חיבור אמיתי בקוד. אם Supabase ENV לא מוגדר, המערכת עובדת במצב LocalStorage + JSON Backup.
                 </p>
               </div>
-              <div className="mt-6 flex flex-wrap gap-3">
-  <PrimaryButton
-    theme={activeTheme}
-    onClick={async () => {
-      try {
-        setCloudStatus('שומר...');
-        await saveFinanceStateToSupabase(
-          months,
-          learnedRules,
-          householdProfileId,
-          supabaseConfig
-        );
-        setCloudStatus('נשמר בענן');
-      } catch (error) {
-        setCloudStatus(
-          `שגיאה בשמירה: ${error?.message || 'לא ידוע'}`
-        );
-      }
-    }}
-  >
-    שמור הגדרות בענן
-  </PrimaryButton>
-
-  <GhostButton
-    onClick={() => window.location.reload()}
-  >
-    רענן חיבור
-  </GhostButton>
-</div>
 
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
                 <div className="rounded-[24px] border border-neutral-200 bg-white p-5">
@@ -1834,6 +1811,25 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   <p className="mt-4 text-xs leading-6 text-neutral-500">
                     Cloud Sync עובד רק אם Supabase מוגדר. Local Only שומר בדפדפן. ייצוא/ייבוא JSON עובד תמיד.
                   </p>
+                  <div className="mt-6 flex flex-wrap gap-3 border-t border-neutral-200 pt-5">
+                    <PrimaryButton
+                      theme={activeTheme}
+                      onClick={async () => {
+                        try {
+                          setCloudStatus('שומר...');
+                          await saveFinanceStateToSupabase(months, learnedRules, householdProfileId, supabaseConfig);
+                          setCloudStatus('נשמר בענן');
+                        } catch (error) {
+                          setCloudStatus(`שגיאה בשמירה: ${error?.message || 'לא ידוע'}`);
+                        }
+                      }}
+                    >
+                      שמור הגדרות בענן
+                    </PrimaryButton>
+                    <GhostButton onClick={() => window.location.reload()}>
+                      רענן חיבור
+                    </GhostButton>
+                  </div>
                 </div>
               </div>
             </Section>
