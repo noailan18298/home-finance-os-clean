@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 const STORAGE_KEY = 'family-finance-os-stable-v14';
+const SETTINGS_STORAGE_KEY = 'family-finance-os-global-settings-v1';
+const AUTH_STORAGE_KEY = 'family-finance-os-auth-session-v1';
 const DEFAULT_SUPABASE_PROFILE_ID = 'default-household';
 const APP_BUILD_MARKER = 'finance-dashboard-build-v14';
 
@@ -512,8 +514,8 @@ async function loadFinanceStateFromSupabase(profileId = DEFAULT_SUPABASE_PROFILE
   const supabaseKey = config.key || SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseKey) return null;
   const safeProfileId = profileId || DEFAULT_SUPABASE_PROFILE_ID;
-  const url = `${supabaseUrl}/rest/v1/finance_app_state?profile_id=eq.${encodeURIComponent(safeProfileId)}&select=months,learned_rules`;
-  const response = await fetch(url, { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } });
+  const url = `${supabaseUrl}/rest/v1/finance_app_state?profile_id=eq.${encodeURIComponent(safeProfileId)}&select=months,learned_rules,global_preferences`;
+  const response = await fetch(url, { headers: { apikey: supabaseKey, Authorization: `Bearer ${config.accessToken || supabaseKey}` } });
   if (!response.ok) {
     const details = await response.text().catch(() => '');
     throw new Error(`Supabase load failed: ${response.status} ${details}`);
@@ -522,7 +524,7 @@ async function loadFinanceStateFromSupabase(profileId = DEFAULT_SUPABASE_PROFILE
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
-async function saveFinanceStateToSupabase(months, learnedRules, profileId = DEFAULT_SUPABASE_PROFILE_ID, config = {}) {
+async function saveFinanceStateToSupabase(months, learnedRules, globalPreferences, profileId = DEFAULT_SUPABASE_PROFILE_ID, config = {}) {
   const supabaseUrl = config.url || SUPABASE_URL;
   const supabaseKey = config.key || SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseKey) return;
@@ -530,16 +532,39 @@ async function saveFinanceStateToSupabase(months, learnedRules, profileId = DEFA
     method: 'POST',
     headers: {
       apikey: supabaseKey,
-      Authorization: `Bearer ${supabaseKey}`,
+      Authorization: `Bearer ${config.accessToken || supabaseKey}`,
       'Content-Type': 'application/json',
       Prefer: 'resolution=merge-duplicates',
     },
-    body: JSON.stringify({ profile_id: profileId || DEFAULT_SUPABASE_PROFILE_ID, months, learned_rules: learnedRules, updated_at: new Date().toISOString() }),
+    body: JSON.stringify({ profile_id: profileId || DEFAULT_SUPABASE_PROFILE_ID, months, learned_rules: learnedRules, global_preferences: normalizePreferences(globalPreferences), updated_at: new Date().toISOString() }),
   });
   if (!response.ok) {
     const details = await response.text().catch(() => '');
     throw new Error(`Supabase save failed: ${response.status} ${details}`);
   }
+}
+
+function createDefaultPreferences() {
+  return {
+    primaryPerson: 'נועה',
+    householdProfileId: DEFAULT_SUPABASE_PROFILE_ID,
+    secondaryPerson: 'אורן',
+    includeSelfEmployed: false,
+    monthlyBudgetTarget: 0,
+    savingsRateTarget: 20,
+    showMonthlyStory: true,
+    showFinancialHealth: true,
+    showCategoryChart: true,
+    showTrendChart: true,
+    showSmartInsightCards: true,
+    showRecurringDetection: true,
+    themeMood: 'Sage',
+    financialMode: 'Stable',
+    syncMode: 'Cloud Sync',
+    supabaseUrl: DEFAULT_SUPABASE_URL,
+    supabaseAnonKey: DEFAULT_SUPABASE_ANON_KEY,
+    notifications: { budget80: true, woltSpike: true, savingsDrop: true },
+  };
 }
 
 function createDefaultMonth() {
@@ -586,33 +611,13 @@ function createDefaultMonth() {
       nationalInsurance: 0,
       businessExpenses: 0,
     },
-    preferences: {
-      primaryPerson: 'נועה',
-      householdProfileId: DEFAULT_SUPABASE_PROFILE_ID,
-      secondaryPerson: 'אורן',
-      includeSelfEmployed: false,
-      monthlyBudgetTarget: 0,
-      savingsRateTarget: 20,
-      showMonthlyStory: true,
-      showFinancialHealth: true,
-      showCategoryChart: true,
-      showTrendChart: true,
-      showSmartInsightCards: true,
-      showRecurringDetection: true,
-      themeMood: 'Sage',
-      financialMode: 'Stable',
-      syncMode: 'Cloud Sync',
-      supabaseUrl: DEFAULT_SUPABASE_URL,
-      supabaseAnonKey: DEFAULT_SUPABASE_ANON_KEY,
-      notifications: { budget80: true, woltSpike: true, savingsDrop: true },
-    },
+    preferences: createDefaultPreferences(),
   };
 }
 
 function normalizeMonthData(data) {
   const base = createDefaultMonth();
   const safe = data || {};
-  const safePreferences = safe.preferences || {};
   return {
     ...base,
     ...safe,
@@ -623,11 +628,7 @@ function normalizeMonthData(data) {
     creditCards: (Array.isArray(safe.creditCards) ? safe.creditCards : base.creditCards).map((card) => ({ transactions: [], pendingTransactions: [], importedFile: '', ...card })),
     attachedDocuments: Array.isArray(safe.attachedDocuments) ? safe.attachedDocuments : base.attachedDocuments,
     selfEmployed: { ...base.selfEmployed, ...(safe.selfEmployed || {}) },
-    preferences: {
-      ...base.preferences,
-      ...safePreferences,
-      notifications: { ...base.preferences.notifications, ...(safePreferences.notifications || {}) },
-    },
+    preferences: normalizePreferences(safe.preferences),
   };
 }
 
@@ -643,6 +644,65 @@ function getInitialMonths() {
 function getInitialLearnedRules() {
   const saved = safeJsonParse(getStorageItem(`${STORAGE_KEY}-rules`), {});
   return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+}
+
+function normalizePreferences(preferences) {
+  const base = createDefaultPreferences();
+  const safe = preferences && typeof preferences === 'object' && !Array.isArray(preferences) ? preferences : {};
+  return {
+    ...base,
+    ...safe,
+    notifications: { ...base.notifications, ...(safe.notifications || {}) },
+  };
+}
+
+function getInitialGlobalPreferences() {
+  const saved = safeJsonParse(getStorageItem(SETTINGS_STORAGE_KEY), null);
+  return normalizePreferences(saved);
+}
+
+function getInitialAuthSession() {
+  const saved = safeJsonParse(getStorageItem(AUTH_STORAGE_KEY), null);
+  if (!saved || typeof saved !== 'object') return null;
+  if (!saved.access_token || !saved.email) return null;
+  if (saved.expires_at && Date.now() > saved.expires_at) return null;
+  return saved;
+}
+
+function clearAuthSession() {
+  setStorageItem(AUTH_STORAGE_KEY, '');
+}
+
+async function signInWithSupabasePassword(email, password, config = {}) {
+  const supabaseUrl = config.url || SUPABASE_URL;
+  const supabaseKey = config.key || SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) throw new Error('חסרים Supabase URL או Publishable Key');
+  if (!email || !password) throw new Error('צריך להזין אימייל וסיסמה');
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => '');
+    throw new Error(`הכניסה נכשלה: ${response.status} ${details}`);
+  }
+
+  const data = await response.json();
+  const session = {
+    email,
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    user_id: data.user?.id || '',
+    expires_at: Date.now() + Math.max(1, Number(data.expires_in || 3600) - 60) * 1000,
+  };
+  setStorageItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  return session;
 }
 
 function runSmokeTests() {
@@ -673,8 +733,8 @@ function runSmokeTests() {
   console.assert(parseExcelArrayBuffer instanceof Function, 'excel parser exists');
   console.assert(TABS[1].id === 'income', 'income tab should be second');
   console.assert(TABS.some((tab) => tab.id === 'insights' && tab.label === 'תובנות חכמות'), 'smart insights tab label failed');
-  console.assert(normalizeMonthData({ preferences: { showTrendChart: false } }).preferences.showTrendChart === false, 'preferences override failed');
-  console.assert(normalizeMonthData({}).preferences.householdProfileId === DEFAULT_SUPABASE_PROFILE_ID, 'household profile default failed');
+  console.assert(normalizePreferences({ showTrendChart: false }).showTrendChart === false, 'preferences override failed');
+  console.assert(normalizePreferences({}).householdProfileId === DEFAULT_SUPABASE_PROFILE_ID, 'household profile default failed');
   console.assert(getSafeTheme('Missing').accent === THEME_STYLES.Sage.accent, 'theme fallback failed');
   console.assert(getSafeTheme('Dark').page.includes('111111'), 'dark theme page exists');
   console.assert(noSingleWordLine('אחת שתיים שלוש').includes(String.fromCharCode(160)), 'no orphan text helper failed');
@@ -856,6 +916,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthKey());
   const [months, setMonths] = useState(getInitialMonths);
   const [learnedRules, setLearnedRules] = useState(getInitialLearnedRules);
+  const [globalPreferences, setGlobalPreferences] = useState(getInitialGlobalPreferences);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('הכול');
   const [minAmount, setMinAmount] = useState('');
@@ -864,19 +925,26 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const [hasLoadedCloud, setHasLoadedCloud] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [comparePeriod, setComparePeriod] = useState('previous');
+  const [authSession, setAuthSession] = useState(getInitialAuthSession);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authStatus, setAuthStatus] = useState('');
 
   const monthData = normalizeMonthData(months[selectedMonth]);
-  const activeTheme = getSafeTheme(monthData.preferences.themeMood);
-  const isDark = monthData.preferences.themeMood === 'Dark';
-  const modeConfig = getFinancialModeConfig(monthData.preferences.financialMode);
-  const householdProfileId = monthData.preferences.householdProfileId || DEFAULT_SUPABASE_PROFILE_ID;
+  const preferences = normalizePreferences(globalPreferences);
+  const activeTheme = getSafeTheme(preferences.themeMood);
+  const isDark = preferences.themeMood === 'Dark';
+  const modeConfig = getFinancialModeConfig(preferences.financialMode);
+  const householdProfileId = preferences.householdProfileId || DEFAULT_SUPABASE_PROFILE_ID;
   const supabaseConfig = {
-    url: monthData.preferences.supabaseUrl || SUPABASE_URL,
-    key: monthData.preferences.supabaseAnonKey || SUPABASE_ANON_KEY,
+    url: preferences.supabaseUrl || SUPABASE_URL,
+    key: preferences.supabaseAnonKey || SUPABASE_ANON_KEY,
+    accessToken: authSession?.access_token || '',
   };
   const setupHealth = {
     localStorage: typeof window !== 'undefined',
     supabaseEnv: Boolean(supabaseConfig.url && supabaseConfig.key),
+    signedIn: Boolean(authSession?.access_token),
     householdProfileId,
     xlsxParser: Boolean(XLSX && XLSX.read),
   };
@@ -892,6 +960,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
           });
         }
         if (data?.learned_rules) setLearnedRules(data.learned_rules);
+        if (data?.global_preferences) setGlobalPreferences(normalizePreferences(data.global_preferences));
         setCloudStatus(data?.months ? 'מסונכרן מהענן' : 'אין עדיין נתוני ענן, עובדים מקומית');
       } catch (error) {
         setCloudStatus(`ענן לא זמין: ${error?.message || 'שגיאת Supabase'}`);
@@ -908,11 +977,15 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   }, [months, learnedRules]);
 
   useEffect(() => {
+    setStorageItem(SETTINGS_STORAGE_KEY, JSON.stringify(globalPreferences));
+  }, [globalPreferences]);
+
+  useEffect(() => {
     if (!hasLoadedCloud) return;
     const saveTimeout = setTimeout(async () => {
       try {
-        if (monthData.preferences.syncMode === 'Cloud Sync' || monthData.preferences.syncMode === 'Auto Backup') {
-          await saveFinanceStateToSupabase(months, learnedRules, householdProfileId, supabaseConfig);
+        if (preferences.syncMode === 'Cloud Sync' || preferences.syncMode === 'Auto Backup') {
+          await saveFinanceStateToSupabase(months, learnedRules, globalPreferences, householdProfileId, supabaseConfig);
           setCloudStatus(supabaseConfig.url && supabaseConfig.key ? 'נשמר בענן' : 'לא הוגדר Supabase, נשמר מקומית');
         } else {
           setCloudStatus('Local Only: נשמר רק בדפדפן');
@@ -922,7 +995,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       }
     }, 900);
     return () => clearTimeout(saveTimeout);
-  }, [months, learnedRules, hasLoadedCloud, monthData.preferences.syncMode, householdProfileId, supabaseConfig.url, supabaseConfig.key]);
+  }, [months, learnedRules, globalPreferences, hasLoadedCloud, preferences.syncMode, householdProfileId, supabaseConfig.url, supabaseConfig.key]);
 
   function setSelectedMonthData(nextData) {
     setMonths((current) => ({ ...current, [selectedMonth]: nextData }));
@@ -972,7 +1045,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
   function updatePreference(field, value) {
     const numericFields = ['monthlyBudgetTarget', 'savingsRateTarget'];
-    setSelectedMonthData({ ...monthData, preferences: { ...monthData.preferences, [field]: numericFields.includes(field) ? toNumber(value) : value } });
+    setGlobalPreferences((current) => ({
+      ...normalizePreferences(current),
+      [field]: numericFields.includes(field) ? toNumber(value) : value,
+    }));
   }
 
   function attachSalarySlipFile(file) {
@@ -1123,7 +1199,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const totalSavingsProducts = monthData.savingsProducts.reduce((sum, item) => sum + toNumber(item.monthlyDeposit), 0);
   const totalSavingGoals = monthData.savingGoals.reduce((sum, item) => sum + toNumber(item.monthlyDeposit), 0);
   const totalPlannedSavings = totalSavingsProducts + totalSavingGoals;
-  const includeSelfEmployed = Boolean(monthData.preferences.includeSelfEmployed);
+  const includeSelfEmployed = Boolean(preferences.includeSelfEmployed);
   const selfEmployedVatDue = Math.max(0, toNumber(monthData.selfEmployed.vatCollected) - toNumber(monthData.selfEmployed.vatPaidOnExpenses));
   const rawSelfEmployedPayments = selfEmployedVatDue + toNumber(monthData.selfEmployed.incomeTaxAdvance) + toNumber(monthData.selfEmployed.nationalInsurance) + toNumber(monthData.selfEmployed.businessExpenses);
   const totalSelfEmployedPayments = includeSelfEmployed ? rawSelfEmployedPayments : 0;
@@ -1151,13 +1227,13 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   }, [allCreditTransactions, searchTerm, categoryFilter, minAmount, maxAmount]);
 
   const financialHealthScore = calculateFinancialHealthScore(allCreditTransactions, modeConfig) || 0;
-  const monthlyBudgetTarget = toNumber(monthData.preferences.monthlyBudgetTarget);
+  const monthlyBudgetTarget = toNumber(preferences.monthlyBudgetTarget);
   const effectiveBudgetTarget = monthlyBudgetTarget ? monthlyBudgetTarget / modeConfig.strictness : 0;
   const budgetUsageRate = effectiveBudgetTarget ? (totalExpenses / effectiveBudgetTarget) * 100 : 0;
-  const targetSavingsRate = toNumber(monthData.preferences.savingsRateTarget) || modeConfig.savingsTarget;
+  const targetSavingsRate = toNumber(preferences.savingsRateTarget) || modeConfig.savingsTarget;
   const realInsights = useMemo(
-    () => buildRealInsights(allCreditTransactions, recurringTransactions, totalIncome, monthData.preferences.financialMode, { savingsRate, burnRate, cashFlow, totalAssets }),
-    [allCreditTransactions, recurringTransactions, totalIncome, monthData.preferences.financialMode, savingsRate, burnRate, cashFlow, totalAssets]
+    () => buildRealInsights(allCreditTransactions, recurringTransactions, totalIncome, preferences.financialMode, { savingsRate, burnRate, cashFlow, totalAssets }),
+    [allCreditTransactions, recurringTransactions, totalIncome, preferences.financialMode, savingsRate, burnRate, cashFlow, totalAssets]
   );
 
   const operatingModeMessages = {
@@ -1175,9 +1251,9 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   };
 
   const activeNotifications = [
-    monthData.preferences.notifications?.budget80 && budgetUsageRate >= modeConfig.budgetWarningAt ? `הגעתם ל־${modeConfig.budgetWarningAt}% מהתקציב לפי מצב ${modeConfig.label}.` : null,
-    monthData.preferences.notifications?.woltSpike && (categoryTotals['מסעדות / וולט'] || 0) > (CATEGORY_BUDGETS['מסעדות / וולט'] || 0) ? 'וולט חרג מהתקציב שהוגדר.' : null,
-    monthData.preferences.notifications?.savingsDrop && savingsRate < targetSavingsRate ? 'שיעור החיסכון נמוך מהיעד שהוגדר.' : null,
+    preferences.notifications?.budget80 && budgetUsageRate >= modeConfig.budgetWarningAt ? `הגעתם ל־${modeConfig.budgetWarningAt}% מהתקציב לפי מצב ${modeConfig.label}.` : null,
+    preferences.notifications?.woltSpike && (categoryTotals['מסעדות / וולט'] || 0) > (CATEGORY_BUDGETS['מסעדות / וולט'] || 0) ? 'וולט חרג מהתקציב שהוגדר.' : null,
+    preferences.notifications?.savingsDrop && savingsRate < targetSavingsRate ? 'שיעור החיסכון נמוך מהיעד שהוגדר.' : null,
   ].filter(Boolean);
 
   const monthlyStory = totalIncome
@@ -1204,6 +1280,68 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         return `${colors[index % colors.length]} ${start * 100}% ${end * 100}%`;
       }).join(', ')})`
     : 'conic-gradient(#dddddd 0% 100%)';
+
+  async function handleSignIn(event) {
+    event.preventDefault();
+    try {
+      setAuthStatus('מתחברת...');
+      const session = await signInWithSupabasePassword(authEmail, authPassword, supabaseConfig);
+      setAuthSession(session);
+      setAuthPassword('');
+      setAuthStatus('מחוברת');
+      setCloudStatus('מחוברת לחשבון Supabase');
+    } catch (error) {
+      setAuthStatus(error?.message || 'הכניסה נכשלה');
+    }
+  }
+
+  function handleSignOut() {
+    clearAuthSession();
+    setAuthSession(null);
+    setAuthStatus('התנתקת');
+    setCloudStatus('התנתקת, נשמר מקומית עד כניסה מחדש');
+  }
+
+  if (false && !authSession && preferences.syncMode !== 'Local Only') {
+    return (
+      <div dir="rtl" className={`min-h-screen p-6 text-right transition-colors duration-300 ${activeTheme.page}`} style={{ fontFamily: 'Circular, Arial, Helvetica, sans-serif' }}>
+        <div className="mx-auto flex min-h-[calc(100vh-48px)] max-w-5xl items-center justify-center">
+          <div className="grid w-full gap-6 lg:grid-cols-[1fr_0.9fr]">
+            <section className="rounded-[32px] border border-neutral-200 bg-white p-8 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">SECURE ACCESS</div>
+              <h1 className="mt-4 text-4xl font-semibold tracking-tight text-neutral-950">כניסה לדשבורד הפיננסי</h1>
+              <p className="mt-4 text-sm leading-7 text-neutral-500">הכניסה משתמשת ב־Supabase Auth עם אימייל וסיסמה. אחרי הכניסה, שמירה וטעינה בענן ישתמשו ב־access token של המשתמש.</p>
+              <form onSubmit={handleSignIn} className="mt-7 grid gap-4">
+                <label className="text-sm font-semibold text-neutral-600">
+                  אימייל
+                  <Field type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} className="mt-2 w-full" placeholder="name@example.com" />
+                </label>
+                <label className="text-sm font-semibold text-neutral-600">
+                  סיסמה
+                  <Field type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} className="mt-2 w-full" placeholder="••••••••" />
+                </label>
+                <PrimaryButton theme={activeTheme} type="submit" className="mt-2 w-full">כניסה</PrimaryButton>
+              </form>
+              {authStatus ? <div className="mt-4 rounded-2xl bg-neutral-50 p-4 text-sm leading-7 text-neutral-600">{authStatus}</div> : null}
+            </section>
+
+            <section className="rounded-[32px] border border-neutral-200 bg-neutral-50 p-8 shadow-sm">
+              <h2 className="text-2xl font-semibold tracking-tight text-neutral-950">לפני הכניסה</h2>
+              <div className="mt-5 grid gap-4 text-sm leading-7 text-neutral-600">
+                <p>צריך ליצור משתמש ב־Supabase דרך Authentication → Users.</p>
+                <p>אם עוד לא יצרת משתמש, הכניסה תיכשל עד שיוגדר אימייל וסיסמה.</p>
+                <p>מצב Local Only עדיין אפשרי דרך ההגדרות אחרי כניסה, אבל בשביל ענן צריך חשבון.</p>
+              </div>
+              <div className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4 text-sm text-neutral-600">
+                <strong>Supabase</strong>
+                <div className="mt-2">{setupHealth.supabaseEnv ? 'מחובר להגדרות Supabase' : 'חסרים URL או Publishable Key בהגדרות שנשמרו בדפדפן'}</div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div dir="rtl" className={`min-h-screen p-6 text-right transition-colors duration-300 ${activeTheme.page} ${isDark ? 'theme-dark' : ''}`} style={{ fontFamily: 'Circular, Arial, Helvetica, sans-serif' }}>
@@ -1243,7 +1381,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
       <div className="mx-auto max-w-7xl space-y-7">
         <div className="dark-nav sticky top-0 z-40 rounded-2xl border border-neutral-200 bg-white/95 p-2 shadow-sm backdrop-blur-xl" style={isDark ? { backgroundColor: 'rgba(18, 18, 18, 0.96)', borderColor: '#333333' } : undefined}>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -1255,6 +1393,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                 {tab.label}
               </button>
             ))}
+            <div className="ms-auto flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600">
+              <span>{authSession?.email || 'Local'}</span>
+              {authSession ? <button type="button" onClick={handleSignOut} className="text-neutral-900 underline">התנתקות</button> : null}
+            </div>
           </div>
         </div>
 
@@ -1264,7 +1406,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               <div>
                 <input value={monthData.dashboardTitle} onChange={(event) => updateMonthField('dashboardTitle', event.target.value)} className="w-full max-w-3xl rounded-xl border border-transparent bg-transparent px-0 py-2 text-4xl font-semibold tracking-tight text-neutral-950 outline-none transition placeholder:text-neutral-400 md:text-5xl" placeholder="שם הדשבורד המשפחתי" />
                 <p className="mt-4 max-w-4xl text-base leading-8 text-neutral-500 no-orphans no-single-word-lines">{noSingleWordLine('ממלאים הכנסות, הוצאות, אשראי, עצמאי, קרנות ויעדים. המערכת מחשבת תזרים, חיסכון ותובנות אמיתיות.')}</p>
-                <div className="nowrap-chip mt-4 inline-flex max-w-full rounded-full px-4 py-2 text-sm font-semibold no-orphans" style={{ backgroundColor: activeTheme.soft, color: activeTheme.text }}>{noSingleWordLine(`${modeInsight[monthData.preferences.financialMode] || modeInsight.Stable} יעד חיסכון: ${formatPercent(targetSavingsRate)} | התראה ב־${modeConfig.budgetWarningAt}%`)}</div>
+                <div className="nowrap-chip mt-4 inline-flex max-w-full rounded-full px-4 py-2 text-sm font-semibold no-orphans" style={{ backgroundColor: activeTheme.soft, color: activeTheme.text }}>{noSingleWordLine(`${modeInsight[preferences.financialMode] || modeInsight.Stable} יעד חיסכון: ${formatPercent(targetSavingsRate)} | התראה ב־${modeConfig.budgetWarningAt}%`)}</div>
                 <div className="nowrap-chip mt-5 inline-flex max-w-full rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-600 no-orphans">{noSingleWordLine(cloudStatus)}</div>
               </div>
               <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
@@ -1287,7 +1429,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
         {activeTab === 'dashboard' ? (
           <>
-            {(monthData.preferences.showMonthlyStory || monthData.preferences.showFinancialHealth || activeNotifications.length > 0) ? (
+            {(preferences.showMonthlyStory || preferences.showFinancialHealth || activeNotifications.length > 0) ? (
               <Section>
                 <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
                   {activeNotifications.length > 0 ? (
@@ -1306,7 +1448,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                     </div>
                   ) : null}
 
-                  {monthData.preferences.showMonthlyStory ? (
+                  {preferences.showMonthlyStory ? (
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">MONTHLY STORY</div>
                       <h2 className="mt-4 text-4xl font-semibold leading-tight tracking-tight text-neutral-950">הסיפור של החודש שלכם</h2>
@@ -1319,7 +1461,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                     </div>
                   ) : null}
 
-                  {monthData.preferences.showFinancialHealth ? (
+                  {preferences.showFinancialHealth ? (
                     <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-6">
                       <div className="text-sm font-semibold text-neutral-500">Financial Health</div>
                       <div className="mt-4 text-6xl font-semibold text-neutral-950">{financialHealthScore}</div>
@@ -1375,9 +1517,9 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               )}
             </Section>
 
-            {(monthData.preferences.showCategoryChart || monthData.preferences.showTrendChart) ? (
+            {(preferences.showCategoryChart || preferences.showTrendChart) ? (
               <section className="grid gap-6 lg:grid-cols-3">
-                {monthData.preferences.showCategoryChart ? (
+                {preferences.showCategoryChart ? (
                   <Section>
                     <div className="flex items-center justify-between gap-4"><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">התפלגות הוצאות לפי קטגוריות</h2><span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">Heatmap</span></div>
                     <div className="mx-auto mt-6 h-56 w-56 rounded-full" style={{ background: pieChart }} />
@@ -1387,7 +1529,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   </Section>
                 ) : null}
 
-                {monthData.preferences.showTrendChart ? (
+                {preferences.showTrendChart ? (
                   <Section className="lg:col-span-2">
                     <div className="flex items-center justify-between gap-4"><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">מגמת הוצאות חודשית</h2><span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">Trend</span></div>
                     <div className="mt-6 flex h-64 items-end gap-3 rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
@@ -1552,8 +1694,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
         {activeTab === 'insights' ? (
           <section className="grid gap-6 lg:grid-cols-2">
-            {monthData.preferences.showSmartInsightCards ? <Section><div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">תובנות חכמות</h2><p className="mt-2 text-sm text-neutral-500">תובנות מחושבות ישירות מהנתונים: חריגות, תקציבים, בתי עסק מובילים, חיובים חוזרים ודפוסים חודשיים.</p></div><div className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: activeTheme.soft, color: activeTheme.text }}>מתעדכן אוטומטית</div></div><div className="mt-5 grid gap-4">{realInsights.map((insight, index) => <div key={insight} className="flex items-start gap-4 rounded-[24px] border border-neutral-200 bg-white p-5 shadow-sm"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-100 text-lg font-semibold text-neutral-500">{index % 3 === 0 ? '◔' : index % 3 === 1 ? '▲' : '✦'}</div><div className="flex-1 text-sm leading-7 text-neutral-700 no-orphans">{noSingleWordLine(insight)}</div></div>)}</div></Section> : null}
-            {monthData.preferences.showRecurringDetection ? <Section><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">זיהוי חיובים קבועים</h2><p className="mt-2 text-sm text-neutral-500">זיהוי מנויים, ביטוחים, סלולר ושכירות לפי מילות מפתח וחזרה בין חודשים.</p><div className="mt-5 space-y-3">{recurringTransactions.length ? recurringTransactions.map((item) => <div key={item.id} className="flex justify-between rounded-2xl bg-neutral-50 p-4 text-sm"><span>{item.merchant}</span><strong>{SHEKEL.format(item.amount)}</strong></div>) : <EmptyState title="אין עדיין חיובים קבועים" text="העלי פירוטים של כמה חודשים כדי שנוכל לזהות מנויים ותשלומים חוזרים בצורה חכמה." />}</div></Section> : null}
+            {preferences.showSmartInsightCards ? <Section><div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">תובנות חכמות</h2><p className="mt-2 text-sm text-neutral-500">תובנות מחושבות ישירות מהנתונים: חריגות, תקציבים, בתי עסק מובילים, חיובים חוזרים ודפוסים חודשיים.</p></div><div className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: activeTheme.soft, color: activeTheme.text }}>מתעדכן אוטומטית</div></div><div className="mt-5 grid gap-4">{realInsights.map((insight, index) => <div key={insight} className="flex items-start gap-4 rounded-[24px] border border-neutral-200 bg-white p-5 shadow-sm"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-100 text-lg font-semibold text-neutral-500">{index % 3 === 0 ? '◔' : index % 3 === 1 ? '▲' : '✦'}</div><div className="flex-1 text-sm leading-7 text-neutral-700 no-orphans">{noSingleWordLine(insight)}</div></div>)}</div></Section> : null}
+            {preferences.showRecurringDetection ? <Section><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">זיהוי חיובים קבועים</h2><p className="mt-2 text-sm text-neutral-500">זיהוי מנויים, ביטוחים, סלולר ושכירות לפי מילות מפתח וחזרה בין חודשים.</p><div className="mt-5 space-y-3">{recurringTransactions.length ? recurringTransactions.map((item) => <div key={item.id} className="flex justify-between rounded-2xl bg-neutral-50 p-4 text-sm"><span>{item.merchant}</span><strong>{SHEKEL.format(item.amount)}</strong></div>) : <EmptyState title="אין עדיין חיובים קבועים" text="העלי פירוטים של כמה חודשים כדי שנוכל לזהות מנויים ותשלומים חוזרים בצורה חכמה." />}</div></Section> : null}
           </section>
         ) : null}
 
@@ -1590,7 +1732,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                     <label className="text-sm font-semibold text-neutral-600">
                       Supabase URL
                       <Field
-                        value={monthData.preferences.supabaseUrl || ''}
+                        value={preferences.supabaseUrl || ''}
                         onChange={(event) => updatePreference('supabaseUrl', event.target.value)}
                         placeholder="https://xxxx.supabase.co"
                         className="mt-2 w-full"
@@ -1599,7 +1741,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                     <label className="text-sm font-semibold text-neutral-600">
                       Supabase Publishable Key
                       <Field
-                        value={monthData.preferences.supabaseAnonKey || ''}
+                        value={preferences.supabaseAnonKey || ''}
                         onChange={(event) => updatePreference('supabaseAnonKey', event.target.value)}
                         placeholder="sb_publishable_..."
                         className="mt-2 w-full"
@@ -1609,7 +1751,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       <label className="text-sm font-semibold text-neutral-600">
                         משתמש/ת ראשון/ה
                         <Field
-                          value={monthData.preferences.primaryPerson}
+                          value={preferences.primaryPerson}
                           onChange={(event) => updatePreference('primaryPerson', event.target.value)}
                           className="mt-2 w-full"
                         />
@@ -1617,7 +1759,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       <label className="text-sm font-semibold text-neutral-600">
                         משתמש/ת שני/ה
                         <Field
-                          value={monthData.preferences.secondaryPerson}
+                          value={preferences.secondaryPerson}
                           onChange={(event) => updatePreference('secondaryPerson', event.target.value)}
                           className="mt-2 w-full"
                         />
@@ -1629,7 +1771,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                         onClick={async () => {
                           try {
                             setCloudStatus('שומר...');
-                            await saveFinanceStateToSupabase(months, learnedRules, householdProfileId, supabaseConfig);
+                            await saveFinanceStateToSupabase(months, learnedRules, globalPreferences, householdProfileId, supabaseConfig);
                             setCloudStatus('נשמר בענן');
                           } catch (error) {
                             setCloudStatus(`שגיאה בשמירה: ${error?.message || 'לא ידוע'}`);
@@ -1652,7 +1794,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       יעד הוצאות חודשי
                       <Field
                         type="number"
-                        value={monthData.preferences.monthlyBudgetTarget}
+                        value={preferences.monthlyBudgetTarget}
                         onChange={(event) => updatePreference('monthlyBudgetTarget', event.target.value)}
                         className="mt-2 w-full"
                       />
@@ -1661,7 +1803,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       יעד שיעור חיסכון באחוזים
                       <Field
                         type="number"
-                        value={monthData.preferences.savingsRateTarget}
+                        value={preferences.savingsRateTarget}
                         onChange={(event) => updatePreference('savingsRateTarget', event.target.value)}
                         className="mt-2 w-full"
                       />
@@ -1701,7 +1843,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     {Object.keys(THEME_STYLES).map((themeName) => {
                       const themeStyle = getSafeTheme(themeName);
-                      const isSelected = monthData.preferences.themeMood === themeName;
+                      const isSelected = preferences.themeMood === themeName;
                       return (
                         <button
                           key={themeName}
@@ -1722,7 +1864,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   <div className="mt-4 space-y-3">
                     {['Survival', 'Stable', 'Growth', 'Wealth Building'].map((mode) => {
                       const config = getFinancialModeConfig(mode);
-                      const isSelected = monthData.preferences.financialMode === mode;
+                      const isSelected = preferences.financialMode === mode;
                       return (
                         <button
                           key={mode}
@@ -1783,8 +1925,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                         <span>{label}</span>
                         <input
                           type="checkbox"
-                          checked={Boolean(monthData.preferences.notifications?.[field])}
-                          onChange={(event) => updatePreference('notifications', { ...monthData.preferences.notifications, [field]: event.target.checked })}
+                          checked={Boolean(preferences.notifications?.[field])}
+                          onChange={(event) => updatePreference('notifications', { ...preferences.notifications, [field]: event.target.checked })}
                           className="h-5 w-5"
                           style={{ accentColor: activeTheme.accent }}
                         />
@@ -1797,7 +1939,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   <h3 className="text-lg font-semibold text-neutral-950">Privacy & Sync</h3>
                   <div className="mt-4 grid gap-3">
                     {['Cloud Sync', 'Local Only', 'Auto Backup'].map((mode) => {
-                      const isSelected = monthData.preferences.syncMode === mode;
+                      const isSelected = preferences.syncMode === mode;
                       return (
                         <button
                           key={mode}
