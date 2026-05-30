@@ -1744,6 +1744,35 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   זה לא דמו: כל סטטוס כאן משקף חיבור אמיתי בקוד. אם Supabase ENV לא מוגדר, המערכת עובדת במצב LocalStorage + JSON Backup.
                 </p>
               </div>
+              <div className="mt-6 flex flex-wrap gap-3">
+  <PrimaryButton
+    theme={activeTheme}
+    onClick={async () => {
+      try {
+        setCloudStatus('שומר...');
+        await saveFinanceStateToSupabase(
+          months,
+          learnedRules,
+          householdProfileId,
+          supabaseConfig
+        );
+        setCloudStatus('נשמר בענן');
+      } catch (error) {
+        setCloudStatus(
+          `שגיאה בשמירה: ${error?.message || 'לא ידוע'}`
+        );
+      }
+    }}
+  >
+    שמור הגדרות בענן
+  </PrimaryButton>
+
+  <GhostButton
+    onClick={() => window.location.reload()}
+  >
+    רענן חיבור
+  </GhostButton>
+</div>
 
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
                 <div className="rounded-[24px] border border-neutral-200 bg-white p-5">
