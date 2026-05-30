@@ -619,6 +619,26 @@ function getPreviousMonthKey(monthKey) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function createMonthFromPrevious(previousMonthData) {
+  const base = createDefaultMonth();
+  if (!previousMonthData) return base;
+  const previous = normalizeMonthData(previousMonthData);
+
+  return {
+    ...base,
+    dashboardTitle: previous.dashboardTitle || base.dashboardTitle,
+    emergencyFund: previous.emergencyFund || 0,
+    savingsProducts: previous.savingsProducts.map((product) => ({
+      ...product,
+      id: makeId('saving'),
+    })),
+    savingGoals: previous.savingGoals.map((goal) => ({
+      ...goal,
+      id: makeId('goal'),
+    })),
+  };
+}
+
 // Collects earlier months for comparison, newest first, according to the selected compare period.
 function getCompareMonthKeys(months, selectedMonth, periodId = 'previous') {
   const period = COMPARE_PERIODS.find((item) => item.id === periodId) || COMPARE_PERIODS[0];
@@ -1234,7 +1254,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         if (data?.months) {
           setMonths((current) => {
             const nextMonths = data.months && typeof data.months === 'object' && !Array.isArray(data.months) ? data.months : current;
-            return nextMonths[selectedMonth] ? nextMonths : { ...nextMonths, [selectedMonth]: current[selectedMonth] || createDefaultMonth() };
+            return nextMonths[selectedMonth] ? nextMonths : { ...nextMonths, [selectedMonth]: current[selectedMonth] || createMonthFromPrevious(nextMonths[getPreviousMonthKey(selectedMonth)]) };
           });
         }
         if (data?.learned_rules) setLearnedRules(data.learned_rules);
@@ -1288,7 +1308,13 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
   function ensureMonth(monthKey) {
     setSelectedMonth(monthKey);
-    if (!months[monthKey]) setMonths((current) => ({ ...current, [monthKey]: createDefaultMonth() }));
+    if (!months[monthKey]) {
+      setMonths((current) => {
+        const previousMonthKey = getPreviousMonthKey(monthKey);
+        const previousMonthData = current[previousMonthKey] || Object.entries(current).filter(([key]) => key < monthKey).sort(([a], [b]) => b.localeCompare(a))[0]?.[1];
+        return { ...current, [monthKey]: createMonthFromPrevious(previousMonthData) };
+      });
+    }
   }
 
   function updateMonthField(field, value) {
