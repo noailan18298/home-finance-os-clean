@@ -25,6 +25,7 @@ const COMPARE_PERIODS = [
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
+  { id: 'bank', label: 'עו״ש' },
   { id: 'income', label: 'הכנסות' },
   { id: 'credit', label: 'הוצאות' },
   { id: 'savings', label: 'חיסכון' },
@@ -628,6 +629,12 @@ function createMonthFromPrevious(previousMonthData) {
     ...base,
     dashboardTitle: previous.dashboardTitle || base.dashboardTitle,
     emergencyFund: previous.emergencyFund || 0,
+    bankAccounts: previous.bankAccounts.map((account) => ({
+      ...account,
+      id: makeId('bank'),
+      openingBalance: toNumber(account.closingBalance),
+      closingBalance: toNumber(account.closingBalance),
+    })),
     savingsProducts: previous.savingsProducts.map((product) => ({
       ...product,
       id: makeId('saving'),
@@ -843,6 +850,11 @@ function createDefaultMonth() {
     emergencyFund: 0,
     lastSalaryImport: '',
     attachedDocuments: [],
+    bankAccounts: [
+      { id: makeId('bank'), name: 'עו״ש משותף', owner: 'משפחה', openingBalance: 0, closingBalance: 0 },
+      { id: makeId('bank'), name: 'עו״ש נועה', owner: 'נועה', openingBalance: 0, closingBalance: 0 },
+      { id: makeId('bank'), name: 'עו״ש אורן', owner: 'אורן', openingBalance: 0, closingBalance: 0 },
+    ],
     incomes: [
       { id: makeId('income'), name: 'משכורת נועה', amount: 0 },
       { id: makeId('income'), name: 'הכנסה אורן', amount: 0 },
@@ -893,6 +905,7 @@ function normalizeMonthData(data) {
   return {
     ...base,
     ...safe,
+    bankAccounts: Array.isArray(safe.bankAccounts) ? safe.bankAccounts : base.bankAccounts,
     incomes: Array.isArray(safe.incomes) ? safe.incomes : base.incomes,
     manualExpenses: Array.isArray(safe.manualExpenses) ? safe.manualExpenses : base.manualExpenses,
     savingsProducts: Array.isArray(safe.savingsProducts) ? safe.savingsProducts : base.savingsProducts,
@@ -1322,7 +1335,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   }
 
   function updateRow(section, id, field, value) {
-    const numericFields = ['amount', 'monthlyDeposit', 'currentBalance', 'targetAmount', 'currentAmount'];
+    const numericFields = ['amount', 'monthlyDeposit', 'currentBalance', 'targetAmount', 'currentAmount', 'openingBalance', 'closingBalance'];
     setSelectedMonthData({
       ...monthData,
       [section]: monthData[section].map((row) => (row.id === id ? { ...row, [field]: numericFields.includes(field) ? toNumber(value) : value } : row)),
@@ -1331,6 +1344,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
   function removeRow(section, id) {
     setSelectedMonthData({ ...monthData, [section]: monthData[section].filter((row) => row.id !== id) });
+  }
+
+  function addBankAccount() {
+    setSelectedMonthData({ ...monthData, bankAccounts: [...monthData.bankAccounts, { id: makeId('bank'), name: 'חשבון חדש', owner: 'משפחה', openingBalance: 0, closingBalance: 0 }] });
   }
 
   function addIncome() {
@@ -1553,6 +1570,9 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
   // Derived totals below power the dashboard cards, insights, charts, and warnings.
   const totalIncome = monthData.incomes.reduce((sum, item) => sum + toNumber(item.amount), 0);
+  const totalBankOpening = monthData.bankAccounts.reduce((sum, account) => sum + toNumber(account.openingBalance), 0);
+  const totalBankClosing = monthData.bankAccounts.reduce((sum, account) => sum + toNumber(account.closingBalance), 0);
+  const bankBalanceChange = totalBankClosing - totalBankOpening;
   const allCreditTransactions = useMemo(() => monthData.creditCards.flatMap((card) => card.transactions || []), [monthData.creditCards]);
   const totalCreditCards = allCreditTransactions.reduce((sum, item) => sum + toNumber(item.amount), 0);
   const totalManualExpenses = monthData.manualExpenses.reduce((sum, item) => sum + toNumber(item.amount), 0);
@@ -1567,7 +1587,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const monthlySavings = totalIncome - totalExpenses;
   const savingsRate = totalIncome ? (monthlySavings / totalIncome) * 100 : 0;
   const emergencyMonths = toNumber(monthData.emergencyFund) / (totalExpenses || 1);
-  const totalAssets = toNumber(monthData.emergencyFund) + monthData.savingsProducts.reduce((sum, item) => sum + toNumber(item.currentBalance), 0) + monthData.savingGoals.reduce((sum, item) => sum + toNumber(item.currentAmount), 0);
+  const totalAssets = totalBankClosing + toNumber(monthData.emergencyFund) + monthData.savingsProducts.reduce((sum, item) => sum + toNumber(item.currentBalance), 0) + monthData.savingGoals.reduce((sum, item) => sum + toNumber(item.currentAmount), 0);
+  const bankVsCalculatedCashFlow = bankBalanceChange - monthlySavings;
   const categoryTotals = useMemo(() => getCategoryTotals(allCreditTransactions), [allCreditTransactions]);
   const recurringTransactions = useMemo(() => detectRecurringTransactions(allCreditTransactions, months, selectedMonth), [allCreditTransactions, months, selectedMonth]);
   const monthlyCompare = useMemo(() => getMonthlyCompare(months, selectedMonth, comparePeriod), [months, selectedMonth, comparePeriod]);
@@ -1618,7 +1639,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   ].filter(Boolean);
 
   const monthlyStory = totalIncome
-    ? `במצב ${modeConfig.label}, החודש הוצאתם ${SHEKEL.format(totalExpenses)} שהם ${formatPercent((totalExpenses / totalIncome) * 100)} מההכנסה. יעד החיסכון למצב הזה הוא ${formatPercent(targetSavingsRate)}, והיתרה אחרי הכול היא ${SHEKEL.format(monthlySavings)}.`
+    ? `במצב ${modeConfig.label}, החודש הוצאתם ${SHEKEL.format(totalExpenses)} שהם ${formatPercent((totalExpenses / totalIncome) * 100)} מההכנסה. העו״ש השתנה ב־${SHEKEL.format(bankBalanceChange)}, והפער בין התזרים המחושב לעו״ש הוא ${SHEKEL.format(bankVsCalculatedCashFlow)}. יעד החיסכון למצב הזה הוא ${formatPercent(targetSavingsRate)}, והיתרה אחרי הכול היא ${SHEKEL.format(monthlySavings)}.`
     : `מצב ${modeConfig.label} פעיל. התחילו להזין הכנסות והוצאות כדי לקבל סיפור פיננסי חודשי מותאם.`;
 
   const monthlyCompareStory = monthlyCompare.hasPrevious
@@ -1780,8 +1801,9 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
             </div>
           </div>
 
-          <div className="dark-surface grid grid-cols-1 gap-4 border-t border-neutral-100 bg-white p-6 md:grid-cols-2 xl:grid-cols-7" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
+          <div className="dark-surface grid grid-cols-1 gap-4 border-t border-neutral-100 bg-white p-6 md:grid-cols-2 xl:grid-cols-4" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
             <StatCard title="סה״כ הכנסות" value={SHEKEL.format(totalIncome)} note="כל מקורות ההכנסה" tone="good" />
+            <StatCard title="עו״ש נוכחי" value={SHEKEL.format(totalBankClosing)} note={`שינוי החודש: ${SHEKEL.format(bankBalanceChange)}`} tone={totalBankClosing >= 0 ? 'good' : 'danger'} />
             <StatCard title="סה״כ הוצאות" value={SHEKEL.format(totalExpenses)} note={effectiveBudgetTarget ? `${formatPercent(budgetUsageRate)} מתוך יעד ${modeConfig.label}` : `${totalIncome ? formatPercent((totalExpenses / totalIncome) * 100) : '0%'} מההכנסה`} tone={(effectiveBudgetTarget && totalExpenses > effectiveBudgetTarget) || (totalIncome && totalExpenses > totalIncome) ? 'danger' : budgetUsageRate >= modeConfig.budgetWarningAt ? 'warn' : 'neutral'} />
             <StatCard title="סה״כ אשראי" value={SHEKEL.format(totalCreditCards)} note="מכרטיסי האשראי" />
             <StatCard title="עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note={includeSelfEmployed ? 'כלול בתזרים המשפחתי' : 'לא כלול בתזרים'} />
@@ -1904,6 +1926,43 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                 ) : null}
               </section>
             ) : null}
+          </>
+        ) : null}
+
+        {activeTab === 'bank' ? (
+          <>
+            <Section>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">עו״ש וחשבונות בנק</h2>
+                  <p className="mt-2 text-sm text-neutral-500">כאן מזינים יתרת פתיחה וסגירה לכל חשבון. בחודש חדש יתרת הסגירה של החודש הקודם הופכת אוטומטית ליתרת הפתיחה.</p>
+                </div>
+                <PrimaryButton theme={activeTheme} onClick={addBankAccount}>+ הוספת חשבון</PrimaryButton>
+              </div>
+
+              <div className="mt-7 grid gap-4 md:grid-cols-4">
+                <StatCard title="יתרת פתיחה" value={SHEKEL.format(totalBankOpening)} note="סך העו״ש בתחילת החודש" />
+                <StatCard title="יתרת סגירה" value={SHEKEL.format(totalBankClosing)} note="סך העו״ש עכשיו / סוף חודש" tone={totalBankClosing >= 0 ? 'good' : 'danger'} />
+                <StatCard title="שינוי בעו״ש" value={SHEKEL.format(bankBalanceChange)} note="סגירה פחות פתיחה" tone={bankBalanceChange >= 0 ? 'good' : 'warn'} />
+                <StatCard title="פער מול תזרים" value={SHEKEL.format(bankVsCalculatedCashFlow)} note="עו״ש פחות יתרה מחושבת" tone={Math.abs(bankVsCalculatedCashFlow) <= 50 ? 'good' : 'warn'} />
+              </div>
+
+              <div className="mt-7 grid gap-3">
+                {monthData.bankAccounts.map((account) => (
+                  <div key={account.id} className="grid gap-3 rounded-[24px] border border-neutral-200 p-4 md:grid-cols-[1.2fr_120px_160px_160px_120px_44px]">
+                    <LabeledField label="שם החשבון"><Field value={account.name} onChange={(event) => updateRow('bankAccounts', account.id, 'name', event.target.value)} placeholder="עו״ש משותף" /></LabeledField>
+                    <LabeledField label="שייך ל"><Field value={account.owner} onChange={(event) => updateRow('bankAccounts', account.id, 'owner', event.target.value)} placeholder="משפחה" /></LabeledField>
+                    <LabeledField label="יתרת פתיחה"><Field type="number" value={account.openingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'openingBalance', event.target.value)} /></LabeledField>
+                    <LabeledField label="יתרת סגירה"><Field type="number" value={account.closingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'closingBalance', event.target.value)} /></LabeledField>
+                    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm">
+                      <div className="text-xs font-semibold text-neutral-400">שינוי</div>
+                      <div className="mt-2 font-semibold text-neutral-900">{SHEKEL.format(toNumber(account.closingBalance) - toNumber(account.openingBalance))}</div>
+                    </div>
+                    <div className="flex items-end"><GhostButton onClick={() => removeRow('bankAccounts', account.id)} className="w-full px-0">×</GhostButton></div>
+                  </div>
+                ))}
+              </div>
+            </Section>
           </>
         ) : null}
 
