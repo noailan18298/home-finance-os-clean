@@ -81,59 +81,78 @@ const FINANCIAL_MODES = {
 };
 
 const EXPENSE_CATEGORIES = [
-  'משכנתא / שכירות',
-  'ארנונה',
-  'חשמל',
-  'מים',
-  'אינטרנט + סלולר',
+  'מזון וצריכה',
+  'מסעדות ובתי קפה',
+  'פנאי, בידור וספורט',
+  'תחבורה ורכבים',
+  'טיסות ותיירות',
+  'בריאות ורפואה',
+  'פארם וקוסמטיקה',
+  'אופנה והלבשה',
+  'העברת כספים',
+  'משיכת מזומן',
+  'ספרים ודפוס',
   'ביטוחים',
-  'סופר / מזון',
-  'מסעדות / וולט',
-  'תחבורה / דלק',
-  'בריאות',
-  'קניות',
-  'בידור / מנויים',
-  'חיסכון / השקעות',
-  'מס הכנסה',
-  'מע״מ',
-  'ביטוח לאומי',
+  'מיסים ותשלומים',
+  'דיור וחשבונות',
+  'חיסכון והשקעות',
   'הוצאות עסקיות',
+  'שונות',
   'אחר',
 ];
 
+const MAX_CATEGORY_MAP = {
+  'מזון וצריכה': 'מזון וצריכה',
+  'מסעדות ובתי קפה': 'מסעדות ובתי קפה',
+  'פנאי, בידור וספורט': 'פנאי, בידור וספורט',
+  'תחבורה ורכבים': 'תחבורה ורכבים',
+  'טיסות ותיירות': 'טיסות ותיירות',
+  'בריאות ורפואה': 'בריאות ורפואה',
+  'פארם וקוסמטיקה': 'פארם וקוסמטיקה',
+  'אופנה והלבשה': 'אופנה והלבשה',
+  'העברת כספים': 'העברת כספים',
+  'משיכת מזומן': 'משיכת מזומן',
+  'ספרים ודפוס': 'ספרים ודפוס',
+  'שונות': 'שונות',
+};
+
 const CATEGORY_BUDGETS = {
-  'סופר / מזון': 4000,
-  'מסעדות / וולט': 800,
-  'תחבורה / דלק': 1800,
-  קניות: 1200,
-  בריאות: 800,
-  'בידור / מנויים': 600,
+  'מזון וצריכה': 4000,
+  'מסעדות ובתי קפה': 800,
+  'תחבורה ורכבים': 1800,
+  'אופנה והלבשה': 1200,
+  'בריאות ורפואה': 800,
+  'פארם וקוסמטיקה': 700,
+  'פנאי, בידור וספורט': 600,
+  'טיסות ותיירות': 1500,
+  'העברת כספים': 1000,
+  'שונות': 1000,
   אחר: 1000,
 };
 
 // Merchant keywords are intentionally simple and editable: user corrections are saved in learnedRules.
 // First-pass categorization rules for imported card transactions. User edits later become learnedRules.
 const MERCHANT_CATEGORY_MAP = {
-  wolt: 'מסעדות / וולט',
-  tenbis: 'מסעדות / וולט',
-  shufersal: 'סופר / מזון',
-  שופרסל: 'סופר / מזון',
-  רמי: 'סופר / מזון',
-  victory: 'סופר / מזון',
-  ויקטורי: 'סופר / מזון',
-  yellow: 'תחבורה / דלק',
-  דור: 'תחבורה / דלק',
-  פז: 'תחבורה / דלק',
-  fox: 'קניות',
-  zara: 'קניות',
-  superpharm: 'בריאות',
-  סופרפארם: 'בריאות',
-  כללית: 'בריאות',
-  netflix: 'בידור / מנויים',
-  spotify: 'בידור / מנויים',
-  icloud: 'בידור / מנויים',
-  google: 'בידור / מנויים',
-  apple: 'בידור / מנויים',
+  wolt: 'מסעדות ובתי קפה',
+  tenbis: 'מסעדות ובתי קפה',
+  shufersal: 'מזון וצריכה',
+  שופרסל: 'מזון וצריכה',
+  רמי: 'מזון וצריכה',
+  victory: 'מזון וצריכה',
+  ויקטורי: 'מזון וצריכה',
+  yellow: 'תחבורה ורכבים',
+  דור: 'תחבורה ורכבים',
+  פז: 'תחבורה ורכבים',
+  fox: 'אופנה והלבשה',
+  zara: 'אופנה והלבשה',
+  superpharm: 'פארם וקוסמטיקה',
+  סופרפארם: 'פארם וקוסמטיקה',
+  כללית: 'בריאות ורפואה',
+  netflix: 'פנאי, בידור וספורט',
+  spotify: 'פנאי, בידור וספורט',
+  icloud: 'פנאי, בידור וספורט',
+  google: 'פנאי, בידור וספורט',
+  apple: 'פנאי, בידור וספורט',
 };
 
 const RECURRING_KEYWORDS = [
@@ -201,8 +220,37 @@ function getCurrentMonthKey() {
 // Normalizes currency-like values from manual inputs and imported bank/card files into numbers.
 function toNumber(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-  const number = Number(String(value || '').replace(/[₪,]/g, '').replace(/\s/g, '').trim());
-  return Number.isFinite(number) ? number : 0;
+  let raw = String(value || '').trim();
+  if (!raw) return 0;
+  const isNegative = raw.includes('-') || (raw.includes('(') && raw.includes(')'));
+  raw = raw
+    .split('₪').join('')
+    .split('(').join('')
+    .split(')').join('')
+    .split(' ').join('')
+    .split(String.fromCharCode(160)).join('')
+    .split('−').join('-')
+    .split('–').join('-')
+    .split('—').join('-')
+    .trim();
+
+  if (raw.includes(',') && raw.includes('.')) {
+    const lastComma = raw.lastIndexOf(',');
+    const lastDot = raw.lastIndexOf('.');
+    raw = lastComma > lastDot ? raw.split('.').join('').replace(',', '.') : raw.split(',').join('');
+  } else if (raw.includes(',')) {
+    const parts = raw.split(',');
+    raw = parts[parts.length - 1]?.length === 2 ? raw.replace(',', '.') : raw.split(',').join('');
+  }
+
+  let numeric = '';
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index];
+    if ((char >= '0' && char <= '9') || char === '.' || char === '-') numeric += char;
+  }
+  const number = Number(numeric);
+  if (!Number.isFinite(number)) return 0;
+  return isNegative ? -Math.abs(number) : number;
 }
 
 function formatPercent(value) {
@@ -236,7 +284,12 @@ function normalizeMerchantName(merchant = '') {
 }
 
 // Category detection first uses user-learned merchant rules, then falls back to the built-in merchant map.
-function detectCategory(merchant = '', learnedRules = {}) {
+function detectCategory(merchant = '', learnedRules = {}, importedCategory = '') {
+  const normalizedImportedCategory = normalizeMerchantName(importedCategory);
+  for (const [maxCategory, appCategory] of Object.entries(MAX_CATEGORY_MAP)) {
+    if (normalizedImportedCategory && normalizedImportedCategory.includes(normalizeMerchantName(maxCategory))) return appCategory;
+  }
+
   const normalized = normalizeMerchantName(merchant);
   for (const [key, category] of Object.entries(learnedRules || {})) {
     if (normalized.includes(normalizeMerchantName(key))) return category;
@@ -283,13 +336,15 @@ function findHeaderIndex(headers, keywords, fallbackIndex = -1) {
 // When the amount column is not clearly named, pick the column with the most numeric-looking values.
 // Finds the amount column by header names first, then falls back to the most numeric-looking column.
 function findAmountIndex(headers, sampleRows) {
-  const headerIndex = findHeaderIndex(headers, ['amount', 'סכום', 'חיוב', 'חובה', 'עסקה', 'debit', 'charge', 'total'], -1);
+  const headerIndex = findHeaderIndex(headers, ['amount', 'סכום', 'חיוב', 'חובה', 'זכות', 'עסקה', 'debit', 'credit', 'charge', 'total', 'נטו', 'לתשלום'], -1);
   if (headerIndex >= 0) return headerIndex;
-  const rowScores = headers.map((_, index) => {
-    const numericCount = sampleRows.slice(0, 8).filter((row) => Math.abs(toNumber(row[index])) > 0).length;
-    return { index, numericCount };
+  const width = Math.max(headers.length, ...sampleRows.map((row) => row.length));
+  const rowScores = Array.from({ length: width }).map((_, index) => {
+    const numericCount = sampleRows.slice(0, 20).filter((row) => Math.abs(toNumber(row[index])) > 0).length;
+    const numericSum = sampleRows.slice(0, 20).reduce((sum, row) => sum + Math.abs(toNumber(row[index])), 0);
+    return { index, numericCount, numericSum };
   });
-  rowScores.sort((a, b) => b.numericCount - a.numericCount);
+  rowScores.sort((a, b) => (b.numericCount - a.numericCount) || (b.numericSum - a.numericSum));
   return rowScores[0]?.numericCount > 0 ? rowScores[0].index : 2;
 }
 
@@ -300,29 +355,40 @@ function normalizeImportedRows(rows, learnedRules = {}) {
   const cleanedRows = rows.map((row) => (Array.isArray(row) ? row.map((cell) => String(cell || '').trim()) : [])).filter((row) => row.some(Boolean));
   if (!cleanedRows.length) return [];
 
-  const headerCandidates = cleanedRows.slice(0, 8);
+  const headerCandidates = cleanedRows.slice(0, 25);
   const headerRowIndex = headerCandidates.findIndex((row) => {
     const joined = row.join(' ').toLowerCase();
-    return ['date', 'תאריך', 'amount', 'סכום', 'merchant', 'בית עסק', 'שם בית עסק', 'תיאור', 'פירוט', 'חיוב'].some((word) => joined.includes(word));
+    return ['date', 'תאריך', 'amount', 'סכום', 'merchant', 'בית עסק', 'שם בית העסק', 'תיאור', 'פירוט', 'חיוב', 'זכות', 'חובה'].some((word) => joined.includes(word));
   });
   const hasHeader = headerRowIndex >= 0;
-  const headers = hasHeader ? cleanedRows[headerRowIndex] : [];
+  const headers = hasHeader ? cleanedRows[headerRowIndex] : cleanedRows[0] || [];
   const dataRows = hasHeader ? cleanedRows.slice(headerRowIndex + 1) : cleanedRows;
-  const sampleRows = dataRows.slice(0, 10);
+  const sampleRows = dataRows.slice(0, 30);
 
-  const dateIndex = hasHeader ? findHeaderIndex(headers, ['date', 'תאריך', 'תאריך עסקה', 'תאריך רכישה'], 0) : 0;
-  const merchantIndex = hasHeader ? findHeaderIndex(headers, ['merchant', 'בית עסק', 'שם בית עסק', 'ספק', 'תיאור', 'פירוט', 'שם'], 1) : 1;
-  const amountIndex = hasHeader ? findAmountIndex(headers, sampleRows) : -1;
+  const dateIndex = hasHeader ? findHeaderIndex(headers, ['date', 'תאריך', 'תאריך עסקה', 'תאריך רכישה', 'תאריך חיוב'], 0) : 0;
+  const merchantIndex = hasHeader ? findHeaderIndex(headers, ['merchant', 'בית עסק', 'שם בית העסק', 'שם בית עסק', 'ספק', 'תיאור', 'פירוט', 'שם', 'פרטים'], 1) : 1;
+  const importedCategoryIndex = hasHeader ? findHeaderIndex(headers, ['קטגוריה', 'category'], -1) : -1;
+  const amountIndex = hasHeader ? findHeaderIndex(headers, ['סכום חיוב', 'amount charged', 'חיוב', 'סכום', 'חובה', 'זכות', 'amount', 'charge', 'total'], -1) : findAmountIndex(headers, sampleRows);
+  const finalAmountIndex = amountIndex >= 0 ? amountIndex : findAmountIndex(headers, sampleRows);
 
   return dataRows
     .map((row) => {
-      const amountCell = amountIndex >= 0 ? row[amountIndex] : [...row].reverse().find((cell) => Math.abs(toNumber(cell)) > 0);
+      const amountCell = finalAmountIndex >= 0 ? row[finalAmountIndex] : [...row].reverse().find((cell) => Math.abs(toNumber(cell)) > 0);
       const amount = Math.abs(toNumber(amountCell));
-      const date = row[dateIndex] || '';
-      const merchant = row[merchantIndex] || row.find((cell, index) => index !== dateIndex && index !== amountIndex && !toNumber(cell)) || 'עסקה';
-      return { id: makeId('tx'), date, merchant, amount, category: detectCategory(merchant, learnedRules) };
+      const date = row[dateIndex] || row.find((cell) => String(cell || '').includes('/')) || row.find((cell) => String(cell || '').includes('-')) || '';
+      const merchant = row[merchantIndex] || row.find((cell, index) => index !== dateIndex && index !== finalAmountIndex && String(cell || '').trim() && Math.abs(toNumber(cell)) === 0) || 'עסקה';
+      const importedCategory = importedCategoryIndex >= 0 ? row[importedCategoryIndex] : '';
+      const normalizedMerchant = normalizeMerchantName(merchant);
+      const isSummaryRow = normalizedMerchant.includes('סך הכל') || normalizedMerchant.includes('total') || normalizedMerchant.includes('סהכ');
+      return {
+        id: makeId('tx'),
+        date,
+        merchant,
+        amount,
+        category: detectCategory(merchant, learnedRules, importedCategory),
+      };
     })
-    .filter((transaction) => transaction.amount > 0 && transaction.merchant !== 'עסקה');
+    .filter((transaction) => transaction.amount > 0 && normalizeMerchantName(transaction.merchant) !== normalizeMerchantName('עסקה') && !normalizeMerchantName(transaction.merchant).includes('סך הכל'));
 }
 
 function parseCsvText(text, learnedRules = {}) {
@@ -337,10 +403,133 @@ function parseCsvText(text, learnedRules = {}) {
 // Reads the first sheet from an uploaded Excel file and sends it through the same transaction normalizer as CSV.
 function parseExcelArrayBuffer(buffer, learnedRules = {}) {
   const workbook = XLSX.read(buffer, { type: 'array' });
+  const allTransactions = workbook.SheetNames.flatMap((sheetName) => {
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: false, defval: '' });
+    return normalizeImportedRows(rows, learnedRules).map((transaction) => ({
+      ...transaction,
+      sourceSheet: sheetName,
+    }));
+  });
+
+  const seen = new Set();
+  return allTransactions.filter((transaction) => {
+    const key = [transaction.date, normalizeMerchantName(transaction.merchant), transaction.amount, transaction.sourceSheet].join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function normalizeIncomeRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  const cleanedRows = rows.map((row) => (Array.isArray(row) ? row.map((cell) => String(cell || '').trim()) : [])).filter((row) => row.some(Boolean));
+  if (!cleanedRows.length) return [];
+
+  const headerCandidates = cleanedRows.slice(0, 15);
+  const headerRowIndex = headerCandidates.findIndex((row) => {
+    const joined = row.join(' ').toLowerCase();
+    return ['income', 'salary', 'net', 'amount', 'הכנסה', 'שכר', 'נטו', 'סכום', 'שם', 'לתשלום', 'זכות'].some((word) => joined.includes(word));
+  });
+  const hasHeader = headerRowIndex >= 0;
+  const headers = hasHeader ? cleanedRows[headerRowIndex] : cleanedRows[0] || [];
+  const dataRows = hasHeader ? cleanedRows.slice(headerRowIndex + 1) : cleanedRows;
+  const sampleRows = dataRows.slice(0, 25);
+
+  const nameIndex = hasHeader ? findHeaderIndex(headers, ['name', 'שם', 'עובד', 'מקור', 'תיאור', 'פירוט', 'income', 'salary', 'הכנסה', 'שכר', 'מעסיק'], 0) : 0;
+  const amountIndex = findAmountIndex(headers, sampleRows);
+
+  return dataRows
+    .map((row) => {
+      const amountCell = amountIndex >= 0 ? row[amountIndex] : [...row].reverse().find((cell) => Math.abs(toNumber(cell)) > 0);
+      const amount = Math.abs(toNumber(amountCell));
+      const name = row[nameIndex] || row.find((cell, index) => index !== amountIndex && String(cell || '').trim() && Math.abs(toNumber(cell)) === 0) || 'הכנסה מיובאת';
+      return { id: makeId('income'), name, amount };
+    })
+    .filter((income) => income.amount > 0);
+}
+
+function parseIncomeCsvText(text) {
+  const carriageReturn = String.fromCharCode(13);
+  const lineFeed = String.fromCharCode(10);
+  const normalizedText = String(text || '').split(carriageReturn).join('');
+  const rawLines = normalizedText.split(lineFeed);
+  const lines = rawLines.map((line) => line.trim()).filter(Boolean);
+  return normalizeIncomeRows(lines.map((line) => splitCsvLine(line)));
+}
+
+function parseIncomeExcelArrayBuffer(buffer) {
+  const workbook = XLSX.read(buffer, { type: 'array' });
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) return [];
   const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { header: 1, raw: false, defval: '' });
-  return normalizeImportedRows(rows, learnedRules);
+  return normalizeIncomeRows(rows);
+}
+
+function normalizeLooseText(text) {
+  return String(text || '').split(String.fromCharCode(10)).join(' ').split(String.fromCharCode(13)).join(' ').split(String.fromCharCode(9)).join(' ').split('  ').join(' ').trim();
+}
+
+function extractLooseTextFromPdfArrayBuffer(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.slice(index, index + chunkSize));
+  }
+
+  const textParts = [];
+  let searchFrom = 0;
+  while (searchFrom < binary.length) {
+    const markerIndex = binary.indexOf(') Tj', searchFrom);
+    if (markerIndex < 0) break;
+    const openIndex = binary.lastIndexOf('(', markerIndex);
+    if (openIndex >= 0 && markerIndex > openIndex) textParts.push(binary.slice(openIndex + 1, markerIndex));
+    searchFrom = markerIndex + 4;
+  }
+
+  const extracted = normalizeLooseText(textParts.join(' '));
+  return extracted || normalizeLooseText(binary.slice(0, 25000));
+}
+
+function extractFirstMoneyValueNear(text, keyword) {
+  const source = normalizeLooseText(text);
+  const keywordIndex = source.indexOf(keyword);
+  if (keywordIndex < 0) return 0;
+  const windowText = source.slice(keywordIndex, keywordIndex + 180);
+  let current = '';
+  const values = [];
+  for (let index = 0; index < windowText.length; index += 1) {
+    const char = windowText[index];
+    const isDigit = char >= '0' && char <= '9';
+    if (isDigit || char === ',' || char === '.') current += char;
+    else if (current) {
+      const value = toNumber(current);
+      if (value > 1000) values.push(value);
+      current = '';
+    }
+  }
+  if (current) {
+    const value = toNumber(current);
+    if (value > 1000) values.push(value);
+  }
+  return values[0] || 0;
+}
+
+function extractNetSalaryFromPdfText(text) {
+  const keywords = ['נטו לתשלום', 'לתשלום בבנק', 'סהכ לתשלום', 'סה״כ לתשלום', 'שכר נטו', 'נטו'];
+  for (const keyword of keywords) {
+    const value = extractFirstMoneyValueNear(text, keyword);
+    if (value > 1000) return value;
+  }
+  return 0;
+}
+
+async function parseIncomePdfFile(file) {
+  const buffer = await file.arrayBuffer();
+  const text = extractLooseTextFromPdfArrayBuffer(buffer);
+  const netSalary = extractNetSalaryFromPdfText(text);
+  if (!netSalary) return [];
+  return [{ id: makeId('income'), name: `נטו מתלוש ${file.name}`, amount: netSalary }];
 }
 
 function getCategoryTotals(transactions) {
@@ -795,14 +984,14 @@ function runSmokeTests() {
   console.assert(APP_BUILD_MARKER === 'finance-dashboard-build-v14', 'build marker failed');
   console.assert(getPublicEnv('THIS_ENV_SHOULD_NOT_EXIST') === '', 'safe env fallback failed');
   console.assert(toNumber('₪1,250') === 1250, 'currency parsing failed');
-  console.assert(detectCategory('Wolt TLV') === 'מסעדות / וולט', 'wolt category failed');
+  console.assert(detectCategory('Wolt TLV') === 'מסעדות ובתי קפה', 'wolt category failed');
   console.assert(detectCategory('My Shop', { shop: 'קניות' }) === 'קניות', 'learned rule failed');
   console.assert(splitCsvLine('a,b,c').length === 3, 'csv split failed');
   console.assert(parseCsvText(['date,merchant,amount', '2026-01-01,Wolt,55'].join(String.fromCharCode(10))).length === 1, 'csv parse failed');
   console.assert(parseCsvText(['date,merchant,amount', '2026-01-01,Wolt,55'].join(String.fromCharCode(13) + String.fromCharCode(10))).length === 1, 'csv CRLF parse failed');
   console.assert(splitCsvLine('"a,b",c').length === 2, 'quoted csv parsing failed');
   console.assert(getCategoryTotals([{ category: 'קניות', amount: 10 }, { category: 'קניות', amount: 20 }]).קניות === 30, 'category totals failed');
-  console.assert(buildRealInsights([{ merchant: 'Wolt', category: 'מסעדות / וולט', amount: 900 }], [], 0, 'Survival').some((insight) => insight.includes('Survival')), 'real budget insight failed');
+  console.assert(buildRealInsights([{ merchant: 'Wolt', category: 'מסעדות ובתי קפה', amount: 900 }], [], 0, 'Survival').some((insight) => insight.includes('Survival')), 'real budget insight failed');
   console.assert(getFinancialModeConfig('Growth').savingsTarget === 25, 'financial mode config failed');
   console.assert(detectRecurringTransactions([{ merchant: 'Netflix', amount: 50 }]).length === 1, 'recurring detection failed');
   console.assert(normalizeMonthData({}).creditCards.length === 2, 'month normalizer failed');
@@ -1170,6 +1359,36 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     setSelectedMonthData({ ...monthData, attachedDocuments: (monthData.attachedDocuments || []).filter((document) => document.id !== documentId) });
   }
 
+  async function importIncomeFile(file) {
+    try {
+      const lower = file.name.toLowerCase();
+      let importedIncomes = [];
+      if (lower.endsWith('.csv')) importedIncomes = parseIncomeCsvText(await file.text());
+      else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) importedIncomes = parseIncomeExcelArrayBuffer(await file.arrayBuffer());
+      else if (lower.endsWith('.pdf')) importedIncomes = await parseIncomePdfFile(file);
+      else {
+        alert('להכנסות אפשר להעלות PDF תלוש, CSV או Excel.');
+        return;
+      }
+
+      if (!importedIncomes.length) {
+        setCloudStatus('הקובץ נקלט, אבל לא זוהתה הכנסה. אם זה PDF סרוק או תלוש דחוס, צריך להזין נטו ידנית.');
+        alert('הקובץ נקלט, אבל לא זוהתה הכנסה. אם זה PDF סרוק או תלוש דחוס, צריך להזין נטו ידנית.');
+        return;
+      }
+
+      setSelectedMonthData({
+        ...monthData,
+        incomes: [...monthData.incomes, ...importedIncomes],
+        lastSalaryImport: file.name,
+      });
+      setCloudStatus(`יובאו ${importedIncomes.length} שורות הכנסה.`);
+    } catch (error) {
+      setCloudStatus(`שגיאה בייבוא הכנסות: ${error?.message || 'לא ידוע'}`);
+      alert(`שגיאה בייבוא הכנסות: ${error?.message || 'לא ידוע'}`);
+    }
+  }
+
   function exportBackup() {
     if (typeof document === 'undefined' || typeof URL === 'undefined') return;
     const backup = { version: 1, exportedAt: new Date().toISOString(), months, learnedRules };
@@ -1368,7 +1587,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   // Notifications are derived from current totals and global notification preferences.
   const activeNotifications = [
     preferences.notifications?.budget80 && budgetUsageRate >= modeConfig.budgetWarningAt ? `הגעתם ל־${modeConfig.budgetWarningAt}% מהתקציב לפי מצב ${modeConfig.label}.` : null,
-    preferences.notifications?.woltSpike && (categoryTotals['מסעדות / וולט'] || 0) > (CATEGORY_BUDGETS['מסעדות / וולט'] || 0) ? 'וולט חרג מהתקציב שהוגדר.' : null,
+    preferences.notifications?.woltSpike && (categoryTotals['מסעדות ובתי קפה'] || 0) > (CATEGORY_BUDGETS['מסעדות ובתי קפה'] || 0) ? 'מסעדות ובתי קפה חרגו מהתקציב שהוגדר.' : null,
     preferences.notifications?.savingsDrop && savingsRate < targetSavingsRate ? 'שיעור החיסכון נמוך מהיעד שהוגדר.' : null,
   ].filter(Boolean);
 
@@ -1791,7 +2010,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         {activeTab === 'income' ? (
           <section className="grid gap-6 lg:grid-cols-2">
             <Section>
-              <div className="flex items-center justify-between gap-4"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">הכנסות</h2><p className="mt-2 text-sm text-neutral-500">אפשר לצרף תלוש PDF לתיעוד החודש. את סכום הנטו מזינים ידנית כדי שהמערכת תישאר 100% אמינה וללא OCR דמו.</p></div><div className="flex gap-3"><label className="cursor-pointer rounded-xl bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800">צירוף תלוש לחודש<input type="file" accept="application/pdf" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) attachSalarySlipFile(file); }} /></label><PrimaryButton theme={activeTheme} onClick={addIncome}>+ הוספה</PrimaryButton></div></div>
+              <div className="flex items-center justify-between gap-4"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">הכנסות</h2><p className="mt-2 text-sm text-neutral-500">אפשר לייבא הכנסות מ־PDF תלוש, CSV או Excel. אם ה־PDF טקסטואלי, המערכת תנסה לזהות נטו לתשלום אוטומטית.</p></div><div className="flex flex-wrap gap-3"><label className="cursor-pointer rounded-xl bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800">ייבוא הכנסות PDF/CSV/Excel<input type="file" accept="application/pdf,.csv,.xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importIncomeFile(file); }} /></label><label className="cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-white">צירוף תלוש PDF<input type="file" accept="application/pdf" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) attachSalarySlipFile(file); }} /></label><PrimaryButton theme={activeTheme} onClick={addIncome}>+ הוספה</PrimaryButton></div></div>
               {(monthData.attachedDocuments || []).length ? <div className="mt-4 space-y-2 rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-600">{monthData.attachedDocuments.map((document) => <div key={document.id} className="flex items-center justify-between gap-3"><span>תלוש מצורף: <strong>{document.name}</strong></span><button type="button" onClick={() => removeAttachedDocument(document.id)} className="font-semibold text-neutral-700">הסרה</button></div>)}</div> : null}
               <div className="mt-6 space-y-3">{monthData.incomes.map((income) => <InputRow key={income.id}><Field value={income.name} onChange={(event) => updateRow('incomes', income.id, 'name', event.target.value)} /><Field type="number" value={income.amount} onChange={(event) => updateRow('incomes', income.id, 'amount', event.target.value)} /><GhostButton onClick={() => removeRow('incomes', income.id)} className="px-0">×</GhostButton></InputRow>)}</div>
             </Section>
