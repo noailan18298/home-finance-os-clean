@@ -1605,21 +1605,65 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                         className="mt-2 w-full"
                       />
                     </label>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <label className="text-sm font-semibold text-neutral-600">
-                        משתמש/ת ראשון/ה
-                        <Field
-                          value={monthData.preferences.primaryPerson}
-                          onChange={(event) => updatePreference('primaryPerson', event.target.value)}
-                          className="mt-2 w-full"
-                        />
-                      </label>
-                      <label className="text-sm font-semibold text-neutral-600">
-                        משתמש/ת שני/ה
-                        <Field
-                          value={monthData.preferences.secondaryPerson}
-                          onChange={(event) => updatePreference('secondaryPerson', event.target.value)}
-                          className="mt-2 w-full"
+                    <div className="mt-3 flex flex-wrap gap-3 border-t border-neutral-200 pt-5">
+                      <PrimaryButton
+                        theme={activeTheme}
+                        onClick={async () => {
+                          try {
+                            setCloudStatus('שומר...');
+                            await saveFinanceStateToSupabase(months, learnedRules, householdProfileId, supabaseConfig);
+                            setCloudStatus('נשמר בענן');
+                          } catch (error) {
+                            setCloudStatus(`שגיאה בשמירה: ${error?.message || 'לא ידוע'}`);
+                          }
+                        }}
+                      >
+<div className="grid gap-3 md:grid-cols-2">
+  <label className="text-sm font-semibold text-neutral-600">
+    משתמש/ת ראשון/ה
+    <Field
+      value={monthData.preferences.primaryPerson}
+      onChange={(event) => updatePreference('primaryPerson', event.target.value)}
+      className="mt-2 w-full"
+    />
+  </label>
+  <label className="text-sm font-semibold text-neutral-600">
+    משתמש/ת שני/ה
+    <Field
+      value={monthData.preferences.secondaryPerson}
+      onChange={(event) => updatePreference('secondaryPerson', event.target.value)}
+      className="mt-2 w-full"
+    />
+  </label>
+</div>
+
+<div className="mt-6 flex flex-wrap gap-3 border-t border-neutral-200 pt-5">
+  <PrimaryButton
+    theme={activeTheme}
+    onClick={async () => {
+      try {
+        setCloudStatus('שומר...');
+        await saveFinanceStateToSupabase(
+          months,
+          learnedRules,
+          householdProfileId,
+          supabaseConfig
+        );
+        setCloudStatus('נשמר בענן');
+      } catch (error) {
+        setCloudStatus(
+          `שגיאה בשמירה: ${error?.message || 'לא ידוע'}`
+        );
+      }
+    }}
+  >
+    שמור הגדרות בענן
+  </PrimaryButton>
+
+  <GhostButton onClick={() => window.location.reload()}>
+    רענן חיבור
+  </GhostButton>
+</div>
                         />
                       </label>
                     </div>
@@ -1811,25 +1855,6 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   <p className="mt-4 text-xs leading-6 text-neutral-500">
                     Cloud Sync עובד רק אם Supabase מוגדר. Local Only שומר בדפדפן. ייצוא/ייבוא JSON עובד תמיד.
                   </p>
-                  <div className="mt-6 flex flex-wrap gap-3 border-t border-neutral-200 pt-5">
-                    <PrimaryButton
-                      theme={activeTheme}
-                      onClick={async () => {
-                        try {
-                          setCloudStatus('שומר...');
-                          await saveFinanceStateToSupabase(months, learnedRules, householdProfileId, supabaseConfig);
-                          setCloudStatus('נשמר בענן');
-                        } catch (error) {
-                          setCloudStatus(`שגיאה בשמירה: ${error?.message || 'לא ידוע'}`);
-                        }
-                      }}
-                    >
-                      שמור הגדרות בענן
-                    </PrimaryButton>
-                    <GhostButton onClick={() => window.location.reload()}>
-                      רענן חיבור
-                    </GhostButton>
-                  </div>
                 </div>
               </div>
             </Section>
