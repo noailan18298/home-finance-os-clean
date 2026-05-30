@@ -25,7 +25,6 @@ const COMPARE_PERIODS = [
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
-  { id: 'bank', label: 'עו״ש' },
   { id: 'income', label: 'הכנסות' },
   { id: 'credit', label: 'הוצאות' },
   { id: 'savings', label: 'חיסכון' },
@@ -392,6 +391,80 @@ function normalizeImportedRows(rows, learnedRules = {}) {
     .filter((transaction) => transaction.amount > 0 && normalizeMerchantName(transaction.merchant) !== normalizeMerchantName('עסקה') && !normalizeMerchantName(transaction.merchant).includes('סך הכל'));
 }
 
+function normalizeBankRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  const cleanedRows = rows.map((row) => (Array.isArray(row) ? row.map((cell) => String(cell || '').trim()) : [])).filter((row) => row.some(Boolean));
+  if (!cleanedRows.length) return [];
+
+  const headerCandidates = cleanedRows.slice(0, 25);
+  const headerRowIndex = headerCandidates.findIndex((row) => {
+    const joined = row.join(' ').toLowerCase();
+    return ['תאריך', 'date', 'תיאור', 'פירוט', 'אסמכתא', 'חובה', 'זכות', 'יתרה', 'balance', 'debit', 'credit'].some((word) => joined.includes(word));
+  });
+  const hasHeader = headerRowIndex >= 0;
+  const headers = hasHeader ? cleanedRows[headerRowIndex] : cleanedRows[0] || [];
+  const dataRows = hasHeader ? cleanedRows.slice(headerRowIndex + 1) : cleanedRows;
+  const sampleRows = dataRows.slice(0, 40);
+
+  const dateIndex = hasHeader ? findHeaderIndex(headers, ['תאריך', 'date', 'תאריך פעולה', 'תאריך ערך'], 0) : 0;
+  const descriptionIndex = hasHeader ? findHeaderIndex(headers, ['תיאור', 'פירוט', 'פרטים', 'שם', 'פעולה', 'description'], 1) : 1;
+  const debitIndex = hasHeader ? findHeaderIndex(headers, ['חובה', 'debit', 'חיוב', 'משיכה'], -1) : -1;
+  const creditIndex = hasHeader ? findHeaderIndex(headers, ['זכות', 'credit', 'הפקדה'], -1) : -1;
+  const balanceIndex = hasHeader ? findHeaderIndex(headers, ['יתרה', 'balance', 'יתרה בשח', 'יתרה נוכחית'], -1) : -1;
+  const amountIndex = debitIndex < 0 && creditIndex < 0 ? findAmountIndex(headers, sampleRows) : -1;
+
+  return dataRows
+    .map((row) => {
+      const debit = debitIndex >= 0 ? Math.abs(toNumber(row[debitIndex])) : 0;
+      const credit = creditIndex >= 0 ? Math.abs(toNumber(row[creditIndex])) : 0;
+      const fallbackAmount = amountIndex >= 0 ? toNumber(row[amountIndex]) : 0;
+      const amount = credit || debit ? credit - debit : fallbackAmount;
+      const balance = balanceIndex >= 0 ? toNumber(row[balanceIndex]) : 0;
+      const description = row[descriptionIndex] || row.find((cell, index) => index !== dateIndex && index !== debitIndex && index !== creditIndex && index !== balanceIndex && String(cell || '').trim() && Math.abs(toNumber(cell)) === 0) || 'תנועה בבנק';
+      const date = row[dateIndex] || row.find((cell) => String(cell || '').includes('/') || String(cell || '').includes('-')) || '';
+      const normalizedDescription = normalizeMerchantName(description);
+      const isSummaryRow = normalizedDescription.includes('סך הכל') || normalizedDescription.includes('סהכ') || normalizedDescription.includes('total');
+      return { id: makeId('banktx'), date, description, amount, debit, credit, balance };
+    })
+    .filter((transaction) => Math.abs(toNumber(transaction.amount)) > 0 && !normalizeMerchantName(transaction.description).includes('סך הכל'));
+}
+
+function parseBankCsvText(text) {
+  const carriageReturn = String.fromCharCode(13);
+  const lineFeed = String.fromCharCode(10);
+  const normalizedText = String(text || '').split(carriageReturn).join('');
+  const rawLines = normalizedText.split(lineFeed);
+  const lines = rawLines.map((line) => line.trim()).filter(Boolean);
+  return normalizeBankRows(lines.map((line) => splitCsvLine(line)));
+}
+
+function parseBankExcelArrayBuffer(buffer) {
+  const workbook = XLSX.read(buffer, { type: 'array' });
+  return workbook.SheetNames.flatMap((sheetName) => {
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: false, defval: '' });
+    return normalizeBankRows(rows).map((transaction) => ({ ...transaction, sourceSheet: sheetName }));
+  });
+}
+
+function getBankBalancesFromTransactions(transactions, fallbackOpening = 0, fallbackClosing = 0) {
+  const rowsWithBalance = (transactions || []).filter((transaction) => Math.abs(toNumber(transaction.balance)) > 0);
+  if (rowsWithBalance.length >= 2) {
+    return {
+      openingBalance: toNumber(rowsWithBalance[0].balance) - toNumber(rowsWithBalance[0].amount),
+      closingBalance: toNumber(rowsWithBalance[rowsWithBalance.length - 1].balance),
+    };
+  }
+  if (rowsWithBalance.length === 1) {
+    const closingBalance = toNumber(rowsWithBalance[0].balance);
+    const movement = (transactions || []).reduce((sum, transaction) => sum + toNumber(transaction.amount), 0);
+    return { openingBalance: closingBalance - movement, closingBalance };
+  }
+  const movement = (transactions || []).reduce((sum, transaction) => sum + toNumber(transaction.amount), 0);
+  const openingBalance = toNumber(fallbackOpening);
+  const closingBalance = fallbackClosing ? toNumber(fallbackClosing) : openingBalance + movement;
+  return { openingBalance, closingBalance };
+}
+
 function parseCsvText(text, learnedRules = {}) {
   const carriageReturn = String.fromCharCode(13);
   const lineFeed = String.fromCharCode(10);
@@ -634,6 +707,8 @@ function createMonthFromPrevious(previousMonthData) {
       id: makeId('bank'),
       openingBalance: toNumber(account.closingBalance),
       closingBalance: toNumber(account.closingBalance),
+      importedFile: '',
+      transactions: [],
     })),
     savingsProducts: previous.savingsProducts.map((product) => ({
       ...product,
@@ -851,9 +926,9 @@ function createDefaultMonth() {
     lastSalaryImport: '',
     attachedDocuments: [],
     bankAccounts: [
-      { id: makeId('bank'), name: 'עו״ש משותף', owner: 'משפחה', openingBalance: 0, closingBalance: 0 },
-      { id: makeId('bank'), name: 'עו״ש נועה', owner: 'נועה', openingBalance: 0, closingBalance: 0 },
-      { id: makeId('bank'), name: 'עו״ש אורן', owner: 'אורן', openingBalance: 0, closingBalance: 0 },
+      { id: makeId('bank'), name: 'עו״ש משותף', owner: 'משפחה', openingBalance: 0, closingBalance: 0, importedFile: '', transactions: [] },
+      { id: makeId('bank'), name: 'עו״ש נועה', owner: 'נועה', openingBalance: 0, closingBalance: 0, importedFile: '', transactions: [] },
+      { id: makeId('bank'), name: 'עו״ש אורן', owner: 'אורן', openingBalance: 0, closingBalance: 0, importedFile: '', transactions: [] },
     ],
     incomes: [
       { id: makeId('income'), name: 'משכורת נועה', amount: 0 },
@@ -905,7 +980,7 @@ function normalizeMonthData(data) {
   return {
     ...base,
     ...safe,
-    bankAccounts: Array.isArray(safe.bankAccounts) ? safe.bankAccounts : base.bankAccounts,
+    bankAccounts: (Array.isArray(safe.bankAccounts) ? safe.bankAccounts : base.bankAccounts).map((account) => ({ importedFile: '', transactions: [], ...account })),
     incomes: Array.isArray(safe.incomes) ? safe.incomes : base.incomes,
     manualExpenses: Array.isArray(safe.manualExpenses) ? safe.manualExpenses : base.manualExpenses,
     savingsProducts: Array.isArray(safe.savingsProducts) ? safe.savingsProducts : base.savingsProducts,
@@ -1347,7 +1422,45 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   }
 
   function addBankAccount() {
-    setSelectedMonthData({ ...monthData, bankAccounts: [...monthData.bankAccounts, { id: makeId('bank'), name: 'חשבון חדש', owner: 'משפחה', openingBalance: 0, closingBalance: 0 }] });
+    setSelectedMonthData({ ...monthData, bankAccounts: [...monthData.bankAccounts, { id: makeId('bank'), name: 'חשבון חדש', owner: 'משפחה', openingBalance: 0, closingBalance: 0, importedFile: '', transactions: [] }] });
+  }
+
+  async function importBankFile(accountId, file) {
+    try {
+      const lower = file.name.toLowerCase();
+      let importedTransactions = [];
+      if (lower.endsWith('.csv')) importedTransactions = parseBankCsvText(await file.text());
+      else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) importedTransactions = parseBankExcelArrayBuffer(await file.arrayBuffer());
+      else {
+        alert('לעו״ש אפשר להעלות CSV או Excel מהבנק.');
+        return;
+      }
+
+      if (!importedTransactions.length) {
+        setCloudStatus('קובץ העו״ש נקלט, אבל לא זוהו תנועות. בדקי שיש עמודות תאריך, פירוט, חובה/זכות או סכום.');
+        alert('קובץ העו״ש נקלט, אבל לא זוהו תנועות. אם זה פורמט אחר של הבנק, נצטרך להתאים את העמודות.');
+        return;
+      }
+
+      setSelectedMonthData({
+        ...monthData,
+        bankAccounts: monthData.bankAccounts.map((account) => {
+          if (account.id !== accountId) return account;
+          const balances = getBankBalancesFromTransactions(importedTransactions, account.openingBalance, account.closingBalance);
+          return {
+            ...account,
+            importedFile: file.name,
+            transactions: importedTransactions,
+            openingBalance: balances.openingBalance,
+            closingBalance: balances.closingBalance,
+          };
+        }),
+      });
+      setCloudStatus(`יובאו ${importedTransactions.length} תנועות עו״ש.`);
+    } catch (error) {
+      setCloudStatus(`שגיאה בייבוא עו״ש: ${error?.message || 'לא ידוע'}`);
+      alert(`שגיאה בייבוא עו״ש: ${error?.message || 'לא ידוע'}`);
+    }
   }
 
   function addIncome() {
@@ -1573,6 +1686,9 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const totalBankOpening = monthData.bankAccounts.reduce((sum, account) => sum + toNumber(account.openingBalance), 0);
   const totalBankClosing = monthData.bankAccounts.reduce((sum, account) => sum + toNumber(account.closingBalance), 0);
   const bankBalanceChange = totalBankClosing - totalBankOpening;
+  const allBankTransactions = monthData.bankAccounts.flatMap((account) => account.transactions || []);
+  const totalBankDeposits = allBankTransactions.filter((transaction) => toNumber(transaction.amount) > 0).reduce((sum, transaction) => sum + toNumber(transaction.amount), 0);
+  const totalBankWithdrawals = allBankTransactions.filter((transaction) => toNumber(transaction.amount) < 0).reduce((sum, transaction) => sum + Math.abs(toNumber(transaction.amount)), 0);
   const allCreditTransactions = useMemo(() => monthData.creditCards.flatMap((card) => card.transactions || []), [monthData.creditCards]);
   const totalCreditCards = allCreditTransactions.reduce((sum, item) => sum + toNumber(item.amount), 0);
   const totalManualExpenses = monthData.manualExpenses.reduce((sum, item) => sum + toNumber(item.amount), 0);
@@ -1860,6 +1976,75 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
             ) : null}
 
             <Section>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">ACCOUNTS</div>
+                  <h2 className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">חשבונות ועו״ש</h2>
+                  <p className="mt-3 max-w-3xl text-sm leading-7 text-neutral-500 no-orphans">{noSingleWordLine('מעלים פירוט עו״ש CSV/Excel מהבנק, והמערכת מחשבת יתרת פתיחה, יתרה נוכחית ותנועות. בלי לנחש מספרים ידנית.')}</p>
+                </div>
+                <PrimaryButton theme={activeTheme} onClick={addBankAccount}>+ הוספת חשבון</PrimaryButton>
+              </div>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-4">
+                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">יתרת פתיחה</div>
+                  <div className="mt-3 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankOpening)}</div>
+                </div>
+                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">יתרה נוכחית</div>
+                  <div className="mt-3 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankClosing)}</div>
+                </div>
+                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">נכנס לעו״ש</div>
+                  <div className="mt-3 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankDeposits)}</div>
+                </div>
+                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">יצא מהעו״ש</div>
+                  <div className="mt-3 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankWithdrawals)}</div>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3">
+                {monthData.bankAccounts.map((account) => (
+                  <div key={account.id} className="rounded-[22px] border border-neutral-200 bg-white p-4">
+                    <div className="grid gap-3 md:grid-cols-[1.1fr_110px_150px_150px_140px_44px]">
+                      <LabeledField label="חשבון"><Field value={account.name} onChange={(event) => updateRow('bankAccounts', account.id, 'name', event.target.value)} placeholder="עו״ש משותף" /></LabeledField>
+                      <LabeledField label="שייך ל"><Field value={account.owner} onChange={(event) => updateRow('bankAccounts', account.id, 'owner', event.target.value)} placeholder="משפחה" /></LabeledField>
+                      <LabeledField label="יתרת פתיחה"><Field type="number" value={account.openingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'openingBalance', event.target.value)} /></LabeledField>
+                      <LabeledField label="יתרה נוכחית"><Field type="number" value={account.closingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'closingBalance', event.target.value)} /></LabeledField>
+                      <div className="flex items-end">
+                        <label className="w-full cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 text-center text-xs font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-white">
+                          ייבוא עו״ש
+                          <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importBankFile(account.id, file); }} />
+                        </label>
+                      </div>
+                      <div className="flex items-end"><GhostButton onClick={() => removeRow('bankAccounts', account.id)} className="w-full px-0">×</GhostButton></div>
+                    </div>
+                    {account.importedFile ? <div className="mt-3 rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-600">נקלט קובץ עו״ש: <strong>{account.importedFile}</strong> · {account.transactions?.length || 0} תנועות</div> : null}
+                    {account.transactions?.length ? (
+                      <div className="mt-3 max-h-64 overflow-auto rounded-2xl border border-neutral-200">
+                        <div className="grid grid-cols-[110px_1fr_130px_130px] bg-neutral-100 px-4 py-3 text-xs font-semibold text-neutral-600">
+                          <div>תאריך</div>
+                          <div>פירוט</div>
+                          <div>סכום</div>
+                          <div>יתרה</div>
+                        </div>
+                        {account.transactions.slice(0, 80).map((transaction) => (
+                          <div key={transaction.id} className="grid grid-cols-[110px_1fr_130px_130px] gap-3 border-t border-neutral-100 px-4 py-3 text-sm">
+                            <div className="text-neutral-500">{transaction.date}</div>
+                            <div>{transaction.description}</div>
+                            <div className={toNumber(transaction.amount) >= 0 ? 'font-semibold text-[#66725E]' : 'font-semibold text-red-700'}>{SHEKEL.format(transaction.amount)}</div>
+                            <div>{transaction.balance ? SHEKEL.format(transaction.balance) : '—'}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </Section>
+
+            <Section>
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">MONTHLY COMPARE</div>
@@ -1926,43 +2111,6 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                 ) : null}
               </section>
             ) : null}
-          </>
-        ) : null}
-
-        {activeTab === 'bank' ? (
-          <>
-            <Section>
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">עו״ש וחשבונות בנק</h2>
-                  <p className="mt-2 text-sm text-neutral-500">כאן מזינים יתרת פתיחה וסגירה לכל חשבון. בחודש חדש יתרת הסגירה של החודש הקודם הופכת אוטומטית ליתרת הפתיחה.</p>
-                </div>
-                <PrimaryButton theme={activeTheme} onClick={addBankAccount}>+ הוספת חשבון</PrimaryButton>
-              </div>
-
-              <div className="mt-7 grid gap-4 md:grid-cols-4">
-                <StatCard title="יתרת פתיחה" value={SHEKEL.format(totalBankOpening)} note="סך העו״ש בתחילת החודש" />
-                <StatCard title="יתרת סגירה" value={SHEKEL.format(totalBankClosing)} note="סך העו״ש עכשיו / סוף חודש" tone={totalBankClosing >= 0 ? 'good' : 'danger'} />
-                <StatCard title="שינוי בעו״ש" value={SHEKEL.format(bankBalanceChange)} note="סגירה פחות פתיחה" tone={bankBalanceChange >= 0 ? 'good' : 'warn'} />
-                <StatCard title="פער מול תזרים" value={SHEKEL.format(bankVsCalculatedCashFlow)} note="עו״ש פחות יתרה מחושבת" tone={Math.abs(bankVsCalculatedCashFlow) <= 50 ? 'good' : 'warn'} />
-              </div>
-
-              <div className="mt-7 grid gap-3">
-                {monthData.bankAccounts.map((account) => (
-                  <div key={account.id} className="grid gap-3 rounded-[24px] border border-neutral-200 p-4 md:grid-cols-[1.2fr_120px_160px_160px_120px_44px]">
-                    <LabeledField label="שם החשבון"><Field value={account.name} onChange={(event) => updateRow('bankAccounts', account.id, 'name', event.target.value)} placeholder="עו״ש משותף" /></LabeledField>
-                    <LabeledField label="שייך ל"><Field value={account.owner} onChange={(event) => updateRow('bankAccounts', account.id, 'owner', event.target.value)} placeholder="משפחה" /></LabeledField>
-                    <LabeledField label="יתרת פתיחה"><Field type="number" value={account.openingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'openingBalance', event.target.value)} /></LabeledField>
-                    <LabeledField label="יתרת סגירה"><Field type="number" value={account.closingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'closingBalance', event.target.value)} /></LabeledField>
-                    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm">
-                      <div className="text-xs font-semibold text-neutral-400">שינוי</div>
-                      <div className="mt-2 font-semibold text-neutral-900">{SHEKEL.format(toNumber(account.closingBalance) - toNumber(account.openingBalance))}</div>
-                    </div>
-                    <div className="flex items-end"><GhostButton onClick={() => removeRow('bankAccounts', account.id)} className="w-full px-0">×</GhostButton></div>
-                  </div>
-                ))}
-              </div>
-            </Section>
           </>
         ) : null}
 
