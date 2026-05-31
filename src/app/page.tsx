@@ -745,8 +745,8 @@ function createMonthFromPrevious(previousMonthData) {
       id: makeId('bank'),
       openingBalance: toNumber(account.closingBalance),
       closingBalance: toNumber(account.closingBalance),
-      importedFile: '',
-      transactions: [],
+      importedFile: account.importedFile || '',
+      transactions: account.transactions || [],
     })),
     savingsProducts: previous.savingsProducts.map((product) => ({
       ...product,
@@ -756,6 +756,7 @@ function createMonthFromPrevious(previousMonthData) {
       ...goal,
       id: makeId('goal'),
     })),
+    selfEmployed: { ...base.selfEmployed, owner: previous.selfEmployed.owner || base.selfEmployed.owner },
   };
 }
 
@@ -1348,6 +1349,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const [maxAmount, setMaxAmount] = useState('');
   const [cloudStatus, setCloudStatus] = useState('טוען מהענן…');
   const [hasLoadedCloud, setHasLoadedCloud] = useState(false);
+  const [hasAttemptedCloudLoad, setHasAttemptedCloudLoad] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [comparePeriod, setComparePeriod] = useState('previous');
   const [authSession, setAuthSession] = useState(getInitialAuthSession);
@@ -1378,6 +1380,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   useEffect(() => {
     // Cloud load merges Supabase data into local state without deleting the currently selected month.
     async function loadCloudState() {
+      if (hasAttemptedCloudLoad) return;
+      setHasAttemptedCloudLoad(true);
       try {
         const data = await loadFinanceStateFromSupabase(householdProfileId, supabaseConfig);
         if (data?.months) {
@@ -1398,7 +1402,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       }
     }
     loadCloudState();
-  }, [householdProfileId, supabaseConfig.url, supabaseConfig.key]);
+  }, [householdProfileId, supabaseConfig.url, supabaseConfig.key, hasAttemptedCloudLoad]);
 
   // LocalStorage is always updated as a fallback, even when Cloud Sync is enabled.
   useEffect(() => {
