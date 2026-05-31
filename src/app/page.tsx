@@ -996,7 +996,10 @@ function getInitialMonths() {
   const currentMonth = getCurrentMonthKey();
   const saved = safeJsonParse(getStorageItem(STORAGE_KEY), null);
   if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
-    return saved[currentMonth] ? saved : { ...saved, [currentMonth]: createDefaultMonth() };
+    if (saved[currentMonth]) return saved;
+    const previousMonthKey = getPreviousMonthKey(currentMonth);
+    const previousMonthData = saved[previousMonthKey] || Object.entries(saved).filter(([key]) => key < currentMonth).sort(([a], [b]) => b.localeCompare(a))[0]?.[1];
+    return { ...saved, [currentMonth]: createMonthFromPrevious(previousMonthData) };
   }
   return { [currentMonth]: createDefaultMonth() };
 }
@@ -1342,7 +1345,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         if (data?.months) {
           setMonths((current) => {
             const nextMonths = data.months && typeof data.months === 'object' && !Array.isArray(data.months) ? data.months : current;
-            return nextMonths[selectedMonth] ? nextMonths : { ...nextMonths, [selectedMonth]: current[selectedMonth] || createMonthFromPrevious(nextMonths[getPreviousMonthKey(selectedMonth)]) };
+            return nextMonths;
           });
         }
         if (data?.learned_rules) setLearnedRules(data.learned_rules);
@@ -1357,7 +1360,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       }
     }
     loadCloudState();
-  }, [householdProfileId, selectedMonth, supabaseConfig.url, supabaseConfig.key]);
+  }, [householdProfileId, supabaseConfig.url, supabaseConfig.key]);
 
   // LocalStorage is always updated as a fallback, even when Cloud Sync is enabled.
   useEffect(() => {
@@ -1395,14 +1398,13 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   }
 
   function ensureMonth(monthKey) {
+    setMonths((current) => {
+      if (current[monthKey]) return current;
+      const previousMonthKey = getPreviousMonthKey(monthKey);
+      const previousMonthData = current[previousMonthKey] || Object.entries(current).filter(([key]) => key < monthKey).sort(([a], [b]) => b.localeCompare(a))[0]?.[1];
+      return { ...current, [monthKey]: createMonthFromPrevious(previousMonthData) };
+    });
     setSelectedMonth(monthKey);
-    if (!months[monthKey]) {
-      setMonths((current) => {
-        const previousMonthKey = getPreviousMonthKey(monthKey);
-        const previousMonthData = current[previousMonthKey] || Object.entries(current).filter(([key]) => key < monthKey).sort(([a], [b]) => b.localeCompare(a))[0]?.[1];
-        return { ...current, [monthKey]: createMonthFromPrevious(previousMonthData) };
-      });
-    }
   }
 
   function updateMonthField(field, value) {
