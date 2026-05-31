@@ -750,10 +750,6 @@ function hasRollingData(monthData) {
   return bankHasData || savingsHasRealBalances || goalsHaveRealBalances || Math.abs(toNumber(month.emergencyFund)) > 0;
 }
 
-function calculateMonthNet(data) {
-  return getMonthTotals(data).net || 0;
-}
-
 function createRollingMonthFromPrevious(previousMonthData) {
   const base = createMonthFromPrevious(previousMonthData);
   if (!previousMonthData) return base;
@@ -766,6 +762,7 @@ function createRollingMonthFromPrevious(previousMonthData) {
       return {
         ...account,
         id: makeId('bank'),
+        // Bank balance is a real bank value only. It does not include calculated monthly net / "יתרה אחרי הכול".
         openingBalance: previousClosing,
         closingBalance: previousClosing,
         importedFile: '',
@@ -1873,7 +1870,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   ].filter(Boolean);
 
   const monthlyStory = totalIncome
-    ? `במצב ${modeConfig.label}, החודש הוצאתם ${SHEKEL.format(totalExpenses)} שהם ${formatPercent((totalExpenses / totalIncome) * 100)} מההכנסה. העו״ש הנוכחי הוא יתרה אמיתית מהבנק/הזנה ידנית ולא תחזית אחרי כרטיסי אשראי. יעד החיסכון למצב הזה הוא ${formatPercent(targetSavingsRate)}, והיתרה המחושבת אחרי הכול היא ${SHEKEL.format(monthlySavings)}.`
+    ? `במצב ${modeConfig.label}, החודש הוצאתם ${SHEKEL.format(totalExpenses)} שהם ${formatPercent((totalExpenses / totalIncome) * 100)} מההכנסה. העו״ש הנוכחי הוא יתרה אמיתית מהבנק/הזנה ידנית, והיתרה המחושבת אחרי הכול נשארת מדד תזרים בלבד. יעד החיסכון למצב הזה הוא ${formatPercent(targetSavingsRate)}, והיתרה המחושבת אחרי הכול היא ${SHEKEL.format(monthlySavings)}.`
     : `מצב ${modeConfig.label} פעיל. התחילו להזין הכנסות והוצאות כדי לקבל סיפור פיננסי חודשי מותאם.`;
 
   const monthlyCompareStory = monthlyCompare.hasPrevious
@@ -2098,7 +2095,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">ACCOUNTS</div>
                   <h2 className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">חשבונות ועו״ש</h2>
-                  <p className="mt-3 max-w-3xl text-sm leading-7 text-neutral-500 no-orphans">{noSingleWordLine('מעלים פירוט עו״ש CSV/Excel מהבנק, והמערכת מחשבת יתרת פתיחה, יתרה נוכחית ותנועות. בלי לנחש מספרים ידנית.')}</p>
+                  <p className="mt-3 max-w-3xl text-sm leading-7 text-neutral-500 no-orphans">{noSingleWordLine('מעלים פירוט עו״ש CSV/Excel מהבנק, והמערכת מחשבת יתרת פתיחה, יתרה נוכחית ותנועות. היתרה אחרי הכול היא תזרים מחושב ולא נכנסת אוטומטית לעו״ש.')}</p>
                 </div>
                 <PrimaryButton theme={activeTheme} onClick={addBankAccount}>+ הוספת חשבון</PrimaryButton>
               </div>
