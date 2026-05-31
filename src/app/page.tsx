@@ -731,6 +731,40 @@ function mergeMonthsKeepingRicher(localMonths = {}, cloudMonths = {}) {
   return merged;
 }
 
+function hasRollingData(monthData) {
+  if (!monthData) return false;
+  const month = normalizeMonthData(monthData);
+  const bankHasData = month.bankAccounts.some((account) =>
+    Math.abs(toNumber(account.openingBalance)) > 0 ||
+    Math.abs(toNumber(account.closingBalance)) > 0 ||
+    (account.transactions || []).length > 0
+  );
+  const savingsHasData = month.savingsProducts.some((product) =>
+    Math.abs(toNumber(product.currentBalance)) > 0 ||
+    Math.abs(toNumber(product.monthlyDeposit)) > 0
+  );
+  const goalsHaveData = month.savingGoals.some((goal) =>
+    Math.abs(toNumber(goal.currentAmount)) > 0 ||
+    Math.abs(toNumber(goal.monthlyDeposit)) > 0 ||
+    Math.abs(toNumber(goal.targetAmount)) > 0
+  );
+  return bankHasData || savingsHasData || goalsHaveData || Math.abs(toNumber(month.emergencyFund)) > 0;
+}
+
+function carryForwardRollingFields(targetMonthData, previousMonthData) {
+  if (!previousMonthData) return normalizeMonthData(targetMonthData);
+  const target = normalizeMonthData(targetMonthData);
+  const carried = createMonthFromPrevious(previousMonthData);
+  if (hasRollingData(target)) return target;
+  return {
+    ...target,
+    emergencyFund: carried.emergencyFund,
+    bankAccounts: carried.bankAccounts,
+    savingsProducts: carried.savingsProducts,
+    savingGoals: carried.savingGoals,
+  };
+}
+
 function createMonthFromPrevious(previousMonthData) {
   const base = createDefaultMonth();
   if (!previousMonthData) return base;
@@ -1441,9 +1475,11 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
   function ensureMonth(monthKey) {
     setMonths((current) => {
-      if (current[monthKey]) return current;
       const previousMonthKey = getPreviousMonthKey(monthKey);
       const previousMonthData = current[previousMonthKey] || Object.entries(current).filter(([key]) => key < monthKey).sort(([a], [b]) => b.localeCompare(a))[0]?.[1];
+      if (current[monthKey]) {
+        return { ...current, [monthKey]: carryForwardRollingFields(current[monthKey], previousMonthData) };
+      }
       return { ...current, [monthKey]: createMonthFromPrevious(previousMonthData) };
     });
     setSelectedMonth(monthKey);
