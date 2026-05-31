@@ -758,19 +758,16 @@ function createRollingMonthFromPrevious(previousMonthData) {
   const base = createMonthFromPrevious(previousMonthData);
   if (!previousMonthData) return base;
   const previous = normalizeMonthData(previousMonthData);
-  const previousNet = calculateMonthNet(previous);
 
   return {
     ...base,
-    bankAccounts: previous.bankAccounts.map((account, index) => {
+    bankAccounts: previous.bankAccounts.map((account) => {
       const previousClosing = toNumber(account.closingBalance);
-      const shouldReceiveNet = index === 0;
-      const nextClosing = previousClosing + (shouldReceiveNet ? previousNet : 0);
       return {
         ...account,
         id: makeId('bank'),
         openingBalance: previousClosing,
-        closingBalance: nextClosing,
+        closingBalance: previousClosing,
         importedFile: '',
         transactions: [],
       };
@@ -1876,7 +1873,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   ].filter(Boolean);
 
   const monthlyStory = totalIncome
-    ? `במצב ${modeConfig.label}, החודש הוצאתם ${SHEKEL.format(totalExpenses)} שהם ${formatPercent((totalExpenses / totalIncome) * 100)} מההכנסה. העו״ש השתנה ב־${SHEKEL.format(bankBalanceChange)}, והפער בין התזרים המחושב לעו״ש הוא ${SHEKEL.format(bankVsCalculatedCashFlow)}. יעד החיסכון למצב הזה הוא ${formatPercent(targetSavingsRate)}, והיתרה אחרי הכול היא ${SHEKEL.format(monthlySavings)}.`
+    ? `במצב ${modeConfig.label}, החודש הוצאתם ${SHEKEL.format(totalExpenses)} שהם ${formatPercent((totalExpenses / totalIncome) * 100)} מההכנסה. העו״ש הנוכחי הוא יתרה אמיתית מהבנק/הזנה ידנית ולא תחזית אחרי כרטיסי אשראי. יעד החיסכון למצב הזה הוא ${formatPercent(targetSavingsRate)}, והיתרה המחושבת אחרי הכול היא ${SHEKEL.format(monthlySavings)}.`
     : `מצב ${modeConfig.label} פעיל. התחילו להזין הכנסות והוצאות כדי לקבל סיפור פיננסי חודשי מותאם.`;
 
   const monthlyCompareStory = monthlyCompare.hasPrevious
