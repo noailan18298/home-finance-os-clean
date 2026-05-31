@@ -693,6 +693,44 @@ function getPreviousMonthKey(monthKey) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function getDataWeight(value) {
+  if (Array.isArray(value)) return value.length;
+  if (value && typeof value === 'object') return Object.keys(value).length;
+  if (typeof value === 'number') return Math.abs(value) > 0 ? 1 : 0;
+  return value ? 1 : 0;
+}
+
+function getMonthDataWeight(monthData) {
+  const month = normalizeMonthData(monthData);
+  return [
+    month.incomes,
+    month.manualExpenses,
+    month.savingsProducts,
+    month.savingGoals,
+    month.creditCards.flatMap((card) => [...(card.transactions || []), ...(card.pendingTransactions || [])]),
+    month.bankAccounts.flatMap((account) => account.transactions || []),
+    month.bankAccounts.map((account) => [account.openingBalance, account.closingBalance]).flat(),
+    month.attachedDocuments,
+    month.emergencyFund,
+  ].reduce((sum, value) => sum + getDataWeight(value), 0);
+}
+
+function mergeMonthKeepingRicher(localMonth, cloudMonth) {
+  if (!localMonth) return normalizeMonthData(cloudMonth);
+  if (!cloudMonth) return normalizeMonthData(localMonth);
+  const localWeight = getMonthDataWeight(localMonth);
+  const cloudWeight = getMonthDataWeight(cloudMonth);
+  return normalizeMonthData(cloudWeight > localWeight ? cloudMonth : localMonth);
+}
+
+function mergeMonthsKeepingRicher(localMonths = {}, cloudMonths = {}) {
+  const merged = { ...localMonths };
+  Object.keys(cloudMonths || {}).forEach((monthKey) => {
+    merged[monthKey] = mergeMonthKeepingRicher(localMonths[monthKey], cloudMonths[monthKey]);
+  });
+  return merged;
+}
+
 function createMonthFromPrevious(previousMonthData) {
   const base = createDefaultMonth();
   if (!previousMonthData) return base;
@@ -1344,8 +1382,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         const data = await loadFinanceStateFromSupabase(householdProfileId, supabaseConfig);
         if (data?.months) {
           setMonths((current) => {
-            const nextMonths = data.months && typeof data.months === 'object' && !Array.isArray(data.months) ? data.months : current;
-            return nextMonths;
+            const cloudMonths = data.months && typeof data.months === 'object' && !Array.isArray(data.months) ? data.months : {};
+            return mergeMonthsKeepingRicher(current, cloudMonths);
           });
         }
         if (data?.learned_rules) setLearnedRules(data.learned_rules);
