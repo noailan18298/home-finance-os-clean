@@ -214,7 +214,20 @@ function makeId(prefix = 'id') {
 }
 
 function getCurrentMonthKey() {
-  return new Date().toISOString().slice(0, 7);
+  const now = new Date();
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jerusalem',
+      year: 'numeric',
+      month: '2-digit',
+    }).formatToParts(now);
+    const year = parts.find((part) => part.type === 'year')?.value;
+    const month = parts.find((part) => part.type === 'month')?.value;
+    if (year && month) return `${year}-${month}`;
+  } catch {
+    // Fallback only. The main path uses Israel time so month selection does not drift around midnight UTC.
+  }
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
 // Normalizes currency-like values from manual inputs and imported bank/card files into numbers.
@@ -786,9 +799,28 @@ function createRollingMonthFromPrevious(previousMonthData) {
   };
 }
 
-function carryForwardRollingFields(targetMonthData, previousMonthData) {
+function repairCarriedBankBalances(targetMonthData, previousMonthData) {
   if (!previousMonthData) return normalizeMonthData(targetMonthData);
   const target = normalizeMonthData(targetMonthData);
+  const previous = normalizeMonthData(previousMonthData);
+  return {
+    ...target,
+    bankAccounts: target.bankAccounts.map((account, index) => {
+      const previousAccount = previous.bankAccounts[index];
+      const previousClosing = toNumber(previousAccount?.closingBalance);
+      const hasBankImport = Boolean(account.importedFile) || (account.transactions || []).length > 0;
+      const looksCarriedFromPrevious = Math.abs(toNumber(account.openingBalance) - previousClosing) < 1;
+      if (!hasBankImport && looksCarriedFromPrevious) {
+        return { ...account, closingBalance: toNumber(account.openingBalance) };
+      }
+      return account;
+    }),
+  };
+}
+
+function carryForwardRollingFields(targetMonthData, previousMonthData) {
+  if (!previousMonthData) return normalizeMonthData(targetMonthData);
+  const target = repairCarriedBankBalances(targetMonthData, previousMonthData);
   const carried = createRollingMonthFromPrevious(previousMonthData);
   if (hasRollingData(target)) return target;
   return {
@@ -1226,6 +1258,7 @@ function runSmokeTests() {
   console.assert(getMonthlyCompare({ '2026-01': createDefaultMonth(), '2026-02': createDefaultMonth(), '2026-03': createDefaultMonth() }, '2026-03', 'all').compareMonthKeys.length === 2, 'all period compare failed');
   console.assert(parseExcelArrayBuffer instanceof Function, 'excel parser exists');
   console.assert(TABS[1].id === 'income', 'income tab should be second');
+  console.assert(getCurrentMonthKey().length === 7 && getCurrentMonthKey().includes('-'), 'current month key failed');
   console.assert(TABS.some((tab) => tab.id === 'insights' && tab.label === 'תובנות חכמות'), 'smart insights tab label failed');
   console.assert(normalizePreferences({ showTrendChart: false }).showTrendChart === false, 'preferences override failed');
   console.assert(normalizePreferences({}).householdProfileId === DEFAULT_SUPABASE_PROFILE_ID, 'household profile default failed');
