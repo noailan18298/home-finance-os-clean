@@ -739,22 +739,63 @@ function hasRollingData(monthData) {
     Math.abs(toNumber(account.closingBalance)) > 0 ||
     (account.transactions || []).length > 0
   );
-  const savingsHasData = month.savingsProducts.some((product) =>
+  const savingsHasRealBalances = month.savingsProducts.some((product) =>
     Math.abs(toNumber(product.currentBalance)) > 0 ||
     Math.abs(toNumber(product.monthlyDeposit)) > 0
   );
-  const goalsHaveData = month.savingGoals.some((goal) =>
+  const goalsHaveRealBalances = month.savingGoals.some((goal) =>
     Math.abs(toNumber(goal.currentAmount)) > 0 ||
-    Math.abs(toNumber(goal.monthlyDeposit)) > 0 ||
-    Math.abs(toNumber(goal.targetAmount)) > 0
+    Math.abs(toNumber(goal.monthlyDeposit)) > 0
   );
-  return bankHasData || savingsHasData || goalsHaveData || Math.abs(toNumber(month.emergencyFund)) > 0;
+  return bankHasData || savingsHasRealBalances || goalsHaveRealBalances || Math.abs(toNumber(month.emergencyFund)) > 0;
+}
+
+function calculateMonthNet(data) {
+  return getMonthTotals(data).net || 0;
+}
+
+function createRollingMonthFromPrevious(previousMonthData) {
+  const base = createMonthFromPrevious(previousMonthData);
+  if (!previousMonthData) return base;
+  const previous = normalizeMonthData(previousMonthData);
+  const previousNet = calculateMonthNet(previous);
+
+  return {
+    ...base,
+    bankAccounts: previous.bankAccounts.map((account, index) => {
+      const previousClosing = toNumber(account.closingBalance);
+      const shouldReceiveNet = index === 0;
+      const nextClosing = previousClosing + (shouldReceiveNet ? previousNet : 0);
+      return {
+        ...account,
+        id: makeId('bank'),
+        openingBalance: previousClosing,
+        closingBalance: nextClosing,
+        importedFile: '',
+        transactions: [],
+      };
+    }),
+    savingsProducts: previous.savingsProducts.map((product) => ({
+      ...product,
+      id: makeId('saving'),
+      currentBalance: toNumber(product.currentBalance) + toNumber(product.monthlyDeposit),
+    })),
+    savingGoals: previous.savingGoals.map((goal) => ({
+      ...goal,
+      id: makeId('goal'),
+      currentAmount: Math.min(
+        toNumber(goal.targetAmount) || Number.POSITIVE_INFINITY,
+        toNumber(goal.currentAmount) + toNumber(goal.monthlyDeposit)
+      ),
+    })),
+    emergencyFund: toNumber(previous.emergencyFund),
+  };
 }
 
 function carryForwardRollingFields(targetMonthData, previousMonthData) {
   if (!previousMonthData) return normalizeMonthData(targetMonthData);
   const target = normalizeMonthData(targetMonthData);
-  const carried = createMonthFromPrevious(previousMonthData);
+  const carried = createRollingMonthFromPrevious(previousMonthData);
   if (hasRollingData(target)) return target;
   return {
     ...target,
@@ -1072,7 +1113,7 @@ function getInitialMonths() {
     if (saved[currentMonth]) return saved;
     const previousMonthKey = getPreviousMonthKey(currentMonth);
     const previousMonthData = saved[previousMonthKey] || Object.entries(saved).filter(([key]) => key < currentMonth).sort(([a], [b]) => b.localeCompare(a))[0]?.[1];
-    return { ...saved, [currentMonth]: createMonthFromPrevious(previousMonthData) };
+    return { ...saved, [currentMonth]: createRollingMonthFromPrevious(previousMonthData) };
   }
   return { [currentMonth]: createDefaultMonth() };
 }
@@ -1480,7 +1521,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       if (current[monthKey]) {
         return { ...current, [monthKey]: carryForwardRollingFields(current[monthKey], previousMonthData) };
       }
-      return { ...current, [monthKey]: createMonthFromPrevious(previousMonthData) };
+      return { ...current, [monthKey]: createRollingMonthFromPrevious(previousMonthData) };
     });
     setSelectedMonth(monthKey);
   }
