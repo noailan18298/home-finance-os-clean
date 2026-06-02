@@ -934,7 +934,13 @@ function getMonthlyTrend(months) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([month, data]) => {
       const totals = getMonthTotals(data);
-      return { month, total: totals.credit + totals.manual };
+      return {
+        month,
+        total: totals.credit + totals.manual,
+        income: totals.income,
+        expenses: totals.expenses,
+        savings: totals.net,
+      };
     });
 }
 
@@ -1347,6 +1353,64 @@ function LabeledField({ label, children }) {
 
 function InputRow({ children }) {
   return <div className="grid gap-3 rounded-[24px] border border-neutral-200 p-4 md:grid-cols-[1fr_160px_44px]">{children}</div>;
+}
+
+function TrendLineChart({ data, theme }) {
+  const chartData = Array.isArray(data) ? data : [];
+  const width = 900;
+  const height = 280;
+  const padding = { top: 28, right: 36, bottom: 44, left: 72 };
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+  const values = chartData.flatMap((item) => [toNumber(item.income), toNumber(item.expenses), toNumber(item.savings)]);
+  const minValue = Math.min(0, ...values);
+  const maxValue = Math.max(1, ...values);
+  const range = maxValue - minValue || 1;
+  const xFor = (index) => padding.left + (chartData.length <= 1 ? innerWidth / 2 : (index / (chartData.length - 1)) * innerWidth);
+  const yFor = (value) => padding.top + innerHeight - ((toNumber(value) - minValue) / range) * innerHeight;
+  const pathFor = (key) => chartData.map((item, index) => `${index === 0 ? 'M' : 'L'} ${xFor(index)} ${yFor(item[key])}`).join(' ');
+  const zeroY = yFor(0);
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => minValue + range * ratio);
+
+  if (!chartData.length) {
+    return <EmptyState title="אין עדיין נתונים לגרף" text="כדי לראות מגמות, מלאי לפחות חודש אחד של הכנסות והוצאות." />;
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-[24px] border border-neutral-200 bg-neutral-50 p-4">
+      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[760px] w-full" role="img" aria-label="גרף מגמות הכנסות הוצאות וחיסכון">
+        <rect x="0" y="0" width={width} height={height} rx="24" fill="white" />
+        {ticks.map((tick) => {
+          const y = yFor(tick);
+          return (
+            <g key={tick}>
+              <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#E5E5E5" strokeWidth="1" />
+              <text x={padding.left - 12} y={y + 4} textAnchor="end" fontSize="12" fill="#737373">{SHEKEL.format(tick)}</text>
+            </g>
+          );
+        })}
+        <line x1={padding.left} x2={width - padding.right} y1={zeroY} y2={zeroY} stroke="#D4D4D4" strokeWidth="1.5" strokeDasharray="4 6" />
+
+        <path d={pathFor('income')} fill="none" stroke={theme?.accent || '#66725E'} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={pathFor('expenses')} fill="none" stroke="#D97706" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={pathFor('savings')} fill="none" stroke="#2563EB" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+
+        {chartData.map((item, index) => (
+          <g key={item.month}>
+            <text x={xFor(index)} y={height - 18} textAnchor="middle" fontSize="12" fill="#737373">{monthLabel(item.month)}</text>
+            <circle cx={xFor(index)} cy={yFor(item.income)} r="5" fill={theme?.accent || '#66725E'} />
+            <circle cx={xFor(index)} cy={yFor(item.expenses)} r="5" fill="#D97706" />
+            <circle cx={xFor(index)} cy={yFor(item.savings)} r="5" fill="#2563EB" />
+          </g>
+        ))}
+      </svg>
+      <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-neutral-600">
+        <span className="rounded-full bg-white px-3 py-2">● הכנסות</span>
+        <span className="rounded-full bg-white px-3 py-2 text-amber-700">● הוצאות</span>
+        <span className="rounded-full bg-white px-3 py-2 text-blue-700">● חיסכון</span>
+      </div>
+    </div>
+  );
 }
 
 function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
@@ -1857,6 +1921,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const recurringTransactions = useMemo(() => detectRecurringTransactions(allCreditTransactions, months, selectedMonth), [allCreditTransactions, months, selectedMonth]);
   const monthlyCompare = useMemo(() => getMonthlyCompare(months, selectedMonth, comparePeriod), [months, selectedMonth, comparePeriod]);
   const trend = useMemo(() => getMonthlyTrend(months), [months]);
+  const trendSixMonths = useMemo(() => trend.slice(-6), [trend]);
   const maxTrend = Math.max(1, ...trend.map((item) => item.total));
   const burnRate = trend.length ? trend.reduce((sum, item) => sum + item.total, 0) / trend.length : 0;
   const cashFlow = totalPlannedSavings;
@@ -2250,9 +2315,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
                 {preferences.showTrendChart ? (
                   <Section className="lg:col-span-2">
-                    <div className="flex items-center justify-between gap-4"><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">מגמת הוצאות חודשית</h2><span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">Trend</span></div>
-                    <div className="mt-6 flex h-64 items-end gap-3 rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
-                      {trend.map((item) => <div key={item.month} className="flex flex-1 flex-col items-center gap-2"><div className="w-full rounded-t-xl bg-neutral-800" style={{ height: `${Math.max(4, (item.total / maxTrend) * 200)}px` }} /><span className="text-xs text-neutral-500">{monthLabel(item.month)}</span></div>)}
+                    <div className="flex items-center justify-between gap-4"><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">מגמת 6 חודשים</h2><span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">Income · Expenses · Savings</span></div>
+                    <p className="mt-2 text-sm leading-7 text-neutral-500">הכנסות, הוצאות וחיסכון נטו לפי חודשים. בלי ספריית גרפים חיצונית, כדי שה־build יישאר נקי.</p>
+                    <div className="mt-6">
+                      <TrendLineChart data={trendSixMonths} theme={activeTheme} />
                     </div>
                     <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-neutral-600">Burn Rate ממוצע: <strong>{SHEKEL.format(burnRate)}</strong> | Cash Flow לחיסכון: <strong>{SHEKEL.format(cashFlow)}</strong></div>
                   </Section>
