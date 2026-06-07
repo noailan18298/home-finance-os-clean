@@ -1357,7 +1357,7 @@ function StatCard({ title, value, note, tone = 'neutral' }) {
   }[tone] || 'text-neutral-500';
 
   return (
-    <div className={`min-h-[150px] rounded-[22px] border ${toneClass} p-4 shadow-sm transition hover:shadow-md sm:min-h-[180px] sm:p-5 lg:min-h-[220px]`}>
+    <div className={`min-h-[150px] rounded-[22px] border ${toneClass} p-4 shadow-sm transition hover:shadow-md sm:min-h-[180px] sm:p-5 lg:min-h-[140px]`}>
       <div className="text-center text-xs font-semibold uppercase tracking-widest text-neutral-400">{title}</div>
       <div className="mt-4 text-center text-2xl font-semibold tracking-tight text-neutral-950 sm:mt-6 sm:text-3xl">{value}</div>
       <div className={`mt-4 px-1 text-center text-xs font-medium leading-6 sm:mt-6 sm:px-2 sm:text-sm sm:leading-7 ${noteClass} no-single-word-lines`}>{noSingleWordLine(note)}</div>
@@ -1423,8 +1423,8 @@ function InputRow({ children }) {
 
 function TrendLineChart({ data, theme }) {
   const chartData = Array.isArray(data) ? data : [];
-  const width = 900;
-  const height = 280;
+  const width = 720;
+  const height = 220;
   const padding = { top: 28, right: 36, bottom: 44, left: 72 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
@@ -1444,7 +1444,7 @@ function TrendLineChart({ data, theme }) {
 
   return (
     <div className="overflow-x-auto rounded-[24px] border border-neutral-200 bg-neutral-50 p-4">
-      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[760px] w-full" role="img" aria-label="גרף מגמות הכנסות הוצאות וחיסכון">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full min-w-[520px]" role="img" aria-label="גרף מגמות הכנסות הוצאות וחיסכון">
         <rect x="0" y="0" width={width} height={height} rx="24" fill="white" />
         {ticks.map((tick) => {
           const y = yFor(tick);
@@ -1484,7 +1484,7 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
   return (
     <div className="mt-5 max-h-[900px] overflow-auto rounded-[24px] border border-neutral-200 bg-white">
       <div className="min-w-[720px]">
-        <div className="sticky top-0 z-10 grid grid-cols-[110px_minmax(180px,1fr)_170px_120px_44px] bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700">
+        <div className="md:sticky md:top-0 z-10 grid grid-cols-[110px_minmax(180px,1fr)_170px_120px_44px] bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700">
           <div>תאריך</div>
           <div>{isPending ? 'בית עסק' : 'עסקה'}</div>
           <div>{isPending ? 'קטגוריה' : 'קטגוריה לומדת'}</div>
@@ -2160,7 +2160,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       `}</style>
 
       <div className="mx-auto max-w-7xl space-y-5 sm:space-y-7">
-        <div className="dark-nav sticky top-0 z-40 rounded-2xl border border-neutral-200 bg-white/95 p-2 shadow-sm backdrop-blur-xl" style={isDark ? { backgroundColor: 'rgba(18, 18, 18, 0.96)', borderColor: '#333333' } : undefined}>
+        <div className="dark-nav md:sticky md:top-0 z-40 rounded-2xl border border-neutral-200 bg-white/95 p-2 shadow-sm backdrop-blur-xl" style={isDark ? { backgroundColor: 'rgba(18, 18, 18, 0.96)', borderColor: '#333333' } : undefined}>
           <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {TABS.map((tab) => (
               <button
@@ -2196,7 +2196,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
             </div>
           </div>
 
-          <div className="dark-surface grid grid-cols-1 gap-4 border-t border-neutral-100 bg-white p-6 md:grid-cols-2 xl:grid-cols-4" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
+          <div className="dark-surface grid grid-cols-1 gap-4 border-t border-neutral-100 bg-white p-6 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2 xl:grid-cols-4" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
             <StatCard title="סה״כ הכנסות" value={SHEKEL.format(totalIncome)} note="כל מקורות ההכנסה" tone="good" />
             <StatCard title="עו״ש נוכחי" value={SHEKEL.format(totalBankClosing)} note={`שינוי החודש: ${SHEKEL.format(bankBalanceChange)}`} tone={totalBankClosing >= 0 ? 'good' : 'danger'} />
             <StatCard title="סה״כ הוצאות" value={SHEKEL.format(totalExpenses)} note={effectiveBudgetTarget ? `${formatPercent(budgetUsageRate)} מתוך יעד ${modeConfig.label}` : `${totalIncome ? formatPercent((totalExpenses / totalIncome) * 100) : '0%'} מההכנסה`} tone={(effectiveBudgetTarget && totalExpenses > effectiveBudgetTarget) || (totalIncome && totalExpenses > totalIncome) ? 'danger' : budgetUsageRate >= modeConfig.budgetWarningAt ? 'warn' : 'neutral'} />
@@ -2232,8 +2232,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   {preferences.showMonthlyStory ? (
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">MONTHLY STORY</div>
-                      <h2 className="mt-4 text-4xl font-semibold leading-tight tracking-tight text-neutral-950">הסיפור של החודש שלכם</h2>
-                      <p className="mt-5 max-w-3xl text-lg leading-9 text-neutral-600 no-orphans">{noSingleWordLine(monthlyStory)}</p>
+                      <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-neutral-950 sm:mt-4 sm:text-4xl">הסיפור של החודש שלכם</h2>
+                      <p className="mt-4 max-h-40 max-w-3xl overflow-auto text-sm leading-7 text-neutral-600 no-orphans sm:max-h-none sm:text-lg sm:leading-9">
+  {noSingleWordLine(monthlyStory)}
+</p>
                       <div className="mt-8 grid gap-3 md:grid-cols-3">
                         <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 px-5 py-4"><div className="text-xs font-semibold text-neutral-400">Burn Rate</div><div className="mt-2 text-xl font-semibold text-neutral-950">{SHEKEL.format(burnRate)}</div></div>
                         <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 px-5 py-4"><div className="text-xs font-semibold text-neutral-400">Cash Flow לחיסכון</div><div className="mt-2 text-xl font-semibold text-neutral-950">{SHEKEL.format(cashFlow)}</div></div>
@@ -2345,7 +2347,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                 </div>
               </div>
               {monthlyCompare.hasPrevious ? (
-                <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-6 grid gap-3 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                   {monthlyCompare.rows.map((row) => {
                     const isGoodDirection = row.key === 'income' || row.key === 'net' || row.key === 'savingsRate' || row.key === 'savings';
                     const improved = isGoodDirection ? row.diff >= 0 : row.diff <= 0;
@@ -2401,7 +2403,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                 <div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">סיכום כרטיסי אשראי</h2><p className="mt-2 text-sm text-neutral-500">כאן מעלים CSV/Excel לכל כרטיס, בודקים קטגוריות, ואז מאשרים הכנסה להוצאות.</p></div>
                 <PrimaryButton theme={activeTheme} onClick={addCreditCard}>+ הוספת כרטיס</PrimaryButton>
               </div>
-              <div className="mt-7 grid gap-8 xl:grid-cols-2">
+              <div className="mt-7 grid gap-8 xl:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2">
                 {monthData.creditCards.map((card) => {
                   const cardTotal = (card.transactions || []).reduce((sum, item) => sum + toNumber(item.amount), 0);
                   return (
@@ -2521,7 +2523,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         ) : null}
 
         {activeTab === 'income' ? (
-          <section className="grid gap-6 lg:grid-cols-2">
+          <section className="grid gap-6 lg:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2">
             <Section>
               <div className="flex items-center justify-between gap-4"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">הכנסות</h2><p className="mt-2 text-sm text-neutral-500">אפשר לייבא הכנסות מ־PDF תלוש, CSV או Excel. אם ה־PDF טקסטואלי, המערכת תנסה לזהות נטו לתשלום אוטומטית.</p></div><div className="flex flex-wrap gap-3"><label className="cursor-pointer rounded-xl bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800">ייבוא הכנסות PDF/CSV/Excel<input type="file" accept="application/pdf,.csv,.xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importIncomeFile(file); }} /></label><label className="cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-white">צירוף תלוש PDF<input type="file" accept="application/pdf" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) attachSalarySlipFile(file); }} /></label><PrimaryButton theme={activeTheme} onClick={addIncome}>+ הוספה</PrimaryButton></div></div>
               {(monthData.attachedDocuments || []).length ? <div className="mt-4 space-y-2 rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-600">{monthData.attachedDocuments.map((document) => <div key={document.id} className="flex items-center justify-between gap-3"><span>תלוש מצורף: <strong>{document.name}</strong></span><button type="button" onClick={() => removeAttachedDocument(document.id)} className="font-semibold text-neutral-700">הסרה</button></div>)}</div> : null}
@@ -2537,14 +2539,14 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                 </label>
                 <p className="mt-3 text-xs leading-6 text-neutral-500">כבוי: העסק נשאר מחוץ לדשבורד, ורק העברה/משכורת לחשבון המשותף נספרת כהכנסה. דולק: תשלומי עצמאי נספרים כהוצאות בית.</p>
               </div>
-              <div className="mt-6 grid gap-4 md:grid-cols-2">{[['owner', 'בעל העסק', 'text'], ['salaryTransferToHousehold', 'העברה / משכורת לחשבון המשותף', 'number'], ['grossRevenue', 'הכנסה עסקית ברוטו', 'number'], ['vatCollected', 'מע״מ שנגבה מלקוחות', 'number'], ['vatPaidOnExpenses', 'מע״מ על הוצאות מוכרות', 'number'], ['incomeTaxAdvance', 'מקדמת מס הכנסה', 'number'], ['nationalInsurance', 'ביטוח לאומי', 'number'], ['businessExpenses', 'הוצאות עסקיות ששולמו החודש', 'number']].map(([field, label, type]) => <label key={field} className="text-sm font-semibold text-neutral-600">{label}<Field type={type} value={monthData.selfEmployed[field]} onChange={(event) => updateSelfEmployedField(field, event.target.value)} className="mt-2 w-full" /></label>)}</div>
+              <div className="mt-6 grid gap-4 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2">{[['owner', 'בעל העסק', 'text'], ['salaryTransferToHousehold', 'העברה / משכורת לחשבון המשותף', 'number'], ['grossRevenue', 'הכנסה עסקית ברוטו', 'number'], ['vatCollected', 'מע״מ שנגבה מלקוחות', 'number'], ['vatPaidOnExpenses', 'מע״מ על הוצאות מוכרות', 'number'], ['incomeTaxAdvance', 'מקדמת מס הכנסה', 'number'], ['nationalInsurance', 'ביטוח לאומי', 'number'], ['businessExpenses', 'הוצאות עסקיות ששולמו החודש', 'number']].map(([field, label, type]) => <label key={field} className="text-sm font-semibold text-neutral-600">{label}<Field type={type} value={monthData.selfEmployed[field]} onChange={(event) => updateSelfEmployedField(field, event.target.value)} className="mt-2 w-full" /></label>)}</div>
               <div className="mt-6 grid gap-4 md:grid-cols-3"><StatCard title="מע״מ צפוי" value={SHEKEL.format(selfEmployedVatDue)} note="נגבה פחות מוכר" /><StatCard title="מס + ביטוח" value={SHEKEL.format(toNumber(monthData.selfEmployed.incomeTaxAdvance) + toNumber(monthData.selfEmployed.nationalInsurance))} note="תשלומי חובה" /><StatCard title="סה״כ עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note={includeSelfEmployed ? 'כלול בבית' : 'מחוץ לבית'} /></div>
             </Section>
           </section>
         ) : null}
 
         {activeTab === 'insights' ? (
-          <section className="grid gap-6 lg:grid-cols-2">
+          <section className="grid gap-6 lg:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2">
             {preferences.showSmartInsightCards ? <Section><div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">תובנות חכמות</h2><p className="mt-2 text-sm text-neutral-500">תובנות מחושבות ישירות מהנתונים: חריגות, תקציבים, בתי עסק מובילים, חיובים חוזרים ודפוסים חודשיים.</p></div><div className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: activeTheme.soft, color: activeTheme.text }}>מתעדכן אוטומטית</div></div><div className="mt-5 grid gap-4">{realInsights.map((insight, index) => <div key={insight} className="flex items-start gap-4 rounded-[24px] border border-neutral-200 bg-white p-5 shadow-sm"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-100 text-lg font-semibold text-neutral-500">{index % 3 === 0 ? '◔' : index % 3 === 1 ? '▲' : '✦'}</div><div className="flex-1 text-sm leading-7 text-neutral-700 no-orphans">{noSingleWordLine(insight)}</div></div>)}</div></Section> : null}
             {preferences.showRecurringDetection ? <Section><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">זיהוי חיובים קבועים</h2><p className="mt-2 text-sm text-neutral-500">זיהוי מנויים, ביטוחים, סלולר ושכירות לפי מילות מפתח וחזרה בין חודשים.</p><div className="mt-5 space-y-3">{recurringTransactions.length ? recurringTransactions.map((item) => <div key={item.id} className="flex justify-between rounded-2xl bg-neutral-50 p-4 text-sm"><span>{item.merchant}</span><strong>{SHEKEL.format(item.amount)}</strong></div>) : <EmptyState title="אין עדיין חיובים קבועים" text="העלי פירוטים של כמה חודשים כדי שנוכל לזהות מנויים ותשלומים חוזרים בצורה חכמה." />}</div></Section> : null}
           </section>
@@ -2560,7 +2562,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                 </p>
               </div>
 
-              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              <div className="mt-6 grid gap-6 lg:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2">
                 <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
                   <h3 className="text-lg font-semibold text-neutral-950">פרטי הבית</h3>
                   <div className="mt-4 grid gap-3">
@@ -2580,7 +2582,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                         className="mt-2 w-full"
                       />
                     </label>
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2">
                       <label className="text-sm font-semibold text-neutral-600">
                         משתמש/ת ראשון/ה
                         <Field
@@ -2622,7 +2624,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
                 <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
                   <h3 className="text-lg font-semibold text-neutral-950">יעדים חודשיים</h3>
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="mt-4 grid gap-3 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2">
                     <label className="text-sm font-semibold text-neutral-600">
                       יעד הוצאות חודשי
                       <Field
@@ -2647,7 +2649,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
               <div className="mt-6 rounded-[24px] border border-neutral-200 bg-white p-5">
                 <h3 className="text-lg font-semibold text-neutral-950">Home Widgets</h3>
-                <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                <div className="mt-4 grid gap-3 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                   {[
                     ['showMonthlyStory', 'Monthly Story'],
                     ['showFinancialHealth', 'Financial Health'],
@@ -2670,10 +2672,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              <div className="mt-6 grid gap-6 lg:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2">
                 <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
                   <h3 className="text-lg font-semibold text-neutral-950">Theme Mood</h3>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 md:grid-cols-2 gap-3">
                     {Object.keys(THEME_STYLES).map((themeName) => {
                       const themeStyle = getSafeTheme(themeName);
                       const isSelected = preferences.themeMood === themeName;
@@ -2745,7 +2747,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                 </p>
               </div>
 
-              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              <div className="mt-6 grid gap-6 lg:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 md:grid-cols-2">
                 <div className="rounded-[24px] border border-neutral-200 bg-white p-5">
                   <h3 className="text-lg font-semibold text-neutral-950">Smart Notifications</h3>
                   <div className="mt-4 space-y-3">
@@ -2817,7 +2819,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   <option>הכול</option>
                   {EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
                 </SelectField>
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 md:grid-cols-2">
                   <Field value={minAmount} onChange={(event) => setMinAmount(event.target.value)} type="number" placeholder="סכום מינימום" />
                   <Field value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} type="number" placeholder="סכום מקסימום" />
                 </div>
