@@ -16,20 +16,20 @@ const APP_BUILD_MARKER = 'finance-dashboard-build-v14';
 // Monthly compare periods determine how many previous months are averaged against the current month.
 // Controls the Monthly Compare ranges. Each option compares the current month against an average of earlier months.
 const COMPARE_PERIODS = [
-  { id: 'previous', label: '◊ó◊ï◊ì◊© ◊ß◊ï◊ì◊ù', months: 1 },
-  { id: 'quarter', label: '3 ◊ó◊ï◊ì◊©◊ô◊ù', months: 3 },
-  { id: 'halfYear', label: '6 ◊ó◊ï◊ì◊©◊ô◊ù', months: 6 },
-  { id: 'year', label: '◊©◊†◊î', months: 12 },
-  { id: 'all', label: '◊õ◊ú ◊î◊™◊ß◊ï◊§◊î', months: Infinity },
+  { id: 'previous', label: 'חודש קודם', months: 1 },
+  { id: 'quarter', label: '3 חודשים', months: 3 },
+  { id: 'halfYear', label: '6 חודשים', months: 6 },
+  { id: 'year', label: 'שנה', months: 12 },
+  { id: 'all', label: 'כל התקופה', months: Infinity },
 ];
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
-  { id: 'income', label: '◊î◊õ◊†◊°◊ï◊™' },
-  { id: 'credit', label: '◊î◊ï◊¶◊ê◊ï◊™' },
-  { id: 'savings', label: '◊ó◊ô◊°◊õ◊ï◊ü' },
-  { id: 'insights', label: '◊™◊ï◊ë◊†◊ï◊™ ◊ó◊õ◊û◊ï◊™' },
-  { id: 'settings', label: '◊î◊í◊ì◊®◊ï◊™' },
+  { id: 'income', label: 'הכנסות' },
+  { id: 'credit', label: 'הוצאות' },
+  { id: 'savings', label: 'חיסכון' },
+  { id: 'insights', label: 'תובנות חכמות' },
+  { id: 'settings', label: 'הגדרות' },
 ];
 
 const THEME_STYLES = {
@@ -47,117 +47,117 @@ const FINANCIAL_MODES = {
     savingsTarget: 5,
     budgetWarningAt: 65,
     strictness: 1.35,
-    focus: '◊ß◊ô◊¶◊ï◊• ◊î◊ï◊¶◊ê◊ï◊™ ◊ï◊©◊û◊ô◊®◊î ◊¢◊ú ◊™◊ñ◊®◊ô◊ù ◊ó◊ô◊ï◊ë◊ô',
+    focus: 'קיצוץ הוצאות ושמירה על תזרים חיובי',
     priorityMetric: 'burnRate',
-    notificationTone: '◊ê◊í◊®◊°◊ô◊ë◊ô',
+    notificationTone: 'אגרסיבי',
   },
   Stable: {
     label: 'Stable',
     savingsTarget: 20,
     budgetWarningAt: 80,
     strictness: 1,
-    focus: '◊ê◊ô◊ñ◊ï◊ü ◊ë◊ô◊ü ◊ê◊ô◊õ◊ï◊™ ◊ó◊ô◊ô◊ù ◊ú◊ó◊ô◊°◊õ◊ï◊ü ◊ô◊¶◊ô◊ë',
+    focus: 'איזון בין איכות חיים לחיסכון יציב',
     priorityMetric: 'savingsRate',
-    notificationTone: '◊û◊ê◊ï◊ñ◊ü',
+    notificationTone: 'מאוזן',
   },
   Growth: {
     label: 'Growth',
     savingsTarget: 25,
     budgetWarningAt: 90,
     strictness: 0.85,
-    focus: '◊î◊í◊ì◊ú◊™ ◊î◊õ◊†◊°◊ï◊™, ◊î◊©◊ß◊¢◊î ◊ë◊¶◊û◊ô◊ó◊î ◊ï◊©◊ô◊§◊ï◊® Cash Flow',
+    focus: 'הגדלת הכנסות, השקעה בצמיחה ושיפור Cash Flow',
     priorityMetric: 'cashFlow',
-    notificationTone: '◊¶◊û◊ô◊ó◊î',
+    notificationTone: 'צמיחה',
   },
   'Wealth Building': {
     label: 'Wealth Building',
     savingsTarget: 35,
     budgetWarningAt: 95,
     strictness: 0.75,
-    focus: '◊ë◊†◊ô◊ô◊™ ◊î◊ï◊ü, ◊î◊í◊ì◊ú◊™ ◊†◊õ◊°◊ô◊ù ◊ï◊ê◊ï◊§◊ò◊ô◊û◊ô◊ñ◊¶◊ô◊î ◊§◊ô◊†◊†◊°◊ô◊™',
+    focus: 'בניית הון, הגדלת נכסים ואופטימיזציה פיננסית',
     priorityMetric: 'netWorth',
-    notificationTone: '◊ê◊ï◊§◊ò◊ô◊û◊ô◊ñ◊¶◊ô◊î',
+    notificationTone: 'אופטימיזציה',
   },
 };
 
 const EXPENSE_CATEGORIES = [
-  '◊û◊ñ◊ï◊ü ◊ï◊¶◊®◊ô◊õ◊î',
-  '◊û◊°◊¢◊ì◊ï◊™ ◊ï◊ë◊™◊ô ◊ß◊§◊î',
-  '◊§◊†◊ê◊ô, ◊ë◊ô◊ì◊ï◊® ◊ï◊°◊§◊ï◊®◊ò',
-  '◊™◊ó◊ë◊ï◊®◊î ◊ï◊®◊õ◊ë◊ô◊ù',
-  '◊ò◊ô◊°◊ï◊™ ◊ï◊™◊ô◊ô◊®◊ï◊™',
-  '◊ë◊®◊ô◊ê◊ï◊™ ◊ï◊®◊§◊ï◊ê◊î',
-  '◊§◊ê◊®◊ù ◊ï◊ß◊ï◊°◊û◊ò◊ô◊ß◊î',
-  '◊ê◊ï◊§◊†◊î ◊ï◊î◊ú◊ë◊©◊î',
-  '◊î◊¢◊ë◊®◊™ ◊õ◊°◊§◊ô◊ù',
-  '◊û◊©◊ô◊õ◊™ ◊û◊ñ◊ï◊û◊ü',
-  '◊°◊§◊®◊ô◊ù ◊ï◊ì◊§◊ï◊°',
-  '◊ë◊ô◊ò◊ï◊ó◊ô◊ù',
-  '◊û◊ô◊°◊ô◊ù ◊ï◊™◊©◊ú◊ï◊û◊ô◊ù',
-  '◊ì◊ô◊ï◊® ◊ï◊ó◊©◊ë◊ï◊†◊ï◊™',
-  '◊ó◊ô◊°◊õ◊ï◊ü ◊ï◊î◊©◊ß◊¢◊ï◊™',
-  '◊î◊ï◊¶◊ê◊ï◊™ ◊¢◊°◊ß◊ô◊ï◊™',
-  '◊©◊ï◊†◊ï◊™',
-  '◊ê◊ó◊®',
+  'מזון וצריכה',
+  'מסעדות ובתי קפה',
+  'פנאי, בידור וספורט',
+  'תחבורה ורכבים',
+  'טיסות ותיירות',
+  'בריאות ורפואה',
+  'פארם וקוסמטיקה',
+  'אופנה והלבשה',
+  'העברת כספים',
+  'משיכת מזומן',
+  'ספרים ודפוס',
+  'ביטוחים',
+  'מיסים ותשלומים',
+  'דיור וחשבונות',
+  'חיסכון והשקעות',
+  'הוצאות עסקיות',
+  'שונות',
+  'אחר',
 ];
 
 const MAX_CATEGORY_MAP = {
-  '◊û◊ñ◊ï◊ü ◊ï◊¶◊®◊ô◊õ◊î': '◊û◊ñ◊ï◊ü ◊ï◊¶◊®◊ô◊õ◊î',
-  '◊û◊°◊¢◊ì◊ï◊™ ◊ï◊ë◊™◊ô ◊ß◊§◊î': '◊û◊°◊¢◊ì◊ï◊™ ◊ï◊ë◊™◊ô ◊ß◊§◊î',
-  '◊§◊†◊ê◊ô, ◊ë◊ô◊ì◊ï◊® ◊ï◊°◊§◊ï◊®◊ò': '◊§◊†◊ê◊ô, ◊ë◊ô◊ì◊ï◊® ◊ï◊°◊§◊ï◊®◊ò',
-  '◊™◊ó◊ë◊ï◊®◊î ◊ï◊®◊õ◊ë◊ô◊ù': '◊™◊ó◊ë◊ï◊®◊î ◊ï◊®◊õ◊ë◊ô◊ù',
-  '◊ò◊ô◊°◊ï◊™ ◊ï◊™◊ô◊ô◊®◊ï◊™': '◊ò◊ô◊°◊ï◊™ ◊ï◊™◊ô◊ô◊®◊ï◊™',
-  '◊ë◊®◊ô◊ê◊ï◊™ ◊ï◊®◊§◊ï◊ê◊î': '◊ë◊®◊ô◊ê◊ï◊™ ◊ï◊®◊§◊ï◊ê◊î',
-  '◊§◊ê◊®◊ù ◊ï◊ß◊ï◊°◊û◊ò◊ô◊ß◊î': '◊§◊ê◊®◊ù ◊ï◊ß◊ï◊°◊û◊ò◊ô◊ß◊î',
-  '◊ê◊ï◊§◊†◊î ◊ï◊î◊ú◊ë◊©◊î': '◊ê◊ï◊§◊†◊î ◊ï◊î◊ú◊ë◊©◊î',
-  '◊î◊¢◊ë◊®◊™ ◊õ◊°◊§◊ô◊ù': '◊î◊¢◊ë◊®◊™ ◊õ◊°◊§◊ô◊ù',
-  '◊û◊©◊ô◊õ◊™ ◊û◊ñ◊ï◊û◊ü': '◊û◊©◊ô◊õ◊™ ◊û◊ñ◊ï◊û◊ü',
-  '◊°◊§◊®◊ô◊ù ◊ï◊ì◊§◊ï◊°': '◊°◊§◊®◊ô◊ù ◊ï◊ì◊§◊ï◊°',
-  '◊©◊ï◊†◊ï◊™': '◊©◊ï◊†◊ï◊™',
+  'מזון וצריכה': 'מזון וצריכה',
+  'מסעדות ובתי קפה': 'מסעדות ובתי קפה',
+  'פנאי, בידור וספורט': 'פנאי, בידור וספורט',
+  'תחבורה ורכבים': 'תחבורה ורכבים',
+  'טיסות ותיירות': 'טיסות ותיירות',
+  'בריאות ורפואה': 'בריאות ורפואה',
+  'פארם וקוסמטיקה': 'פארם וקוסמטיקה',
+  'אופנה והלבשה': 'אופנה והלבשה',
+  'העברת כספים': 'העברת כספים',
+  'משיכת מזומן': 'משיכת מזומן',
+  'ספרים ודפוס': 'ספרים ודפוס',
+  'שונות': 'שונות',
 };
 
 const CATEGORY_BUDGETS = {
-  '◊û◊ñ◊ï◊ü ◊ï◊¶◊®◊ô◊õ◊î': 4000,
-  '◊û◊°◊¢◊ì◊ï◊™ ◊ï◊ë◊™◊ô ◊ß◊§◊î': 800,
-  '◊™◊ó◊ë◊ï◊®◊î ◊ï◊®◊õ◊ë◊ô◊ù': 1800,
-  '◊ê◊ï◊§◊†◊î ◊ï◊î◊ú◊ë◊©◊î': 1200,
-  '◊ë◊®◊ô◊ê◊ï◊™ ◊ï◊®◊§◊ï◊ê◊î': 800,
-  '◊§◊ê◊®◊ù ◊ï◊ß◊ï◊°◊û◊ò◊ô◊ß◊î': 700,
-  '◊§◊†◊ê◊ô, ◊ë◊ô◊ì◊ï◊® ◊ï◊°◊§◊ï◊®◊ò': 600,
-  '◊ò◊ô◊°◊ï◊™ ◊ï◊™◊ô◊ô◊®◊ï◊™': 1500,
-  '◊î◊¢◊ë◊®◊™ ◊õ◊°◊§◊ô◊ù': 1000,
-  '◊©◊ï◊†◊ï◊™': 1000,
-  ◊ê◊ó◊®: 1000,
+  'מזון וצריכה': 4000,
+  'מסעדות ובתי קפה': 800,
+  'תחבורה ורכבים': 1800,
+  'אופנה והלבשה': 1200,
+  'בריאות ורפואה': 800,
+  'פארם וקוסמטיקה': 700,
+  'פנאי, בידור וספורט': 600,
+  'טיסות ותיירות': 1500,
+  'העברת כספים': 1000,
+  'שונות': 1000,
+  'אחר': 1000,
 };
 
 // Merchant keywords are intentionally simple and editable: user corrections are saved in learnedRules.
 // First-pass categorization rules for imported card transactions. User edits later become learnedRules.
 const MERCHANT_CATEGORY_MAP = {
-  wolt: '◊û◊°◊¢◊ì◊ï◊™ ◊ï◊ë◊™◊ô ◊ß◊§◊î',
-  tenbis: '◊û◊°◊¢◊ì◊ï◊™ ◊ï◊ë◊™◊ô ◊ß◊§◊î',
-  shufersal: '◊û◊ñ◊ï◊ü ◊ï◊¶◊®◊ô◊õ◊î',
-  ◊©◊ï◊§◊®◊°◊ú: '◊û◊ñ◊ï◊ü ◊ï◊¶◊®◊ô◊õ◊î',
-  ◊®◊û◊ô: '◊û◊ñ◊ï◊ü ◊ï◊¶◊®◊ô◊õ◊î',
-  victory: '◊û◊ñ◊ï◊ü ◊ï◊¶◊®◊ô◊õ◊î',
-  ◊ï◊ô◊ß◊ò◊ï◊®◊ô: '◊û◊ñ◊ï◊ü ◊ï◊¶◊®◊ô◊õ◊î',
-  yellow: '◊™◊ó◊ë◊ï◊®◊î ◊ï◊®◊õ◊ë◊ô◊ù',
-  ◊ì◊ï◊®: '◊™◊ó◊ë◊ï◊®◊î ◊ï◊®◊õ◊ë◊ô◊ù',
-  ◊§◊ñ: '◊™◊ó◊ë◊ï◊®◊î ◊ï◊®◊õ◊ë◊ô◊ù',
-  fox: '◊ê◊ï◊§◊†◊î ◊ï◊î◊ú◊ë◊©◊î',
-  zara: '◊ê◊ï◊§◊†◊î ◊ï◊î◊ú◊ë◊©◊î',
-  superpharm: '◊§◊ê◊®◊ù ◊ï◊ß◊ï◊°◊û◊ò◊ô◊ß◊î',
-  ◊°◊ï◊§◊®◊§◊ê◊®◊ù: '◊§◊ê◊®◊ù ◊ï◊ß◊ï◊°◊û◊ò◊ô◊ß◊î',
-  ◊õ◊ú◊ú◊ô◊™: '◊ë◊®◊ô◊ê◊ï◊™ ◊ï◊®◊§◊ï◊ê◊î',
-  netflix: '◊§◊†◊ê◊ô, ◊ë◊ô◊ì◊ï◊® ◊ï◊°◊§◊ï◊®◊ò',
-  spotify: '◊§◊†◊ê◊ô, ◊ë◊ô◊ì◊ï◊® ◊ï◊°◊§◊ï◊®◊ò',
-  icloud: '◊§◊†◊ê◊ô, ◊ë◊ô◊ì◊ï◊® ◊ï◊°◊§◊ï◊®◊ò',
-  google: '◊§◊†◊ê◊ô, ◊ë◊ô◊ì◊ï◊® ◊ï◊°◊§◊ï◊®◊ò',
-  apple: '◊§◊†◊ê◊ô, ◊ë◊ô◊ì◊ï◊® ◊ï◊°◊§◊ï◊®◊ò',
+  wolt: 'מסעדות ובתי קפה',
+  tenbis: 'מסעדות ובתי קפה',
+  shufersal: 'מזון וצריכה',
+  שופרסל: 'מזון וצריכה',
+  רמי: 'מזון וצריכה',
+  victory: 'מזון וצריכה',
+  ויקטורי: 'מזון וצריכה',
+  yellow: 'תחבורה ורכבים',
+  דור: 'תחבורה ורכבים',
+  פז: 'תחבורה ורכבים',
+  fox: 'אופנה והלבשה',
+  zara: 'אופנה והלבשה',
+  superpharm: 'פארם וקוסמטיקה',
+  סופרפארם: 'פארם וקוסמטיקה',
+  כללית: 'בריאות ורפואה',
+  netflix: 'פנאי, בידור וספורט',
+  spotify: 'פנאי, בידור וספורט',
+  icloud: 'פנאי, בידור וספורט',
+  google: 'פנאי, בידור וספורט',
+  apple: 'פנאי, בידור וספורט',
 };
 
 const RECURRING_KEYWORDS = [
   'netflix', 'spotify', 'icloud', 'google', 'apple', 'cellcom', 'partner', 'pelephone', 'hot', 'yes',
-  '◊ë◊ô◊ò◊ï◊ó', '◊î◊®◊ê◊ú', '◊û◊í◊ì◊ú', '◊õ◊ú◊ú', '◊°◊ú◊ß◊ï◊ù', '◊§◊®◊ò◊†◊®', '◊§◊ú◊ê◊§◊ï◊ü', '◊©◊õ◊ô◊®◊ï◊™',
+  'ביטוח', 'הראל', 'מגדל', 'כלל', 'סלקום', 'פרטנר', 'פלאפון', 'שכירות',
 ];
 
 const SHEKEL = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 });
@@ -239,14 +239,14 @@ function toNumber(value) {
   if (!raw) return 0;
   const isNegative = raw.includes('-') || (raw.includes('(') && raw.includes(')'));
   raw = raw
-    .split('‚Ç™').join('')
+    .split('₪').join('')
     .split('(').join('')
     .split(')').join('')
     .split(' ').join('')
     .split(String.fromCharCode(160)).join('')
-    .split('‚àí').join('-')
-    .split('‚Äì').join('-')
-    .split('‚Äî').join('-')
+    .split('−').join('-')
+    .split('–').join('-')
+    .split('—').join('-')
     .trim();
 
   if (raw.includes(',') && raw.includes('.')) {
@@ -312,7 +312,7 @@ function detectCategory(merchant = '', learnedRules = {}, importedCategory = '')
   for (const [key, category] of Object.entries(MERCHANT_CATEGORY_MAP)) {
     if (normalized.includes(normalizeMerchantName(key))) return category;
   }
-  return '◊ê◊ó◊®';
+  return 'אחר';
 }
 
 // A tiny CSV parser that supports quoted fields, commas, semicolons, and tabs.
@@ -351,7 +351,7 @@ function findHeaderIndex(headers, keywords, fallbackIndex = -1) {
 // When the amount column is not clearly named, pick the column with the most numeric-looking values.
 // Finds the amount column by header names first, then falls back to the most numeric-looking column.
 function findAmountIndex(headers, sampleRows) {
-  const headerIndex = findHeaderIndex(headers, ['amount', '◊°◊õ◊ï◊ù', '◊ó◊ô◊ï◊ë', '◊ó◊ï◊ë◊î', '◊ñ◊õ◊ï◊™', '◊¢◊°◊ß◊î', 'debit', 'credit', 'charge', 'total', '◊†◊ò◊ï', '◊ú◊™◊©◊ú◊ï◊ù'], -1);
+  const headerIndex = findHeaderIndex(headers, ['amount', 'סכום', 'חיוב', 'חובה', 'זכות', 'עסקה', 'debit', 'credit', 'charge', 'total', 'נטו', 'לתשלום'], -1);
   if (headerIndex >= 0) return headerIndex;
   const width = Math.max(headers.length, ...sampleRows.map((row) => row.length));
   const rowScores = Array.from({ length: width }).map((_, index) => {
@@ -373,17 +373,17 @@ function normalizeImportedRows(rows, learnedRules = {}) {
   const headerCandidates = cleanedRows.slice(0, 25);
   const headerRowIndex = headerCandidates.findIndex((row) => {
     const joined = row.join(' ').toLowerCase();
-    return ['date', '◊™◊ê◊®◊ô◊ö', 'amount', '◊°◊õ◊ï◊ù', 'merchant', '◊ë◊ô◊™ ◊¢◊°◊ß', '◊©◊ù ◊ë◊ô◊™ ◊î◊¢◊°◊ß', '◊™◊ô◊ê◊ï◊®', '◊§◊ô◊®◊ï◊ò', '◊ó◊ô◊ï◊ë', '◊ñ◊õ◊ï◊™', '◊ó◊ï◊ë◊î'].some((word) => joined.includes(word));
+    return ['date', 'תאריך', 'amount', 'סכום', 'merchant', 'בית עסק', 'שם בית העסק', 'תיאור', 'פירוט', 'חיוב', 'זכות', 'חובה'].some((word) => joined.includes(word));
   });
   const hasHeader = headerRowIndex >= 0;
   const headers = hasHeader ? cleanedRows[headerRowIndex] : cleanedRows[0] || [];
   const dataRows = hasHeader ? cleanedRows.slice(headerRowIndex + 1) : cleanedRows;
   const sampleRows = dataRows.slice(0, 30);
 
-  const dateIndex = hasHeader ? findHeaderIndex(headers, ['date', '◊™◊ê◊®◊ô◊ö', '◊™◊ê◊®◊ô◊ö ◊¢◊°◊ß◊î', '◊™◊ê◊®◊ô◊ö ◊®◊õ◊ô◊©◊î', '◊™◊ê◊®◊ô◊ö ◊ó◊ô◊ï◊ë'], 0) : 0;
-  const merchantIndex = hasHeader ? findHeaderIndex(headers, ['merchant', '◊ë◊ô◊™ ◊¢◊°◊ß', '◊©◊ù ◊ë◊ô◊™ ◊î◊¢◊°◊ß', '◊©◊ù ◊ë◊ô◊™ ◊¢◊°◊ß', '◊°◊§◊ß', '◊™◊ô◊ê◊ï◊®', '◊§◊ô◊®◊ï◊ò', '◊©◊ù', '◊§◊®◊ò◊ô◊ù'], 1) : 1;
-  const importedCategoryIndex = hasHeader ? findHeaderIndex(headers, ['◊ß◊ò◊í◊ï◊®◊ô◊î', 'category'], -1) : -1;
-  const amountIndex = hasHeader ? findHeaderIndex(headers, ['◊°◊õ◊ï◊ù ◊ó◊ô◊ï◊ë', 'amount charged', '◊ó◊ô◊ï◊ë', '◊°◊õ◊ï◊ù', '◊ó◊ï◊ë◊î', '◊ñ◊õ◊ï◊™', 'amount', 'charge', 'total'], -1) : findAmountIndex(headers, sampleRows);
+  const dateIndex = hasHeader ? findHeaderIndex(headers, ['date', 'תאריך', 'תאריך עסקה', 'תאריך רכישה', 'תאריך חיוב'], 0) : 0;
+  const merchantIndex = hasHeader ? findHeaderIndex(headers, ['merchant', 'בית עסק', 'שם בית העסק', 'שם בית עסק', 'ספק', 'תיאור', 'פירוט', 'שם', 'פרטים'], 1) : 1;
+  const importedCategoryIndex = hasHeader ? findHeaderIndex(headers, ['קטגוריה', 'category'], -1) : -1;
+  const amountIndex = hasHeader ? findHeaderIndex(headers, ['סכום חיוב', 'amount charged', 'חיוב', 'סכום', 'חובה', 'זכות', 'amount', 'charge', 'total'], -1) : findAmountIndex(headers, sampleRows);
   const finalAmountIndex = amountIndex >= 0 ? amountIndex : findAmountIndex(headers, sampleRows);
 
   return dataRows
@@ -391,10 +391,10 @@ function normalizeImportedRows(rows, learnedRules = {}) {
       const amountCell = finalAmountIndex >= 0 ? row[finalAmountIndex] : [...row].reverse().find((cell) => Math.abs(toNumber(cell)) > 0);
       const amount = Math.abs(toNumber(amountCell));
       const date = row[dateIndex] || row.find((cell) => String(cell || '').includes('/')) || row.find((cell) => String(cell || '').includes('-')) || '';
-      const merchant = row[merchantIndex] || row.find((cell, index) => index !== dateIndex && index !== finalAmountIndex && String(cell || '').trim() && Math.abs(toNumber(cell)) === 0) || '◊¢◊°◊ß◊î';
+      const merchant = row[merchantIndex] || row.find((cell, index) => index !== dateIndex && index !== finalAmountIndex && String(cell || '').trim() && Math.abs(toNumber(cell)) === 0) || 'עסקה';
       const importedCategory = importedCategoryIndex >= 0 ? row[importedCategoryIndex] : '';
       const normalizedMerchant = normalizeMerchantName(merchant);
-      const isSummaryRow = normalizedMerchant.includes('◊°◊ö ◊î◊õ◊ú') || normalizedMerchant.includes('total') || normalizedMerchant.includes('◊°◊î◊õ');
+      const isSummaryRow = normalizedMerchant.includes('סך הכל') || normalizedMerchant.includes('total') || normalizedMerchant.includes('סהכ');
       return {
         id: makeId('tx'),
         date,
@@ -403,7 +403,7 @@ function normalizeImportedRows(rows, learnedRules = {}) {
         category: detectCategory(merchant, learnedRules, importedCategory),
       };
     })
-    .filter((transaction) => transaction.amount > 0 && normalizeMerchantName(transaction.merchant) !== normalizeMerchantName('◊¢◊°◊ß◊î') && !normalizeMerchantName(transaction.merchant).includes('◊°◊ö ◊î◊õ◊ú'));
+    .filter((transaction) => transaction.amount > 0 && normalizeMerchantName(transaction.merchant) !== normalizeMerchantName('עסקה') && !normalizeMerchantName(transaction.merchant).includes('סך הכל'));
 }
 
 function normalizeBankRows(rows) {
@@ -414,18 +414,18 @@ function normalizeBankRows(rows) {
   const headerCandidates = cleanedRows.slice(0, 25);
   const headerRowIndex = headerCandidates.findIndex((row) => {
     const joined = row.join(' ').toLowerCase();
-    return ['◊™◊ê◊®◊ô◊ö', 'date', '◊™◊ô◊ê◊ï◊®', '◊§◊ô◊®◊ï◊ò', '◊ê◊°◊û◊õ◊™◊ê', '◊ó◊ï◊ë◊î', '◊ñ◊õ◊ï◊™', '◊ô◊™◊®◊î', 'balance', 'debit', 'credit'].some((word) => joined.includes(word));
+    return ['תאריך', 'date', 'תיאור', 'פירוט', 'אסמכתא', 'חובה', 'זכות', 'יתרה', 'balance', 'debit', 'credit'].some((word) => joined.includes(word));
   });
   const hasHeader = headerRowIndex >= 0;
   const headers = hasHeader ? cleanedRows[headerRowIndex] : cleanedRows[0] || [];
   const dataRows = hasHeader ? cleanedRows.slice(headerRowIndex + 1) : cleanedRows;
   const sampleRows = dataRows.slice(0, 40);
 
-  const dateIndex = hasHeader ? findHeaderIndex(headers, ['◊™◊ê◊®◊ô◊ö', 'date', '◊™◊ê◊®◊ô◊ö ◊§◊¢◊ï◊ú◊î', '◊™◊ê◊®◊ô◊ö ◊¢◊®◊ö'], 0) : 0;
-  const descriptionIndex = hasHeader ? findHeaderIndex(headers, ['◊™◊ô◊ê◊ï◊®', '◊§◊ô◊®◊ï◊ò', '◊§◊®◊ò◊ô◊ù', '◊©◊ù', '◊§◊¢◊ï◊ú◊î', 'description'], 1) : 1;
-  const debitIndex = hasHeader ? findHeaderIndex(headers, ['◊ó◊ï◊ë◊î', 'debit', '◊ó◊ô◊ï◊ë', '◊û◊©◊ô◊õ◊î'], -1) : -1;
-  const creditIndex = hasHeader ? findHeaderIndex(headers, ['◊ñ◊õ◊ï◊™', 'credit', '◊î◊§◊ß◊ì◊î'], -1) : -1;
-  const balanceIndex = hasHeader ? findHeaderIndex(headers, ['◊ô◊™◊®◊î', 'balance', '◊ô◊™◊®◊î ◊ë◊©◊ó', '◊ô◊™◊®◊î ◊†◊ï◊õ◊ó◊ô◊™'], -1) : -1;
+  const dateIndex = hasHeader ? findHeaderIndex(headers, ['תאריך', 'date', 'תאריך פעולה', 'תאריך ערך'], 0) : 0;
+  const descriptionIndex = hasHeader ? findHeaderIndex(headers, ['תיאור', 'פירוט', 'פרטים', 'שם', 'פעולה', 'description'], 1) : 1;
+  const debitIndex = hasHeader ? findHeaderIndex(headers, ['חובה', 'debit', 'חיוב', 'משיכה'], -1) : -1;
+  const creditIndex = hasHeader ? findHeaderIndex(headers, ['זכות', 'credit', 'הפקדה'], -1) : -1;
+  const balanceIndex = hasHeader ? findHeaderIndex(headers, ['יתרה', 'balance', 'יתרה בשח', 'יתרה נוכחית'], -1) : -1;
   const amountIndex = debitIndex < 0 && creditIndex < 0 ? findAmountIndex(headers, sampleRows) : -1;
 
   return dataRows
@@ -435,13 +435,13 @@ function normalizeBankRows(rows) {
       const fallbackAmount = amountIndex >= 0 ? toNumber(row[amountIndex]) : 0;
       const amount = credit || debit ? credit - debit : fallbackAmount;
       const balance = balanceIndex >= 0 ? toNumber(row[balanceIndex]) : 0;
-      const description = row[descriptionIndex] || row.find((cell, index) => index !== dateIndex && index !== debitIndex && index !== creditIndex && index !== balanceIndex && String(cell || '').trim() && Math.abs(toNumber(cell)) === 0) || '◊™◊†◊ï◊¢◊î ◊ë◊ë◊†◊ß';
+      const description = row[descriptionIndex] || row.find((cell, index) => index !== dateIndex && index !== debitIndex && index !== creditIndex && index !== balanceIndex && String(cell || '').trim() && Math.abs(toNumber(cell)) === 0) || 'תנועה בבנק';
       const date = row[dateIndex] || row.find((cell) => String(cell || '').includes('/') || String(cell || '').includes('-')) || '';
       const normalizedDescription = normalizeMerchantName(description);
-      const isSummaryRow = normalizedDescription.includes('◊°◊ö ◊î◊õ◊ú') || normalizedDescription.includes('◊°◊î◊õ') || normalizedDescription.includes('total');
+      const isSummaryRow = normalizedDescription.includes('סך הכל') || normalizedDescription.includes('סהכ') || normalizedDescription.includes('total');
       return { id: makeId('banktx'), date, description, amount, debit, credit, balance };
     })
-    .filter((transaction) => Math.abs(toNumber(transaction.amount)) > 0 && !normalizeMerchantName(transaction.description).includes('◊°◊ö ◊î◊õ◊ú'));
+    .filter((transaction) => Math.abs(toNumber(transaction.amount)) > 0 && !normalizeMerchantName(transaction.description).includes('סך הכל'));
 }
 
 function parseBankCsvText(text) {
@@ -517,21 +517,21 @@ function normalizeIncomeRows(rows) {
   const headerCandidates = cleanedRows.slice(0, 15);
   const headerRowIndex = headerCandidates.findIndex((row) => {
     const joined = row.join(' ').toLowerCase();
-    return ['income', 'salary', 'net', 'amount', '◊î◊õ◊†◊°◊î', '◊©◊õ◊®', '◊†◊ò◊ï', '◊°◊õ◊ï◊ù', '◊©◊ù', '◊ú◊™◊©◊ú◊ï◊ù', '◊ñ◊õ◊ï◊™'].some((word) => joined.includes(word));
+    return ['income', 'salary', 'net', 'amount', 'הכנסה', 'שכר', 'נטו', 'סכום', 'שם', 'לתשלום', 'זכות'].some((word) => joined.includes(word));
   });
   const hasHeader = headerRowIndex >= 0;
   const headers = hasHeader ? cleanedRows[headerRowIndex] : cleanedRows[0] || [];
   const dataRows = hasHeader ? cleanedRows.slice(headerRowIndex + 1) : cleanedRows;
   const sampleRows = dataRows.slice(0, 25);
 
-  const nameIndex = hasHeader ? findHeaderIndex(headers, ['name', '◊©◊ù', '◊¢◊ï◊ë◊ì', '◊û◊ß◊ï◊®', '◊™◊ô◊ê◊ï◊®', '◊§◊ô◊®◊ï◊ò', 'income', 'salary', '◊î◊õ◊†◊°◊î', '◊©◊õ◊®', '◊û◊¢◊°◊ô◊ß'], 0) : 0;
+  const nameIndex = hasHeader ? findHeaderIndex(headers, ['name', 'שם', 'עובד', 'מקור', 'תיאור', 'פירוט', 'income', 'salary', 'הכנסה', 'שכר', 'מעסיק'], 0) : 0;
   const amountIndex = findAmountIndex(headers, sampleRows);
 
   return dataRows
     .map((row) => {
       const amountCell = amountIndex >= 0 ? row[amountIndex] : [...row].reverse().find((cell) => Math.abs(toNumber(cell)) > 0);
       const amount = Math.abs(toNumber(amountCell));
-      const name = row[nameIndex] || row.find((cell, index) => index !== amountIndex && String(cell || '').trim() && Math.abs(toNumber(cell)) === 0) || '◊î◊õ◊†◊°◊î ◊û◊ô◊ï◊ë◊ê◊™';
+      const name = row[nameIndex] || row.find((cell, index) => index !== amountIndex && String(cell || '').trim() && Math.abs(toNumber(cell)) === 0) || 'הכנסה מיובאת';
       return { id: makeId('income'), name, amount };
     })
     .filter((income) => income.amount > 0);
@@ -605,7 +605,7 @@ function extractFirstMoneyValueNear(text, keyword) {
 }
 
 function extractNetSalaryFromPdfText(text) {
-  const keywords = ['◊†◊ò◊ï ◊ú◊™◊©◊ú◊ï◊ù', '◊ú◊™◊©◊ú◊ï◊ù ◊ë◊ë◊†◊ß', '◊°◊î◊õ ◊ú◊™◊©◊ú◊ï◊ù', '◊°◊î◊¥◊õ ◊ú◊™◊©◊ú◊ï◊ù', '◊©◊õ◊® ◊†◊ò◊ï', '◊†◊ò◊ï'];
+  const keywords = ['נטו לתשלום', 'לתשלום בבנק', 'סהכ לתשלום', 'סה״כ לתשלום', 'שכר נטו', 'נטו'];
   for (const keyword of keywords) {
     const value = extractFirstMoneyValueNear(text, keyword);
     if (value > 1000) return value;
@@ -618,12 +618,12 @@ async function parseIncomePdfFile(file) {
   const text = extractLooseTextFromPdfArrayBuffer(buffer);
   const netSalary = extractNetSalaryFromPdfText(text);
   if (!netSalary) return [];
-  return [{ id: makeId('income'), name: `◊†◊ò◊ï ◊û◊™◊ú◊ï◊© ${file.name}`, amount: netSalary }];
+  return [{ id: makeId('income'), name: `נטו מתלוש ${file.name}`, amount: netSalary }];
 }
 
 function getCategoryTotals(transactions) {
   return transactions.reduce((acc, transaction) => {
-    const category = transaction.category || '◊ê◊ó◊®';
+    const category = transaction.category || 'אחר';
     acc[category] = (acc[category] || 0) + toNumber(transaction.amount);
     return acc;
   }, {});
@@ -631,7 +631,7 @@ function getCategoryTotals(transactions) {
 
 function getMerchantTotals(transactions) {
   return transactions.reduce((acc, transaction) => {
-    const merchant = transaction.merchant || '◊ú◊ú◊ê ◊©◊ù';
+    const merchant = transaction.merchant || 'ללא שם';
     acc[merchant] = (acc[merchant] || 0) + toNumber(transaction.amount);
     return acc;
   }, {});
@@ -644,7 +644,7 @@ function calculateFinancialHealthScore(transactions, modeConfig = FINANCIAL_MODE
   const total = transactions.reduce((sum, item) => sum + toNumber(item.amount), 0) || 1;
   const categoryTotals = getCategoryTotals(transactions);
   const merchantTotals = getMerchantTotals(transactions);
-  const uncategorizedAmount = categoryTotals['◊ê◊ó◊®'] || 0;
+  const uncategorizedAmount = categoryTotals['אחר'] || 0;
   const largestTransaction = Math.max(...transactions.map((item) => toNumber(item.amount)));
   const largestMerchantAmount = Math.max(...Object.values(merchantTotals).map(toNumber));
   const strictness = modeConfig?.strictness || 1;
@@ -785,7 +785,7 @@ function createRollingMonthFromPrevious(previousMonthData) {
       return {
         ...account,
         id: makeId('bank'),
-        // Bank balance is a real bank value only. It does not include calculated monthly net / "◊ô◊™◊®◊î ◊ê◊ó◊®◊ô ◊î◊õ◊ï◊ú".
+        // Bank balance is a real bank value only. It does not include calculated monthly net / "יתרה אחרי הכול".
         openingBalance: previousClosing,
         closingBalance: previousClosing,
         importedFile: '',
@@ -927,14 +927,14 @@ function getMonthlyCompare(months, selectedMonth, periodId = 'previous') {
     current,
     previous,
     rows: [
-      buildRow('◊î◊õ◊†◊°◊ï◊™', 'income'),
-      buildRow('◊î◊ï◊¶◊ê◊ï◊™', 'expenses'),
-      buildRow('◊ê◊©◊®◊ê◊ô', 'credit'),
-      buildRow('◊î◊ï◊¶◊ê◊ï◊™ ◊ô◊ì◊†◊ô◊ï◊™', 'manual'),
-      buildRow('◊ó◊ô◊°◊õ◊ï◊ü', 'savings'),
-      buildRow('◊¢◊¶◊û◊ê◊ô', 'selfEmployed'),
-      buildRow('◊ô◊™◊®◊î', 'net'),
-      buildRow('◊©◊ô◊¢◊ï◊® ◊ó◊ô◊°◊õ◊ï◊ü', 'savingsRate', 'percent'),
+      buildRow('הכנסות', 'income'),
+      buildRow('הוצאות', 'expenses'),
+      buildRow('אשראי', 'credit'),
+      buildRow('הוצאות ידניות', 'manual'),
+      buildRow('חיסכון', 'savings'),
+      buildRow('עצמאי', 'selfEmployed'),
+      buildRow('יתרה', 'net'),
+      buildRow('שיעור חיסכון', 'savingsRate', 'percent'),
     ],
   };
 }
@@ -957,7 +957,7 @@ function getMonthlyTrend(months) {
 // Builds deterministic insights from real user-entered/imported data without calling an external AI service.
 function buildRealInsights(transactions, recurringTransactions = [], totalIncome = 0, financialMode = 'Stable', context = {}) {
   const modeConfig = getFinancialModeConfig(financialMode);
-  if (!transactions.length) return [`◊û◊¶◊ë ${modeConfig.label}: ${modeConfig.focus}. ◊î◊¢◊ú◊ï CSV ◊ê◊ï Excel ◊õ◊ì◊ô ◊ú◊ß◊ë◊ú ◊™◊ï◊ë◊†◊ï◊™.`];
+  if (!transactions.length) return [`מצב ${modeConfig.label}: ${modeConfig.focus}. העלו CSV או Excel כדי לקבל תובנות.`];
 
   const total = transactions.reduce((sum, item) => sum + toNumber(item.amount), 0) || 1;
   const categoryTotals = getCategoryTotals(transactions);
@@ -966,49 +966,49 @@ function buildRealInsights(transactions, recurringTransactions = [], totalIncome
   const sortedMerchants = Object.entries(merchantTotals).sort((a, b) => toNumber(b[1]) - toNumber(a[1]));
   const healthScore = calculateFinancialHealthScore(transactions, modeConfig);
   const insights = [
-    `◊û◊¶◊ë ${modeConfig.label}: ${modeConfig.focus}. ◊®◊û◊™ ◊î◊™◊®◊ê◊ï◊™: ${modeConfig.notificationTone}.`,
-    `◊¶◊ô◊ï◊ü ◊ë◊®◊ô◊ê◊ï◊™ ◊î◊ï◊¶◊ê◊ï◊™ ◊ê◊©◊®◊ê◊ô ◊ú◊§◊ô ◊û◊¶◊ë ${modeConfig.label}: ${healthScore}/100.`,
+    `מצב ${modeConfig.label}: ${modeConfig.focus}. רמת התראות: ${modeConfig.notificationTone}.`,
+    `ציון בריאות הוצאות אשראי לפי מצב ${modeConfig.label}: ${healthScore}/100.`,
   ];
 
   if (typeof context.savingsRate === 'number') {
     const gap = modeConfig.savingsTarget - context.savingsRate;
-    if (gap > 0) insights.push(`◊©◊ô◊¢◊ï◊® ◊î◊ó◊ô◊°◊õ◊ï◊ü ◊†◊û◊ï◊ö ◊û◊î◊ô◊¢◊ì ◊©◊ú ◊û◊¶◊ë ${modeConfig.label} ◊ë÷æ${formatPercent(gap)}.`);
-    else insights.push(`◊©◊ô◊¢◊ï◊® ◊î◊ó◊ô◊°◊õ◊ï◊ü ◊¢◊ï◊û◊ì ◊ë◊ô◊¢◊ì ◊©◊ú ◊û◊¶◊ë ${modeConfig.label} ◊ï◊ê◊£ ◊í◊ë◊ï◊î ◊û◊û◊†◊ï ◊ë÷æ${formatPercent(Math.abs(gap))}.`);
+    if (gap > 0) insights.push(`שיעור החיסכון נמוך מהיעד של מצב ${modeConfig.label} ב־${formatPercent(gap)}.`);
+    else insights.push(`שיעור החיסכון עומד ביעד של מצב ${modeConfig.label} ואף גבוה ממנו ב־${formatPercent(Math.abs(gap))}.`);
   }
 
   const [topCategory, topCategoryAmount] = sortedCategories[0] || [];
-  if (topCategory) insights.push(`◊î◊ß◊ò◊í◊ï◊®◊ô◊î ◊î◊í◊ì◊ï◊ú◊î ◊ë◊ô◊ï◊™◊® ◊ë◊ê◊©◊®◊ê◊ô ◊î◊ô◊ê ${topCategory}: ${SHEKEL.format(topCategoryAmount)}, ◊©◊î◊ù ${Math.round((topCategoryAmount / total) * 100)}% ◊û◊î◊ó◊ô◊ï◊ë◊ô◊ù.`);
+  if (topCategory) insights.push(`הקטגוריה הגדולה ביותר באשראי היא ${topCategory}: ${SHEKEL.format(topCategoryAmount)}, שהם ${Math.round((topCategoryAmount / total) * 100)}% מהחיובים.`);
 
   const [topMerchant, topMerchantAmount] = sortedMerchants[0] || [];
-  if (topMerchant) insights.push(`◊ë◊ô◊™ ◊î◊¢◊°◊ß ◊î◊ì◊ï◊û◊ô◊†◊†◊ò◊ô ◊ë◊ô◊ï◊™◊® ◊î◊ï◊ê ${topMerchant}: ${SHEKEL.format(topMerchantAmount)}.`);
+  if (topMerchant) insights.push(`בית העסק הדומיננטי ביותר הוא ${topMerchant}: ${SHEKEL.format(topMerchantAmount)}.`);
 
-  insights.push(`◊í◊ï◊ë◊î ◊¢◊°◊ß◊™ ◊ê◊©◊®◊ê◊ô ◊û◊û◊ï◊¶◊¢◊™: ${SHEKEL.format(total / transactions.length)}.`);
-  if (totalIncome > 0) insights.push(`◊ó◊ô◊ï◊ë◊ô ◊î◊ê◊©◊®◊ê◊ô ◊î◊ù ${formatPercent((total / totalIncome) * 100)} ◊û◊î◊î◊õ◊†◊°◊î ◊©◊î◊ï◊ñ◊†◊î ◊î◊ó◊ï◊ì◊©.`);
+  insights.push(`גובה עסקת אשראי ממוצעת: ${SHEKEL.format(total / transactions.length)}.`);
+  if (totalIncome > 0) insights.push(`חיובי האשראי הם ${formatPercent((total / totalIncome) * 100)} מההכנסה שהוזנה החודש.`);
 
   Object.entries(CATEGORY_BUDGETS).forEach(([category, budget]) => {
     const spent = categoryTotals[category] || 0;
     const adjustedBudget = budget / modeConfig.strictness;
     const warningPoint = adjustedBudget * (modeConfig.budgetWarningAt / 100);
-    if (spent > adjustedBudget) insights.push(`${category} ◊ó◊®◊í◊î ◊û◊î◊™◊ß◊¶◊ô◊ë ◊î◊û◊ï◊™◊ê◊ù ◊ú◊û◊¶◊ë ${modeConfig.label} ◊ë÷æ${SHEKEL.format(spent - adjustedBudget)}.`);
-    else if (spent >= warningPoint) insights.push(`${category} ◊û◊™◊ß◊®◊ë◊™ ◊ú◊™◊ß◊¶◊ô◊ë ◊ú◊§◊ô ◊û◊¶◊ë ${modeConfig.label}: ${SHEKEL.format(spent)} ◊û◊™◊ï◊ö ${SHEKEL.format(adjustedBudget)}.`);
+    if (spent > adjustedBudget) insights.push(`${category} חרגה מהתקציב המותאם למצב ${modeConfig.label} ב־${SHEKEL.format(spent - adjustedBudget)}.`);
+    else if (spent >= warningPoint) insights.push(`${category} מתקרבת לתקציב לפי מצב ${modeConfig.label}: ${SHEKEL.format(spent)} מתוך ${SHEKEL.format(adjustedBudget)}.`);
   });
 
-  const uncategorized = categoryTotals['◊ê◊ó◊®'] || 0;
-  if (uncategorized > 0) insights.push(`${SHEKEL.format(uncategorized)} ◊¢◊ì◊ô◊ô◊ü ◊û◊°◊ï◊ï◊í◊ô◊ù ◊õ◊¥◊ê◊ó◊®◊¥. ◊©◊ô◊†◊ï◊ô ◊ô◊ì◊†◊ô ◊©◊ú ◊ß◊ò◊í◊ï◊®◊ô◊î ◊ô◊ú◊û◊ì ◊ê◊™ ◊î◊û◊¢◊®◊õ◊™ ◊ú◊§◊¢◊û◊ô◊ù ◊î◊ë◊ê◊ï◊™.`);
+  const uncategorized = categoryTotals['אחר'] || 0;
+  if (uncategorized > 0) insights.push(`${SHEKEL.format(uncategorized)} עדיין מסווגים כ״אחר״. שינוי ידני של קטגוריה ילמד את המערכת לפעמים הבאות.`);
 
   const largeTransactions = transactions
     .filter((transaction) => toNumber(transaction.amount) >= Math.max(500, total * 0.08))
     .sort((a, b) => toNumber(b.amount) - toNumber(a.amount));
-  if (largeTransactions.length > 0) insights.push(`◊ñ◊ï◊î◊ï ${largeTransactions.length} ◊¢◊°◊ß◊ê◊ï◊™ ◊í◊ì◊ï◊ú◊ï◊™ ◊ô◊ó◊°◊ô◊™. ◊î◊í◊ì◊ï◊ú◊î ◊ë◊ô◊ï◊™◊®: ${largeTransactions[0].merchant} ◊ë◊°◊ö ${SHEKEL.format(largeTransactions[0].amount)}.`);
+  if (largeTransactions.length > 0) insights.push(`זוהו ${largeTransactions.length} עסקאות גדולות יחסית. הגדולה ביותר: ${largeTransactions[0].merchant} בסך ${SHEKEL.format(largeTransactions[0].amount)}.`);
 
   if (recurringTransactions.length > 0) {
     const recurringTotal = recurringTransactions.reduce((sum, item) => sum + toNumber(item.amount), 0);
-    insights.push(`◊ñ◊ï◊î◊ï ${recurringTransactions.length} ◊¢◊°◊ß◊ê◊ï◊™ ◊ó◊ï◊ñ◊®◊ï◊™/◊û◊†◊ï◊ô◊ô◊ù ◊ë◊°◊ö ◊õ◊ï◊ú◊ú ◊©◊ú ${SHEKEL.format(recurringTotal)}.`);
+    insights.push(`זוהו ${recurringTransactions.length} עסקאות חוזרות/מנויים בסך כולל של ${SHEKEL.format(recurringTotal)}.`);
   }
 
-  if (modeConfig.priorityMetric === 'burnRate' && context.burnRate) insights.push(`◊ë◊û◊¶◊ë Survival ◊õ◊ì◊ê◊ô ◊ú◊î◊ï◊®◊ô◊ì Burn Rate ◊û◊™◊ó◊™ ◊ú÷æ${SHEKEL.format(context.burnRate * 0.9)} ◊ë◊ó◊ï◊ì◊© ◊î◊ë◊ê.`);
-  if (modeConfig.priorityMetric === 'cashFlow' && context.cashFlow) insights.push(`◊ë◊û◊¶◊ë Growth ◊î◊ì◊í◊© ◊î◊ï◊ê ◊ú◊î◊í◊ì◊ô◊ú Cash Flow ◊§◊†◊ï◊ô ◊û◊¢◊ú ${SHEKEL.format(context.cashFlow + 1000)}.`);
-  if (modeConfig.priorityMetric === 'netWorth' && context.totalAssets) insights.push(`◊ë◊û◊¶◊ë Wealth Building ◊î◊ì◊í◊© ◊î◊ï◊ê ◊ú◊î◊í◊ì◊ô◊ú ◊©◊ï◊ï◊ô ◊©◊î◊ï◊ñ◊ü ◊û◊¢◊ë◊® ◊ú÷æ${SHEKEL.format(context.totalAssets * 1.05)}.`);
+  if (modeConfig.priorityMetric === 'burnRate' && context.burnRate) insights.push(`במצב Survival כדאי להוריד Burn Rate מתחת ל־${SHEKEL.format(context.burnRate * 0.9)} בחודש הבא.`);
+  if (modeConfig.priorityMetric === 'cashFlow' && context.cashFlow) insights.push(`במצב Growth הדגש הוא להגדיל Cash Flow פנוי מעל ${SHEKEL.format(context.cashFlow + 1000)}.`);
+  if (modeConfig.priorityMetric === 'netWorth' && context.totalAssets) insights.push(`במצב Wealth Building הדגש הוא להגדיל שווי שהוזן מעבר ל־${SHEKEL.format(context.totalAssets * 1.05)}.`);
 
   return insights;
 }
@@ -1109,9 +1109,9 @@ async function saveFinanceStateToSupabase(months, learnedRules, globalPreference
 // Global preferences must live above months, otherwise changing month would reset Supabase and dashboard settings.
 function createDefaultPreferences() {
   return {
-    primaryPerson: '◊†◊ï◊¢◊î',
+    primaryPerson: 'נועה',
     householdProfileId: DEFAULT_SUPABASE_PROFILE_ID,
-    secondaryPerson: '◊ê◊ï◊®◊ü',
+    secondaryPerson: 'אורן',
     includeSelfEmployed: false,
     monthlyBudgetTarget: 0,
     savingsRateTarget: 20,
@@ -1133,45 +1133,45 @@ function createDefaultPreferences() {
 // Month defaults contain financial records. The preferences field remains for backward compatibility with older saved data.
 function createDefaultMonth() {
   return {
-    dashboardTitle: '◊û◊¢◊®◊õ◊™ ◊§◊ô◊†◊†◊°◊ô◊™ ◊û◊©◊§◊ó◊™◊ô◊™',
+    dashboardTitle: 'מערכת פיננסית משפחתית',
     emergencyFund: 0,
     lastSalaryImport: '',
     attachedDocuments: [],
     bankAccounts: [
-      { id: makeId('bank'), name: '◊¢◊ï◊¥◊© ◊û◊©◊ï◊™◊£', owner: '◊û◊©◊§◊ó◊î', openingBalance: 0, closingBalance: 0, importedFile: '', transactions: [] },
-      { id: makeId('bank'), name: '◊¢◊ï◊¥◊© ◊†◊ï◊¢◊î', owner: '◊†◊ï◊¢◊î', openingBalance: 0, closingBalance: 0, importedFile: '', transactions: [] },
-      { id: makeId('bank'), name: '◊¢◊ï◊¥◊© ◊ê◊ï◊®◊ü', owner: '◊ê◊ï◊®◊ü', openingBalance: 0, closingBalance: 0, importedFile: '', transactions: [] },
+      { id: makeId('bank'), name: 'עו״ש משותף', owner: 'משפחה', openingBalance: 0, closingBalance: 0, importedFile: '', transactions: [] },
+      { id: makeId('bank'), name: 'עו״ש נועה', owner: 'נועה', openingBalance: 0, closingBalance: 0, importedFile: '', transactions: [] },
+      { id: makeId('bank'), name: 'עו״ש אורן', owner: 'אורן', openingBalance: 0, closingBalance: 0, importedFile: '', transactions: [] },
     ],
     incomes: [
-      { id: makeId('income'), name: '◊û◊©◊õ◊ï◊®◊™ ◊†◊ï◊¢◊î', amount: 0 },
-      { id: makeId('income'), name: '◊î◊õ◊†◊°◊î ◊ê◊ï◊®◊ü', amount: 0 },
-      { id: makeId('income'), name: '◊î◊õ◊†◊°◊î ◊†◊ï◊°◊§◊™', amount: 0 },
+      { id: makeId('income'), name: 'משכורת נועה', amount: 0 },
+      { id: makeId('income'), name: 'הכנסה אורן', amount: 0 },
+      { id: makeId('income'), name: 'הכנסה נוספת', amount: 0 },
     ],
     manualExpenses: [
-      { id: makeId('expense'), category: '◊û◊©◊õ◊†◊™◊ê / ◊©◊õ◊ô◊®◊ï◊™', amount: 0, type: '◊ß◊ë◊ï◊¢◊î' },
-      { id: makeId('expense'), category: '◊ê◊®◊†◊ï◊†◊î', amount: 0, type: '◊ß◊ë◊ï◊¢◊î' },
-      { id: makeId('expense'), category: '◊ó◊©◊û◊ú', amount: 0, type: '◊ß◊ë◊ï◊¢◊î' },
-      { id: makeId('expense'), category: '◊û◊ô◊ù', amount: 0, type: '◊ß◊ë◊ï◊¢◊î' },
-      { id: makeId('expense'), category: '◊ê◊ô◊†◊ò◊®◊†◊ò + ◊°◊ú◊ï◊ú◊®', amount: 0, type: '◊ß◊ë◊ï◊¢◊î' },
-      { id: makeId('expense'), category: '◊ë◊ô◊ò◊ï◊ó◊ô◊ù', amount: 0, type: '◊ß◊ë◊ï◊¢◊î' },
+      { id: makeId('expense'), category: 'משכנתא / שכירות', amount: 0, type: 'קבועה' },
+      { id: makeId('expense'), category: 'ארנונה', amount: 0, type: 'קבועה' },
+      { id: makeId('expense'), category: 'חשמל', amount: 0, type: 'קבועה' },
+      { id: makeId('expense'), category: 'מים', amount: 0, type: 'קבועה' },
+      { id: makeId('expense'), category: 'אינטרנט + סלולר', amount: 0, type: 'קבועה' },
+      { id: makeId('expense'), category: 'ביטוחים', amount: 0, type: 'קבועה' },
     ],
     savingsProducts: [
-      { id: makeId('saving'), name: '◊ß◊®◊ü ◊î◊©◊™◊ú◊û◊ï◊™ ◊†◊ï◊¢◊î', type: '◊ß◊®◊ü ◊î◊©◊™◊ú◊û◊ï◊™', owner: '◊†◊ï◊¢◊î', monthlyDeposit: 0, currentBalance: 0 },
-      { id: makeId('saving'), name: '◊ß◊®◊ü ◊î◊©◊™◊ú◊û◊ï◊™ ◊ê◊ï◊®◊ü', type: '◊ß◊®◊ü ◊î◊©◊™◊ú◊û◊ï◊™', owner: '◊ê◊ï◊®◊ü', monthlyDeposit: 0, currentBalance: 0 },
-      { id: makeId('saving'), name: '◊§◊†◊°◊ô◊î ◊†◊ï◊¢◊î', type: '◊§◊†◊°◊ô◊î', owner: '◊†◊ï◊¢◊î', monthlyDeposit: 0, currentBalance: 0 },
-      { id: makeId('saving'), name: '◊§◊†◊°◊ô◊î ◊ê◊ï◊®◊ü', type: '◊§◊†◊°◊ô◊î', owner: '◊ê◊ï◊®◊ü', monthlyDeposit: 0, currentBalance: 0 },
+      { id: makeId('saving'), name: 'קרן השתלמות נועה', type: 'קרן השתלמות', owner: 'נועה', monthlyDeposit: 0, currentBalance: 0 },
+      { id: makeId('saving'), name: 'קרן השתלמות אורן', type: 'קרן השתלמות', owner: 'אורן', monthlyDeposit: 0, currentBalance: 0 },
+      { id: makeId('saving'), name: 'פנסיה נועה', type: 'פנסיה', owner: 'נועה', monthlyDeposit: 0, currentBalance: 0 },
+      { id: makeId('saving'), name: 'פנסיה אורן', type: 'פנסיה', owner: 'אורן', monthlyDeposit: 0, currentBalance: 0 },
     ],
     savingGoals: [
-      { id: makeId('goal'), name: '◊ò◊ô◊°◊î ◊ú◊ô◊§◊ü', targetAmount: 30000, currentAmount: 0, monthlyDeposit: 0 },
-      { id: makeId('goal'), name: '◊ó◊™◊ï◊†◊î', targetAmount: 100000, currentAmount: 0, monthlyDeposit: 0 },
-      { id: makeId('goal'), name: '◊ß◊®◊ü ◊ó◊ô◊®◊ï◊ù', targetAmount: 60000, currentAmount: 0, monthlyDeposit: 0 },
+      { id: makeId('goal'), name: 'טיסה ליפן', targetAmount: 30000, currentAmount: 0, monthlyDeposit: 0 },
+      { id: makeId('goal'), name: 'חתונה', targetAmount: 100000, currentAmount: 0, monthlyDeposit: 0 },
+      { id: makeId('goal'), name: 'קרן חירום', targetAmount: 60000, currentAmount: 0, monthlyDeposit: 0 },
     ],
     creditCards: [
-      { id: makeId('card'), name: '◊õ◊®◊ò◊ô◊° ◊ê◊©◊®◊ê◊ô ◊†◊ï◊¢◊î', owner: '◊†◊ï◊¢◊î', importedFile: '', transactions: [], pendingTransactions: [] },
-      { id: makeId('card'), name: '◊õ◊®◊ò◊ô◊° ◊ê◊©◊®◊ê◊ô ◊ê◊ï◊®◊ü', owner: '◊ê◊ï◊®◊ü', importedFile: '', transactions: [], pendingTransactions: [] },
+      { id: makeId('card'), name: 'כרטיס אשראי נועה', owner: 'נועה', importedFile: '', transactions: [], pendingTransactions: [] },
+      { id: makeId('card'), name: 'כרטיס אשראי אורן', owner: 'אורן', importedFile: '', transactions: [], pendingTransactions: [] },
     ],
     selfEmployed: {
-      owner: '◊ê◊ï◊®◊ü',
+      owner: 'אורן',
       salaryTransferToHousehold: 0,
       grossRevenue: 0,
       vatCollected: 0,
@@ -1273,8 +1273,8 @@ function clearAuthSession() {
 async function signInWithSupabasePassword(email, password, config = {}) {
   const supabaseUrl = config.url || SUPABASE_URL;
   const supabaseKey = config.key || SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseKey) throw new Error('◊ó◊°◊®◊ô◊ù Supabase URL ◊ê◊ï Publishable Key');
-  if (!email || !password) throw new Error('◊¶◊®◊ô◊ö ◊ú◊î◊ñ◊ô◊ü ◊ê◊ô◊û◊ô◊ô◊ú ◊ï◊°◊ô◊°◊û◊î');
+  if (!supabaseUrl || !supabaseKey) throw new Error('חסרים Supabase URL או Publishable Key');
+  if (!email || !password) throw new Error('צריך להזין אימייל וסיסמה');
 
   const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
     method: 'POST',
@@ -1287,7 +1287,7 @@ async function signInWithSupabasePassword(email, password, config = {}) {
 
   if (!response.ok) {
     const details = await response.text().catch(() => '');
-    throw new Error(`◊î◊õ◊†◊ô◊°◊î ◊†◊õ◊©◊ú◊î: ${response.status} ${details}`);
+    throw new Error(`הכניסה נכשלה: ${response.status} ${details}`);
   }
 
   const data = await response.json();
@@ -1306,15 +1306,15 @@ async function signInWithSupabasePassword(email, password, config = {}) {
 function runSmokeTests() {
   console.assert(APP_BUILD_MARKER === 'finance-dashboard-build-v14', 'build marker failed');
   console.assert(getPublicEnv('THIS_ENV_SHOULD_NOT_EXIST') === '', 'safe env fallback failed');
-  console.assert(toNumber('‚Ç™1,250') === 1250, 'currency parsing failed');
-  console.assert(detectCategory('Wolt TLV') === '◊û◊°◊¢◊ì◊ï◊™ ◊ï◊ë◊™◊ô ◊ß◊§◊î', 'wolt category failed');
-  console.assert(detectCategory('My Shop', { shop: '◊ß◊†◊ô◊ï◊™' }) === '◊ß◊†◊ô◊ï◊™', 'learned rule failed');
+  console.assert(toNumber('₪1,250') === 1250, 'currency parsing failed');
+  console.assert(detectCategory('Wolt TLV') === 'מסעדות ובתי קפה', 'wolt category failed');
+  console.assert(detectCategory('My Shop', { shop: 'קניות' }) === 'קניות', 'learned rule failed');
   console.assert(splitCsvLine('a,b,c').length === 3, 'csv split failed');
   console.assert(parseCsvText(['date,merchant,amount', '2026-01-01,Wolt,55'].join(String.fromCharCode(10))).length === 1, 'csv parse failed');
   console.assert(parseCsvText(['date,merchant,amount', '2026-01-01,Wolt,55'].join(String.fromCharCode(13) + String.fromCharCode(10))).length === 1, 'csv CRLF parse failed');
   console.assert(splitCsvLine('"a,b",c').length === 2, 'quoted csv parsing failed');
-  console.assert(getCategoryTotals([{ category: '◊ß◊†◊ô◊ï◊™', amount: 10 }, { category: '◊ß◊†◊ô◊ï◊™', amount: 20 }]).◊ß◊†◊ô◊ï◊™ === 30, 'category totals failed');
-  console.assert(buildRealInsights([{ merchant: 'Wolt', category: '◊û◊°◊¢◊ì◊ï◊™ ◊ï◊ë◊™◊ô ◊ß◊§◊î', amount: 900 }], [], 0, 'Survival').some((insight) => insight.includes('Survival')), 'real budget insight failed');
+  console.assert(getCategoryTotals([{ category: 'קניות', amount: 10 }, { category: 'קניות', amount: 20 }]).קניות === 30, 'category totals failed');
+  console.assert(buildRealInsights([{ merchant: 'Wolt', category: 'מסעדות ובתי קפה', amount: 900 }], [], 0, 'Survival').some((insight) => insight.includes('Survival')), 'real budget insight failed');
   console.assert(getFinancialModeConfig('Growth').savingsTarget === 25, 'financial mode config failed');
   console.assert(detectRecurringTransactions([{ merchant: 'Netflix', amount: 50 }]).length === 1, 'recurring detection failed');
   console.assert(normalizeMonthData({}).creditCards.length === 2, 'month normalizer failed');
@@ -1331,12 +1331,12 @@ function runSmokeTests() {
   console.assert(parseExcelArrayBuffer instanceof Function, 'excel parser exists');
   console.assert(TABS[1].id === 'income', 'income tab should be second');
   console.assert(getCurrentMonthKey().length === 7 && getCurrentMonthKey().includes('-'), 'current month key failed');
-  console.assert(TABS.some((tab) => tab.id === 'insights' && tab.label === '◊™◊ï◊ë◊†◊ï◊™ ◊ó◊õ◊û◊ï◊™'), 'smart insights tab label failed');
+  console.assert(TABS.some((tab) => tab.id === 'insights' && tab.label === 'תובנות חכמות'), 'smart insights tab label failed');
   console.assert(normalizePreferences({ showTrendChart: false }).showTrendChart === false, 'preferences override failed');
   console.assert(normalizePreferences({}).householdProfileId === DEFAULT_SUPABASE_PROFILE_ID, 'household profile default failed');
   console.assert(getSafeTheme('Missing').accent === THEME_STYLES.Sage.accent, 'theme fallback failed');
   console.assert(getSafeTheme('Dark').page.includes('111111'), 'dark theme page exists');
-  console.assert(noSingleWordLine('◊ê◊ó◊™ ◊©◊™◊ô◊ô◊ù ◊©◊ú◊ï◊©').includes(String.fromCharCode(160)), 'no orphan text helper failed');
+  console.assert(noSingleWordLine('אחת שתיים שלוש').includes(String.fromCharCode(160)), 'no orphan text helper failed');
   console.assert(getInitialLearnedRules() && typeof getInitialLearnedRules() === 'object', 'initial learned rules failed');
 }
 
@@ -1365,14 +1365,14 @@ function StatCard({ title, value, note, tone = 'neutral' }) {
   );
 }
 
-function Section({ children, className = '' }) {
+<div className="dark-surface grid grid-cols-1 gap-3 border-t border-neutral-100 bg-white p-4 sm:gap-4 sm:p-6 md:grid-cols-2 xl:grid-cols-4"
   return <section className={`rounded-[24px] border border-neutral-200 bg-white p-5 shadow-sm sm:p-8 ${className}`}>{children}</section>;
 }
 
 function EmptyState({ title, text, action }) {
   return (
-    <div className="rounded-[22px] border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center sm:p-10">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-lg font-semibold text-neutral-500">Ôºã</div>
+    <div className="rounded-[24px] border border-dashed border-neutral-300 bg-neutral-50 p-10 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-lg font-semibold text-neutral-500">＋</div>
       <h3 className="mt-4 text-lg font-semibold text-neutral-900">{title}</h3>
       <p className="mx-auto mt-2 max-w-md text-sm leading-7 text-neutral-500 no-orphans">{noSingleWordLine(text)}</p>
       {action ? <div className="mt-5">{action}</div> : null}
@@ -1439,12 +1439,12 @@ function TrendLineChart({ data, theme }) {
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => minValue + range * ratio);
 
   if (!chartData.length) {
-    return <EmptyState title="◊ê◊ô◊ü ◊¢◊ì◊ô◊ô◊ü ◊†◊™◊ï◊†◊ô◊ù ◊ú◊í◊®◊£" text="◊õ◊ì◊ô ◊ú◊®◊ê◊ï◊™ ◊û◊í◊û◊ï◊™, ◊û◊ú◊ê◊ô ◊ú◊§◊ó◊ï◊™ ◊ó◊ï◊ì◊© ◊ê◊ó◊ì ◊©◊ú ◊î◊õ◊†◊°◊ï◊™ ◊ï◊î◊ï◊¶◊ê◊ï◊™." />;
+    return <EmptyState title="אין עדיין נתונים לגרף" text="כדי לראות מגמות, מלאי לפחות חודש אחד של הכנסות והוצאות." />;
   }
 
   return (
     <div className="overflow-x-auto rounded-[24px] border border-neutral-200 bg-neutral-50 p-4">
-      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[760px] w-full" role="img" aria-label="◊í◊®◊£ ◊û◊í◊û◊ï◊™ ◊î◊õ◊†◊°◊ï◊™ ◊î◊ï◊¶◊ê◊ï◊™ ◊ï◊ó◊ô◊°◊õ◊ï◊ü">
+      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[760px] w-full" role="img" aria-label="גרף מגמות הכנסות הוצאות וחיסכון">
         <rect x="0" y="0" width={width} height={height} rx="24" fill="white" />
         {ticks.map((tick) => {
           const y = yFor(tick);
@@ -1471,9 +1471,9 @@ function TrendLineChart({ data, theme }) {
         ))}
       </svg>
       <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-neutral-600">
-        <span className="rounded-full bg-white px-3 py-2">‚óè ◊î◊õ◊†◊°◊ï◊™</span>
-        <span className="rounded-full bg-white px-3 py-2 text-amber-700">‚óè ◊î◊ï◊¶◊ê◊ï◊™</span>
-        <span className="rounded-full bg-white px-3 py-2 text-blue-700">‚óè ◊ó◊ô◊°◊õ◊ï◊ü</span>
+        <span className="rounded-full bg-white px-3 py-2">● הכנסות</span>
+        <span className="rounded-full bg-white px-3 py-2 text-amber-700">● הוצאות</span>
+        <span className="rounded-full bg-white px-3 py-2 text-blue-700">● חיסכון</span>
       </div>
     </div>
   );
@@ -1485,10 +1485,10 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
     <div className="mt-5 max-h-[900px] overflow-auto rounded-[24px] border border-neutral-200 bg-white">
       <div className="min-w-[720px]">
         <div className="sticky top-0 z-10 grid grid-cols-[110px_minmax(180px,1fr)_170px_120px_44px] bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700">
-          <div>◊™◊ê◊®◊ô◊ö</div>
-          <div>{isPending ? '◊ë◊ô◊™ ◊¢◊°◊ß' : '◊¢◊°◊ß◊î'}</div>
-          <div>{isPending ? '◊ß◊ò◊í◊ï◊®◊ô◊î' : '◊ß◊ò◊í◊ï◊®◊ô◊î ◊ú◊ï◊û◊ì◊™'}</div>
-          <div>◊°◊õ◊ï◊ù</div>
+          <div>תאריך</div>
+          <div>{isPending ? 'בית עסק' : 'עסקה'}</div>
+          <div>{isPending ? 'קטגוריה' : 'קטגוריה לומדת'}</div>
+          <div>סכום</div>
           <div />
         </div>
         {rows.map((transaction) => (
@@ -1499,10 +1499,10 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
               {EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
             </SelectField>
             {isPending ? <Field type="number" value={transaction.amount} onChange={(event) => onUpdate(cardId, transaction.id, 'amount', event.target.value)} /> : <div className="px-3 py-3 text-sm font-semibold text-neutral-900">{SHEKEL.format(transaction.amount)}</div>}
-            <GhostButton onClick={() => onRemove(cardId, transaction.id)} className="px-0">√ó</GhostButton>
+            <GhostButton onClick={() => onRemove(cardId, transaction.id)} className="px-0">×</GhostButton>
           </div>
         ))}
-        {rows.length === 0 ? <div className="p-10 text-center text-sm text-neutral-400">◊¢◊ì◊ô◊ô◊ü ◊ú◊ê ◊î◊¢◊ú◊ô◊™ ◊§◊ô◊®◊ï◊ò ◊ê◊©◊®◊ê◊ô. ◊î◊¢◊ú◊ô CSV ◊ê◊ï Excel ◊õ◊ì◊ô ◊ú◊î◊™◊ó◊ô◊ú ◊†◊ô◊™◊ï◊ó ◊ó◊õ◊ù ◊©◊ú ◊î◊î◊ï◊¶◊ê◊ï◊™.</div> : null}
+        {rows.length === 0 ? <div className="p-10 text-center text-sm text-neutral-400">עדיין לא העלית פירוט אשראי. העלי CSV או Excel כדי להתחיל ניתוח חכם של ההוצאות.</div> : null}
       </div>
     </div>
   );
@@ -1530,41 +1530,41 @@ function CreditCardPanel(props) {
   return (
     <div className="rounded-[28px] border border-neutral-200 bg-white p-6 shadow-sm">
       <div className="grid gap-3 md:grid-cols-[minmax(180px,1fr)_minmax(140px,1fr)_110px_40px]">
-        <Field value={card.name} onChange={(event) => onUpdateCard(card.id, 'name', event.target.value)} placeholder="◊©◊ù ◊î◊õ◊®◊ò◊ô◊°" />
-        <Field value={card.owner} onChange={(event) => onUpdateCard(card.id, 'owner', event.target.value)} placeholder="◊ë◊¢◊ú/◊™ ◊î◊õ◊®◊ò◊ô◊°" />
+        <Field value={card.name} onChange={(event) => onUpdateCard(card.id, 'name', event.target.value)} placeholder="שם הכרטיס" />
+        <Field value={card.owner} onChange={(event) => onUpdateCard(card.id, 'owner', event.target.value)} placeholder="בעל/ת הכרטיס" />
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-800">{SHEKEL.format(cardTotal)}</div>
-        <GhostButton onClick={() => onRemoveCard(card.id)} className="px-0">√ó</GhostButton>
+        <GhostButton onClick={() => onRemoveCard(card.id)} className="px-0">×</GhostButton>
       </div>
 
       <div className="mt-5 rounded-[24px] border border-dashed border-neutral-300 bg-neutral-50 p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="text-sm font-semibold text-neutral-900">◊î◊¢◊ú◊ê◊™ CSV / Excel ◊©◊ú ◊§◊ô◊®◊ï◊ò ◊ê◊©◊®◊ê◊ô</div>
-            <div className="mt-1 text-xs text-neutral-500">◊î◊¢◊ú◊ê◊î ◊†◊û◊¶◊ê◊™ ◊õ◊ê◊ü, ◊ë◊™◊ï◊ö ◊î◊õ◊®◊ò◊ô◊° ◊î◊®◊ú◊ï◊ï◊†◊ò◊ô.</div>
+            <div className="text-sm font-semibold text-neutral-900">העלאת CSV / Excel של פירוט אשראי</div>
+            <div className="mt-1 text-xs text-neutral-500">העלאה נמצאת כאן, בתוך הכרטיס הרלוונטי.</div>
           </div>
           <label className="cursor-pointer rounded-xl px-4 py-3 text-sm font-semibold text-white transition" style={{ backgroundColor: safeTheme.accent }}>
-            ◊î◊¢◊ú◊ê◊™ ◊ß◊ï◊ë◊•
+            העלאת קובץ
             <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onImportFile(card.id, file); }} />
           </label>
         </div>
-        {card.importedFile ? <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm text-neutral-600">◊†◊ß◊ú◊ò ◊ß◊ï◊ë◊•: <strong>{card.importedFile}</strong></div> : null}
+        {card.importedFile ? <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm text-neutral-600">נקלט קובץ: <strong>{card.importedFile}</strong></div> : null}
       </div>
 
       {pendingRows.length > 0 ? (
         <div className="mt-4 rounded-[24px] border border-neutral-200 bg-neutral-50 p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-sm font-semibold text-neutral-900">◊¢◊°◊ß◊ê◊ï◊™ ◊©◊ñ◊ï◊î◊ï ◊ú◊ê◊ô◊©◊ï◊®</div>
-              <div className="mt-1 text-xs text-neutral-500">◊ë◊ì◊ß◊ï ◊°◊õ◊ï◊û◊ô◊ù ◊ï◊ß◊ò◊í◊ï◊®◊ô◊ï◊™ ◊ú◊§◊†◊ô ◊©◊î◊ü ◊†◊õ◊†◊°◊ï◊™ ◊ú◊î◊ï◊¶◊ê◊ï◊™.</div>
+              <div className="text-sm font-semibold text-neutral-900">עסקאות שזוהו לאישור</div>
+              <div className="mt-1 text-xs text-neutral-500">בדקו סכומים וקטגוריות לפני שהן נכנסות להוצאות.</div>
             </div>
-            <PrimaryButton theme={safeTheme} onClick={() => onApprovePending(card.id)}>◊ê◊©◊® ◊ï◊î◊õ◊†◊° ◊ú◊î◊ï◊¶◊ê◊ï◊™</PrimaryButton>
+            <PrimaryButton theme={safeTheme} onClick={() => onApprovePending(card.id)}>אשר והכנס להוצאות</PrimaryButton>
           </div>
           <TransactionEditorTable rows={pendingRows} cardId={card.id} mode="pending" onUpdate={onUpdatePending} onRemove={onRemovePending} />
         </div>
       ) : null}
 
       <TransactionEditorTable rows={approvedRows} cardId={card.id} mode="approved" onUpdate={onUpdateCategory} onRemove={onRemoveTransaction} />
-      <PrimaryButton theme={safeTheme} onClick={() => onAddTransaction(card.id)} className="mt-4">+ ◊î◊ï◊°◊§◊™ ◊¢◊°◊ß◊î</PrimaryButton>
+      <PrimaryButton theme={safeTheme} onClick={() => onAddTransaction(card.id)} className="mt-4">+ הוספת עסקה</PrimaryButton>
     </div>
   );
 }
@@ -1576,10 +1576,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const [learnedRules, setLearnedRules] = useState(getInitialLearnedRules);
   const [globalPreferences, setGlobalPreferences] = useState(getInitialGlobalPreferences);
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('◊î◊õ◊ï◊ú');
+  const [categoryFilter, setCategoryFilter] = useState('הכול');
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
-  const [cloudStatus, setCloudStatus] = useState('◊ò◊ï◊¢◊ü ◊û◊î◊¢◊†◊ü‚Ä¶');
+  const [cloudStatus, setCloudStatus] = useState('טוען מהענן…');
   const [hasLoadedCloud, setHasLoadedCloud] = useState(false);
   const [hasAttemptedCloudLoad, setHasAttemptedCloudLoad] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -1626,9 +1626,9 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         if (data?.global_preferences) {
           setGlobalPreferences((current) => mergeCloudPreferences(current, data.global_preferences));
         }
-        setCloudStatus(data?.months ? '◊û◊°◊ï◊†◊õ◊®◊ü ◊û◊î◊¢◊†◊ü' : '◊ê◊ô◊ü ◊¢◊ì◊ô◊ô◊ü ◊†◊™◊ï◊†◊ô ◊¢◊†◊ü, ◊¢◊ï◊ë◊ì◊ô◊ù ◊û◊ß◊ï◊û◊ô◊™');
+        setCloudStatus(data?.months ? 'מסונכרן מהענן' : 'אין עדיין נתוני ענן, עובדים מקומית');
       } catch (error) {
-        setCloudStatus(`◊¢◊†◊ü ◊ú◊ê ◊ñ◊û◊ô◊ü: ${error?.message || '◊©◊í◊ô◊ê◊™ Supabase'}`);
+        setCloudStatus(`ענן לא זמין: ${error?.message || 'שגיאת Supabase'}`);
       } finally {
         setHasLoadedCloud(true);
       }
@@ -1656,12 +1656,12 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       try {
         if (preferences.syncMode === 'Cloud Sync' || preferences.syncMode === 'Auto Backup') {
           await saveFinanceStateToSupabase(months, learnedRules, preferences, householdProfileId, supabaseConfig);
-          setCloudStatus(supabaseConfig.url && supabaseConfig.key ? '◊†◊©◊û◊® ◊ë◊¢◊†◊ü' : '◊ú◊ê ◊î◊ï◊í◊ì◊® Supabase, ◊†◊©◊û◊® ◊û◊ß◊ï◊û◊ô◊™');
+          setCloudStatus(supabaseConfig.url && supabaseConfig.key ? 'נשמר בענן' : 'לא הוגדר Supabase, נשמר מקומית');
         } else {
-          setCloudStatus('Local Only: ◊†◊©◊û◊® ◊®◊ß ◊ë◊ì◊§◊ì◊§◊ü');
+          setCloudStatus('Local Only: נשמר רק בדפדפן');
         }
       } catch (error) {
-        setCloudStatus(`◊ú◊ê ◊†◊©◊û◊® ◊ë◊¢◊†◊ü: ${error?.message || '◊©◊í◊ô◊ê◊™ Supabase'}`);
+        setCloudStatus(`לא נשמר בענן: ${error?.message || 'שגיאת Supabase'}`);
       }
     }, 900);
     return () => clearTimeout(saveTimeout);
@@ -1700,7 +1700,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   }
 
   function addBankAccount() {
-    setSelectedMonthData({ ...monthData, bankAccounts: [...monthData.bankAccounts, { id: makeId('bank'), name: '◊ó◊©◊ë◊ï◊ü ◊ó◊ì◊©', owner: '◊û◊©◊§◊ó◊î', openingBalance: 0, closingBalance: 0, importedFile: '', transactions: [] }] });
+    setSelectedMonthData({ ...monthData, bankAccounts: [...monthData.bankAccounts, { id: makeId('bank'), name: 'חשבון חדש', owner: 'משפחה', openingBalance: 0, closingBalance: 0, importedFile: '', transactions: [] }] });
   }
 
   async function importBankFile(accountId, file) {
@@ -1710,13 +1710,13 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       if (lower.endsWith('.csv')) importedTransactions = parseBankCsvText(await file.text());
       else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) importedTransactions = parseBankExcelArrayBuffer(await file.arrayBuffer());
       else {
-        alert('◊ú◊¢◊ï◊¥◊© ◊ê◊§◊©◊® ◊ú◊î◊¢◊ú◊ï◊™ CSV ◊ê◊ï Excel ◊û◊î◊ë◊†◊ß.');
+        alert('לעו״ש אפשר להעלות CSV או Excel מהבנק.');
         return;
       }
 
       if (!importedTransactions.length) {
-        setCloudStatus('◊ß◊ï◊ë◊• ◊î◊¢◊ï◊¥◊© ◊†◊ß◊ú◊ò, ◊ê◊ë◊ú ◊ú◊ê ◊ñ◊ï◊î◊ï ◊™◊†◊ï◊¢◊ï◊™. ◊ë◊ì◊ß◊ô ◊©◊ô◊© ◊¢◊û◊ï◊ì◊ï◊™ ◊™◊ê◊®◊ô◊ö, ◊§◊ô◊®◊ï◊ò, ◊ó◊ï◊ë◊î/◊ñ◊õ◊ï◊™ ◊ê◊ï ◊°◊õ◊ï◊ù.');
-        alert('◊ß◊ï◊ë◊• ◊î◊¢◊ï◊¥◊© ◊†◊ß◊ú◊ò, ◊ê◊ë◊ú ◊ú◊ê ◊ñ◊ï◊î◊ï ◊™◊†◊ï◊¢◊ï◊™. ◊ê◊ù ◊ñ◊î ◊§◊ï◊®◊û◊ò ◊ê◊ó◊® ◊©◊ú ◊î◊ë◊†◊ß, ◊†◊¶◊ò◊®◊ö ◊ú◊î◊™◊ê◊ô◊ù ◊ê◊™ ◊î◊¢◊û◊ï◊ì◊ï◊™.');
+        setCloudStatus('קובץ העו״ש נקלט, אבל לא זוהו תנועות. בדקי שיש עמודות תאריך, פירוט, חובה/זכות או סכום.');
+        alert('קובץ העו״ש נקלט, אבל לא זוהו תנועות. אם זה פורמט אחר של הבנק, נצטרך להתאים את העמודות.');
         return;
       }
 
@@ -1734,27 +1734,27 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
           };
         }),
       });
-      setCloudStatus(`◊ô◊ï◊ë◊ê◊ï ${importedTransactions.length} ◊™◊†◊ï◊¢◊ï◊™ ◊¢◊ï◊¥◊©.`);
+      setCloudStatus(`יובאו ${importedTransactions.length} תנועות עו״ש.`);
     } catch (error) {
-      setCloudStatus(`◊©◊í◊ô◊ê◊î ◊ë◊ô◊ô◊ë◊ï◊ê ◊¢◊ï◊¥◊©: ${error?.message || '◊ú◊ê ◊ô◊ì◊ï◊¢'}`);
-      alert(`◊©◊í◊ô◊ê◊î ◊ë◊ô◊ô◊ë◊ï◊ê ◊¢◊ï◊¥◊©: ${error?.message || '◊ú◊ê ◊ô◊ì◊ï◊¢'}`);
+      setCloudStatus(`שגיאה בייבוא עו״ש: ${error?.message || 'לא ידוע'}`);
+      alert(`שגיאה בייבוא עו״ש: ${error?.message || 'לא ידוע'}`);
     }
   }
 
   function addIncome() {
-    setSelectedMonthData({ ...monthData, incomes: [...monthData.incomes, { id: makeId('income'), name: '◊î◊õ◊†◊°◊î ◊ó◊ì◊©◊î', amount: 0 }] });
+    setSelectedMonthData({ ...monthData, incomes: [...monthData.incomes, { id: makeId('income'), name: 'הכנסה חדשה', amount: 0 }] });
   }
 
   function addManualExpense() {
-    setSelectedMonthData({ ...monthData, manualExpenses: [...monthData.manualExpenses, { id: makeId('expense'), category: '◊î◊ï◊¶◊ê◊î ◊ó◊ì◊©◊î', amount: 0, type: '◊û◊©◊™◊†◊î' }] });
+    setSelectedMonthData({ ...monthData, manualExpenses: [...monthData.manualExpenses, { id: makeId('expense'), category: 'הוצאה חדשה', amount: 0, type: 'משתנה' }] });
   }
 
   function addSavingsProduct() {
-    setSelectedMonthData({ ...monthData, savingsProducts: [...monthData.savingsProducts, { id: makeId('saving'), name: '◊ó◊ô◊°◊õ◊ï◊ü ◊ó◊ì◊©', type: '◊ó◊ô◊°◊õ◊ï◊ü', owner: '◊û◊©◊§◊ó◊î', monthlyDeposit: 0, currentBalance: 0 }] });
+    setSelectedMonthData({ ...monthData, savingsProducts: [...monthData.savingsProducts, { id: makeId('saving'), name: 'חיסכון חדש', type: 'חיסכון', owner: 'משפחה', monthlyDeposit: 0, currentBalance: 0 }] });
   }
 
   function addSavingGoal() {
-    setSelectedMonthData({ ...monthData, savingGoals: [...monthData.savingGoals, { id: makeId('goal'), name: '◊ô◊¢◊ì ◊ó◊ì◊©', targetAmount: 0, currentAmount: 0, monthlyDeposit: 0 }] });
+    setSelectedMonthData({ ...monthData, savingGoals: [...monthData.savingGoals, { id: makeId('goal'), name: 'יעד חדש', targetAmount: 0, currentAmount: 0, monthlyDeposit: 0 }] });
   }
 
   function updateSelfEmployedField(field, value) {
@@ -1786,7 +1786,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       lastSalaryImport: file.name,
       attachedDocuments: [...(monthData.attachedDocuments || []), nextDocument],
     });
-    setCloudStatus('◊î◊™◊ú◊ï◊© ◊¶◊ï◊®◊£ ◊ú◊™◊ô◊¢◊ï◊ì. ◊°◊õ◊ï◊ù ◊î◊†◊ò◊ï ◊ú◊ê ◊û◊™◊§◊¢◊†◊ó ◊ê◊ï◊ò◊ï◊û◊ò◊ô◊™, ◊î◊ñ◊ô◊†◊ô ◊ê◊ï◊™◊ï ◊ë◊©◊ï◊®◊™ ◊î◊î◊õ◊†◊°◊î ◊î◊®◊ú◊ï◊ï◊†◊ò◊ô◊™.');
+    setCloudStatus('התלוש צורף לתיעוד. סכום הנטו לא מתפענח אוטומטית, הזיני אותו בשורת ההכנסה הרלוונטית.');
   }
 
   function removeAttachedDocument(documentId) {
@@ -1801,13 +1801,13 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) importedIncomes = parseIncomeExcelArrayBuffer(await file.arrayBuffer());
       else if (lower.endsWith('.pdf')) importedIncomes = await parseIncomePdfFile(file);
       else {
-        alert('◊ú◊î◊õ◊†◊°◊ï◊™ ◊ê◊§◊©◊® ◊ú◊î◊¢◊ú◊ï◊™ PDF ◊™◊ú◊ï◊©, CSV ◊ê◊ï Excel.');
+        alert('להכנסות אפשר להעלות PDF תלוש, CSV או Excel.');
         return;
       }
 
       if (!importedIncomes.length) {
-        setCloudStatus('◊î◊ß◊ï◊ë◊• ◊†◊ß◊ú◊ò, ◊ê◊ë◊ú ◊ú◊ê ◊ñ◊ï◊î◊™◊î ◊î◊õ◊†◊°◊î. ◊ê◊ù ◊ñ◊î PDF ◊°◊®◊ï◊ß ◊ê◊ï ◊™◊ú◊ï◊© ◊ì◊ó◊ï◊°, ◊¶◊®◊ô◊ö ◊ú◊î◊ñ◊ô◊ü ◊†◊ò◊ï ◊ô◊ì◊†◊ô◊™.');
-        alert('◊î◊ß◊ï◊ë◊• ◊†◊ß◊ú◊ò, ◊ê◊ë◊ú ◊ú◊ê ◊ñ◊ï◊î◊™◊î ◊î◊õ◊†◊°◊î. ◊ê◊ù ◊ñ◊î PDF ◊°◊®◊ï◊ß ◊ê◊ï ◊™◊ú◊ï◊© ◊ì◊ó◊ï◊°, ◊¶◊®◊ô◊ö ◊ú◊î◊ñ◊ô◊ü ◊†◊ò◊ï ◊ô◊ì◊†◊ô◊™.');
+        setCloudStatus('הקובץ נקלט, אבל לא זוהתה הכנסה. אם זה PDF סרוק או תלוש דחוס, צריך להזין נטו ידנית.');
+        alert('הקובץ נקלט, אבל לא זוהתה הכנסה. אם זה PDF סרוק או תלוש דחוס, צריך להזין נטו ידנית.');
         return;
       }
 
@@ -1816,10 +1816,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         incomes: [...monthData.incomes, ...importedIncomes],
         lastSalaryImport: file.name,
       });
-      setCloudStatus(`◊ô◊ï◊ë◊ê◊ï ${importedIncomes.length} ◊©◊ï◊®◊ï◊™ ◊î◊õ◊†◊°◊î.`);
+      setCloudStatus(`יובאו ${importedIncomes.length} שורות הכנסה.`);
     } catch (error) {
-      setCloudStatus(`◊©◊í◊ô◊ê◊î ◊ë◊ô◊ô◊ë◊ï◊ê ◊î◊õ◊†◊°◊ï◊™: ${error?.message || '◊ú◊ê ◊ô◊ì◊ï◊¢'}`);
-      alert(`◊©◊í◊ô◊ê◊î ◊ë◊ô◊ô◊ë◊ï◊ê ◊î◊õ◊†◊°◊ï◊™: ${error?.message || '◊ú◊ê ◊ô◊ì◊ï◊¢'}`);
+      setCloudStatus(`שגיאה בייבוא הכנסות: ${error?.message || 'לא ידוע'}`);
+      alert(`שגיאה בייבוא הכנסות: ${error?.message || 'לא ידוע'}`);
     }
   }
 
@@ -1843,20 +1843,20 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       if (!backup || !backup.months) throw new Error('Invalid backup');
       setMonths(backup.months);
       setLearnedRules(backup.learnedRules || {});
-      setCloudStatus('◊©◊ï◊ó◊ñ◊® ◊û◊í◊ô◊ë◊ï◊ô JSON');
+      setCloudStatus('שוחזר מגיבוי JSON');
     } catch {
-      alert('◊ß◊ï◊ë◊• ◊î◊í◊ô◊ë◊ï◊ô ◊ú◊ê ◊™◊ß◊ô◊ü. ◊†◊ê ◊ú◊î◊¢◊ú◊ï◊™ JSON ◊©◊ô◊ï◊¶◊ê ◊û◊î◊û◊¢◊®◊õ◊™.');
+      alert('קובץ הגיבוי לא תקין. נא להעלות JSON שיוצא מהמערכת.');
     }
   }
 
   function resetCurrentMonth() {
-    const confirmed = typeof window === 'undefined' ? false : window.confirm('◊ú◊ê◊§◊° ◊ê◊™ ◊î◊ó◊ï◊ì◊© ◊î◊†◊ï◊õ◊ó◊ô? ◊î◊§◊¢◊ï◊ú◊î ◊™◊û◊ó◊ß ◊†◊™◊ï◊†◊ô◊ù ◊©◊ú ◊î◊ó◊ï◊ì◊© ◊ë◊ú◊ë◊ì.');
+    const confirmed = typeof window === 'undefined' ? false : window.confirm('לאפס את החודש הנוכחי? הפעולה תמחק נתונים של החודש בלבד.');
     if (!confirmed) return;
     setSelectedMonthData(createDefaultMonth());
   }
 
   function addCreditCard() {
-    setSelectedMonthData({ ...monthData, creditCards: [...monthData.creditCards, { id: makeId('card'), name: '◊õ◊®◊ò◊ô◊° ◊ê◊©◊®◊ê◊ô ◊ó◊ì◊©', owner: '', importedFile: '', transactions: [], pendingTransactions: [] }] });
+    setSelectedMonthData({ ...monthData, creditCards: [...monthData.creditCards, { id: makeId('card'), name: 'כרטיס אשראי חדש', owner: '', importedFile: '', transactions: [], pendingTransactions: [] }] });
   }
 
   function updateCreditCard(cardId, field, value) {
@@ -1875,15 +1875,15 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       if (lower.endsWith('.csv')) importedTransactions = parseCsvText(await file.text(), learnedRules);
       else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) importedTransactions = parseExcelArrayBuffer(await file.arrayBuffer(), learnedRules);
       else {
-        alert('◊†◊ê ◊ú◊î◊¢◊ú◊ï◊™ CSV ◊ê◊ï Excel');
+        alert('נא להעלות CSV או Excel');
         return;
       }
 
       if (!importedTransactions.length) {
-        setCloudStatus('◊î◊ß◊ï◊ë◊• ◊†◊ß◊ú◊ò, ◊ê◊ë◊ú ◊ú◊ê ◊ñ◊ï◊î◊ï ◊¢◊°◊ß◊ê◊ï◊™. ◊ë◊ì◊ß◊ô ◊©◊ô◊© ◊¢◊û◊ï◊ì◊ï◊™ ◊™◊ê◊®◊ô◊ö, ◊ë◊ô◊™ ◊¢◊°◊ß ◊ï◊°◊õ◊ï◊ù.');
-        alert('◊î◊ß◊ï◊ë◊• ◊†◊ß◊ú◊ò, ◊ê◊ë◊ú ◊ú◊ê ◊ñ◊ï◊î◊ï ◊¢◊°◊ß◊ê◊ï◊™. ◊ê◊ù ◊ñ◊î ◊§◊ô◊®◊ï◊ò ◊ë◊†◊ß/◊ê◊©◊®◊ê◊ô ◊ë◊§◊ï◊®◊û◊ò ◊ê◊ó◊®, ◊†◊¶◊ò◊®◊ö ◊ú◊î◊™◊ê◊ô◊ù ◊ê◊™ ◊û◊ë◊†◊î ◊î◊¢◊û◊ï◊ì◊ï◊™.');
+        setCloudStatus('הקובץ נקלט, אבל לא זוהו עסקאות. בדקי שיש עמודות תאריך, בית עסק וסכום.');
+        alert('הקובץ נקלט, אבל לא זוהו עסקאות. אם זה פירוט בנק/אשראי בפורמט אחר, נצטרך להתאים את מבנה העמודות.');
       } else {
-        setCloudStatus(`◊ñ◊ï◊î◊ï ${importedTransactions.length} ◊¢◊°◊ß◊ê◊ï◊™ ◊ú◊ê◊ô◊©◊ï◊® ◊ë◊õ◊®◊ò◊ô◊° ◊î◊ê◊©◊®◊ê◊ô.`);
+        setCloudStatus(`זוהו ${importedTransactions.length} עסקאות לאישור בכרטיס האשראי.`);
       }
 
       setSelectedMonthData({
@@ -1891,8 +1891,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, importedFile: file.name, pendingTransactions: importedTransactions } : card)),
       });
     } catch (error) {
-      setCloudStatus(`◊©◊í◊ô◊ê◊î ◊ë◊ô◊ô◊ë◊ï◊ê ◊î◊ß◊ï◊ë◊•: ${error?.message || '◊ú◊ê ◊ô◊ì◊ï◊¢'}`);
-      alert(`◊©◊í◊ô◊ê◊î ◊ë◊ô◊ô◊ë◊ï◊ê ◊î◊ß◊ï◊ë◊•: ${error?.message || '◊ú◊ê ◊ô◊ì◊ï◊¢'}`);
+      setCloudStatus(`שגיאה בייבוא הקובץ: ${error?.message || 'לא ידוע'}`);
+      alert(`שגיאה בייבוא הקובץ: ${error?.message || 'לא ידוע'}`);
     }
   }
 
@@ -1948,7 +1948,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   function addTransaction(cardId) {
     setSelectedMonthData({
       ...monthData,
-      creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, transactions: [...(card.transactions || []), { id: makeId('tx'), date: '', merchant: '◊¢◊°◊ß◊î ◊ó◊ì◊©◊î', category: '◊ê◊ó◊®', amount: 0 }] } : card)),
+      creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, transactions: [...(card.transactions || []), { id: makeId('tx'), date: '', merchant: 'עסקה חדשה', category: 'אחר', amount: 0 }] } : card)),
     });
   }
 
@@ -1996,7 +1996,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     const normalizedSearch = normalizeMerchantName(searchTerm);
     return allCreditTransactions.filter((transaction) => {
       const merchantMatch = normalizeMerchantName(transaction.merchant).includes(normalizedSearch);
-      const categoryMatch = categoryFilter === '◊î◊õ◊ï◊ú' || transaction.category === categoryFilter;
+      const categoryMatch = categoryFilter === 'הכול' || transaction.category === categoryFilter;
       const amount = toNumber(transaction.amount);
       return merchantMatch && categoryMatch && (minAmount === '' || amount >= toNumber(minAmount)) && (maxAmount === '' || amount <= toNumber(maxAmount));
     });
@@ -2013,33 +2013,33 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   );
 
   const operatingModeMessages = {
-    Survival: '◊î◊û◊¢◊®◊õ◊™ ◊û◊™◊û◊ß◊ì◊™ ◊õ◊®◊í◊¢ ◊ë◊¶◊û◊¶◊ï◊ù ◊î◊ï◊¶◊ê◊ï◊™ ◊ï◊©◊û◊ô◊®◊î ◊¢◊ú ◊ô◊¶◊ô◊ë◊ï◊™.',
-    Stable: '◊î◊û◊¢◊®◊õ◊™ ◊û◊™◊û◊ß◊ì◊™ ◊ë◊ê◊ô◊ñ◊ï◊ü ◊§◊ô◊†◊†◊°◊ô ◊ï◊ó◊ô◊°◊õ◊ï◊ü ◊ô◊¶◊ô◊ë.',
-    Growth: '◊î◊û◊¢◊®◊õ◊™ ◊û◊™◊û◊ß◊ì◊™ ◊ë◊¶◊û◊ô◊ó◊î, ◊î◊í◊ì◊ú◊™ ◊î◊õ◊†◊°◊ï◊™ ◊ï◊î◊©◊ß◊¢◊ï◊™.',
-    'Wealth Building': '◊î◊û◊¢◊®◊õ◊™ ◊û◊™◊û◊ß◊ì◊™ ◊ë◊ê◊ï◊§◊ò◊ô◊û◊ô◊ñ◊¶◊ô◊î ◊ï◊ë◊†◊ô◊ô◊™ ◊î◊ï◊ü ◊ê◊®◊ï◊ö ◊ò◊ï◊ï◊ó.',
+    Survival: 'המערכת מתמקדת כרגע בצמצום הוצאות ושמירה על יציבות.',
+    Stable: 'המערכת מתמקדת באיזון פיננסי וחיסכון יציב.',
+    Growth: 'המערכת מתמקדת בצמיחה, הגדלת הכנסות והשקעות.',
+    'Wealth Building': 'המערכת מתמקדת באופטימיזציה ובניית הון ארוך טווח.',
   };
 
   const modeInsight = {
-    Survival: '◊î◊û◊ô◊ß◊ï◊ì ◊õ◊®◊í◊¢ ◊î◊ï◊ê ◊î◊ï◊®◊ì◊™ burn rate ◊ï◊¶◊û◊¶◊ï◊ù ◊î◊ï◊¶◊ê◊ï◊™ ◊ú◊ê ◊ó◊ô◊ï◊†◊ô◊ï◊™.',
-    Stable: '◊î◊û◊ô◊ß◊ï◊ì ◊õ◊®◊í◊¢ ◊î◊ï◊ê ◊ê◊ô◊ñ◊ï◊ü ◊ë◊ô◊ü ◊ê◊ô◊õ◊ï◊™ ◊ó◊ô◊ô◊ù ◊ú◊ó◊ô◊°◊õ◊ï◊ü ◊ô◊¶◊ô◊ë.',
-    Growth: '◊î◊û◊ô◊ß◊ï◊ì ◊õ◊®◊í◊¢ ◊î◊ï◊ê ◊î◊í◊ì◊ú◊™ ◊î◊õ◊†◊°◊ï◊™ ◊ï◊î◊©◊ß◊¢◊î ◊ë◊¶◊û◊ô◊ó◊î.',
-    'Wealth Building': '◊î◊û◊ô◊ß◊ï◊ì ◊õ◊®◊í◊¢ ◊î◊ï◊ê ◊ë◊†◊ô◊ô◊™ ◊î◊ï◊ü ◊ï◊ê◊ï◊§◊ò◊ô◊û◊ô◊ñ◊¶◊ô◊î ◊§◊ô◊†◊†◊°◊ô◊™ ◊ê◊®◊ï◊õ◊™ ◊ò◊ï◊ï◊ó.',
+    Survival: 'המיקוד כרגע הוא הורדת burn rate וצמצום הוצאות לא חיוניות.',
+    Stable: 'המיקוד כרגע הוא איזון בין איכות חיים לחיסכון יציב.',
+    Growth: 'המיקוד כרגע הוא הגדלת הכנסות והשקעה בצמיחה.',
+    'Wealth Building': 'המיקוד כרגע הוא בניית הון ואופטימיזציה פיננסית ארוכת טווח.',
   };
 
   // Notifications are derived from current totals and global notification preferences.
   const activeNotifications = [
-    preferences.notifications?.budget80 && budgetUsageRate >= modeConfig.budgetWarningAt ? `◊î◊í◊¢◊™◊ù ◊ú÷æ${modeConfig.budgetWarningAt}% ◊û◊î◊™◊ß◊¶◊ô◊ë ◊ú◊§◊ô ◊û◊¶◊ë ${modeConfig.label}.` : null,
-    preferences.notifications?.woltSpike && (categoryTotals['◊û◊°◊¢◊ì◊ï◊™ ◊ï◊ë◊™◊ô ◊ß◊§◊î'] || 0) > (CATEGORY_BUDGETS['◊û◊°◊¢◊ì◊ï◊™ ◊ï◊ë◊™◊ô ◊ß◊§◊î'] || 0) ? '◊û◊°◊¢◊ì◊ï◊™ ◊ï◊ë◊™◊ô ◊ß◊§◊î ◊ó◊®◊í◊ï ◊û◊î◊™◊ß◊¶◊ô◊ë ◊©◊î◊ï◊í◊ì◊®.' : null,
-    preferences.notifications?.savingsDrop && savingsRate < targetSavingsRate ? '◊©◊ô◊¢◊ï◊® ◊î◊ó◊ô◊°◊õ◊ï◊ü ◊†◊û◊ï◊ö ◊û◊î◊ô◊¢◊ì ◊©◊î◊ï◊í◊ì◊®.' : null,
+    preferences.notifications?.budget80 && budgetUsageRate >= modeConfig.budgetWarningAt ? `הגעתם ל־${modeConfig.budgetWarningAt}% מהתקציב לפי מצב ${modeConfig.label}.` : null,
+    preferences.notifications?.woltSpike && (categoryTotals['מסעדות ובתי קפה'] || 0) > (CATEGORY_BUDGETS['מסעדות ובתי קפה'] || 0) ? 'מסעדות ובתי קפה חרגו מהתקציב שהוגדר.' : null,
+    preferences.notifications?.savingsDrop && savingsRate < targetSavingsRate ? 'שיעור החיסכון נמוך מהיעד שהוגדר.' : null,
   ].filter(Boolean);
 
   const monthlyStory = totalIncome
-    ? `◊ë◊û◊¶◊ë ${modeConfig.label}, ◊î◊ó◊ï◊ì◊© ◊î◊ï◊¶◊ê◊™◊ù ${SHEKEL.format(totalExpenses)} ◊©◊î◊ù ${formatPercent((totalExpenses / totalIncome) * 100)} ◊û◊î◊î◊õ◊†◊°◊î. ◊î◊¢◊ï◊¥◊© ◊î◊†◊ï◊õ◊ó◊ô ◊î◊ï◊ê ◊ô◊™◊®◊î ◊ê◊û◊ô◊™◊ô◊™ ◊û◊î◊ë◊†◊ß/◊î◊ñ◊†◊î ◊ô◊ì◊†◊ô◊™, ◊ï◊î◊ô◊™◊®◊î ◊î◊û◊ó◊ï◊©◊ë◊™ ◊ê◊ó◊®◊ô ◊î◊õ◊ï◊ú ◊†◊©◊ê◊®◊™ ◊û◊ì◊ì ◊™◊ñ◊®◊ô◊ù ◊ë◊ú◊ë◊ì. ◊ô◊¢◊ì ◊î◊ó◊ô◊°◊õ◊ï◊ü ◊ú◊û◊¶◊ë ◊î◊ñ◊î ◊î◊ï◊ê ${formatPercent(targetSavingsRate)}, ◊ï◊î◊ô◊™◊®◊î ◊î◊û◊ó◊ï◊©◊ë◊™ ◊ê◊ó◊®◊ô ◊î◊õ◊ï◊ú ◊î◊ô◊ê ${SHEKEL.format(monthlySavings)}.`
-    : `◊û◊¶◊ë ${modeConfig.label} ◊§◊¢◊ô◊ú. ◊î◊™◊ó◊ô◊ú◊ï ◊ú◊î◊ñ◊ô◊ü ◊î◊õ◊†◊°◊ï◊™ ◊ï◊î◊ï◊¶◊ê◊ï◊™ ◊õ◊ì◊ô ◊ú◊ß◊ë◊ú ◊°◊ô◊§◊ï◊® ◊§◊ô◊†◊†◊°◊ô ◊ó◊ï◊ì◊©◊ô ◊û◊ï◊™◊ê◊ù.`;
+    ? `במצב ${modeConfig.label}, החודש הוצאתם ${SHEKEL.format(totalExpenses)} שהם ${formatPercent((totalExpenses / totalIncome) * 100)} מההכנסה. העו״ש הנוכחי הוא יתרה אמיתית מהבנק/הזנה ידנית, והיתרה המחושבת אחרי הכול נשארת מדד תזרים בלבד. יעד החיסכון למצב הזה הוא ${formatPercent(targetSavingsRate)}, והיתרה המחושבת אחרי הכול היא ${SHEKEL.format(monthlySavings)}.`
+    : `מצב ${modeConfig.label} פעיל. התחילו להזין הכנסות והוצאות כדי לקבל סיפור פיננסי חודשי מותאם.`;
 
   const monthlyCompareStory = monthlyCompare.hasPrevious
-    ? `◊ú◊¢◊ï◊û◊™ ◊û◊û◊ï◊¶◊¢ ${monthlyCompare.period.label} (${monthlyCompare.compareMonthKeys.length} ◊ó◊ï◊ì◊©◊ô◊ù), ◊î◊î◊ï◊¶◊ê◊ï◊™ ${monthlyCompare.current.expenses >= monthlyCompare.previous.expenses ? '◊¢◊ú◊ï' : '◊ô◊®◊ì◊ï'} ◊ë÷æ${SHEKEL.format(Math.abs(monthlyCompare.current.expenses - monthlyCompare.previous.expenses))}, ◊ï◊î◊ô◊™◊®◊î ${monthlyCompare.current.net >= monthlyCompare.previous.net ? '◊î◊©◊™◊§◊®◊î' : '◊†◊ó◊ú◊©◊î'} ◊ë÷æ${SHEKEL.format(Math.abs(monthlyCompare.current.net - monthlyCompare.previous.net))}.`
-    : `◊ê◊ô◊ü ◊¢◊ì◊ô◊ô◊ü ◊û◊°◊§◊ô◊ß ◊ó◊ï◊ì◊©◊ô◊ù ◊ú◊î◊©◊ï◊ï◊ê◊™ ${monthlyCompare.period.label}. ◊î◊ï◊°◊ô◊§◊ô ◊¢◊ï◊ì ◊ó◊ï◊ì◊©◊ô◊ù ◊õ◊ì◊ô ◊ú◊ß◊ë◊ú Monthly Compare ◊ê◊û◊ô◊™◊ô ◊ï◊®◊ó◊ë ◊ô◊ï◊™◊®.`;
+    ? `לעומת ממוצע ${monthlyCompare.period.label} (${monthlyCompare.compareMonthKeys.length} חודשים), ההוצאות ${monthlyCompare.current.expenses >= monthlyCompare.previous.expenses ? 'עלו' : 'ירדו'} ב־${SHEKEL.format(Math.abs(monthlyCompare.current.expenses - monthlyCompare.previous.expenses))}, והיתרה ${monthlyCompare.current.net >= monthlyCompare.previous.net ? 'השתפרה' : 'נחלשה'} ב־${SHEKEL.format(Math.abs(monthlyCompare.current.net - monthlyCompare.previous.net))}.`
+    : `אין עדיין מספיק חודשים להשוואת ${monthlyCompare.period.label}. הוסיפי עוד חודשים כדי לקבל Monthly Compare אמיתי ורחב יותר.`;
 
   function getBudgetHeatColor(category, amount) {
     const budget = CATEGORY_BUDGETS[category];
@@ -2062,22 +2062,22 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   async function handleSignIn(event) {
     event.preventDefault();
     try {
-      setAuthStatus('◊û◊™◊ó◊ë◊®◊™...');
+      setAuthStatus('מתחברת...');
       const session = await signInWithSupabasePassword(authEmail, authPassword, supabaseConfig);
       setAuthSession(session);
       setAuthPassword('');
-      setAuthStatus('◊û◊ó◊ï◊ë◊®◊™');
-      setCloudStatus('◊û◊ó◊ï◊ë◊®◊™ ◊ú◊ó◊©◊ë◊ï◊ü Supabase');
+      setAuthStatus('מחוברת');
+      setCloudStatus('מחוברת לחשבון Supabase');
     } catch (error) {
-      setAuthStatus(error?.message || '◊î◊õ◊†◊ô◊°◊î ◊†◊õ◊©◊ú◊î');
+      setAuthStatus(error?.message || 'הכניסה נכשלה');
     }
   }
 
   function handleSignOut() {
     clearAuthSession();
     setAuthSession(null);
-    setAuthStatus('◊î◊™◊†◊™◊ß◊™');
-    setCloudStatus('◊î◊™◊†◊™◊ß◊™, ◊†◊©◊û◊® ◊û◊ß◊ï◊û◊ô◊™ ◊¢◊ì ◊õ◊†◊ô◊°◊î ◊û◊ó◊ì◊©');
+    setAuthStatus('התנתקת');
+    setCloudStatus('התנתקת, נשמר מקומית עד כניסה מחדש');
   }
 
   // Auth UI is intentionally disabled for now until global settings and cloud sync are fully stable.
@@ -2089,32 +2089,32 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
           <div className="grid w-full gap-6 lg:grid-cols-[1fr_0.9fr]">
             <section className="rounded-[32px] border border-neutral-200 bg-white p-8 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">SECURE ACCESS</div>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight text-neutral-950">◊õ◊†◊ô◊°◊î ◊ú◊ì◊©◊ë◊ï◊®◊ì ◊î◊§◊ô◊†◊†◊°◊ô</h1>
-              <p className="mt-4 text-sm leading-7 text-neutral-500">◊î◊õ◊†◊ô◊°◊î ◊û◊©◊™◊û◊©◊™ ◊ë÷æSupabase Auth ◊¢◊ù ◊ê◊ô◊û◊ô◊ô◊ú ◊ï◊°◊ô◊°◊û◊î. ◊ê◊ó◊®◊ô ◊î◊õ◊†◊ô◊°◊î, ◊©◊û◊ô◊®◊î ◊ï◊ò◊¢◊ô◊†◊î ◊ë◊¢◊†◊ü ◊ô◊©◊™◊û◊©◊ï ◊ë÷æaccess token ◊©◊ú ◊î◊û◊©◊™◊û◊©.</p>
+              <h1 className="mt-4 text-4xl font-semibold tracking-tight text-neutral-950">כניסה לדשבורד הפיננסי</h1>
+              <p className="mt-4 text-sm leading-7 text-neutral-500">הכניסה משתמשת ב־Supabase Auth עם אימייל וסיסמה. אחרי הכניסה, שמירה וטעינה בענן ישתמשו ב־access token של המשתמש.</p>
               <form onSubmit={handleSignIn} className="mt-7 grid gap-4">
                 <label className="text-sm font-semibold text-neutral-600">
-                  ◊ê◊ô◊û◊ô◊ô◊ú
+                  אימייל
                   <Field type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} className="mt-2 w-full" placeholder="name@example.com" />
                 </label>
                 <label className="text-sm font-semibold text-neutral-600">
-                  ◊°◊ô◊°◊û◊î
-                  <Field type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} className="mt-2 w-full" placeholder="‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢" />
+                  סיסמה
+                  <Field type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} className="mt-2 w-full" placeholder="••••••••" />
                 </label>
-                <PrimaryButton theme={activeTheme} type="submit" className="mt-2 w-full">◊õ◊†◊ô◊°◊î</PrimaryButton>
+                <PrimaryButton theme={activeTheme} type="submit" className="mt-2 w-full">כניסה</PrimaryButton>
               </form>
               {authStatus ? <div className="mt-4 rounded-2xl bg-neutral-50 p-4 text-sm leading-7 text-neutral-600">{authStatus}</div> : null}
             </section>
 
             <section className="rounded-[32px] border border-neutral-200 bg-neutral-50 p-8 shadow-sm">
-              <h2 className="text-2xl font-semibold tracking-tight text-neutral-950">◊ú◊§◊†◊ô ◊î◊õ◊†◊ô◊°◊î</h2>
+              <h2 className="text-2xl font-semibold tracking-tight text-neutral-950">לפני הכניסה</h2>
               <div className="mt-5 grid gap-4 text-sm leading-7 text-neutral-600">
-                <p>◊¶◊®◊ô◊ö ◊ú◊ô◊¶◊ï◊® ◊û◊©◊™◊û◊© ◊ë÷æSupabase ◊ì◊®◊ö Authentication ‚Üí Users.</p>
-                <p>◊ê◊ù ◊¢◊ï◊ì ◊ú◊ê ◊ô◊¶◊®◊™ ◊û◊©◊™◊û◊©, ◊î◊õ◊†◊ô◊°◊î ◊™◊ô◊õ◊©◊ú ◊¢◊ì ◊©◊ô◊ï◊í◊ì◊® ◊ê◊ô◊û◊ô◊ô◊ú ◊ï◊°◊ô◊°◊û◊î.</p>
-                <p>◊û◊¶◊ë Local Only ◊¢◊ì◊ô◊ô◊ü ◊ê◊§◊©◊®◊ô ◊ì◊®◊ö ◊î◊î◊í◊ì◊®◊ï◊™ ◊ê◊ó◊®◊ô ◊õ◊†◊ô◊°◊î, ◊ê◊ë◊ú ◊ë◊©◊ë◊ô◊ú ◊¢◊†◊ü ◊¶◊®◊ô◊ö ◊ó◊©◊ë◊ï◊ü.</p>
+                <p>צריך ליצור משתמש ב־Supabase דרך Authentication → Users.</p>
+                <p>אם עוד לא יצרת משתמש, הכניסה תיכשל עד שיוגדר אימייל וסיסמה.</p>
+                <p>מצב Local Only עדיין אפשרי דרך ההגדרות אחרי כניסה, אבל בשביל ענן צריך חשבון.</p>
               </div>
               <div className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4 text-sm text-neutral-600">
                 <strong>Supabase</strong>
-                <div className="mt-2">{setupHealth.supabaseEnv ? '◊û◊ó◊ï◊ë◊® ◊ú◊î◊í◊ì◊®◊ï◊™ Supabase' : '◊ó◊°◊®◊ô◊ù URL ◊ê◊ï Publishable Key ◊ë◊î◊í◊ì◊®◊ï◊™ ◊©◊†◊©◊û◊®◊ï ◊ë◊ì◊§◊ì◊§◊ü'}</div>
+                <div className="mt-2">{setupHealth.supabaseEnv ? 'מחובר להגדרות Supabase' : 'חסרים URL או Publishable Key בהגדרות שנשמרו בדפדפן'}</div>
               </div>
             </section>
           </div>
@@ -2175,7 +2175,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
             ))}
             <div className="ms-2 flex shrink-0 items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600">
               <span>{authSession?.email || 'Local'}</span>
-              {authSession ? <button type="button" onClick={handleSignOut} className="text-neutral-900 underline">◊î◊™◊†◊™◊ß◊ï◊™</button> : null}
+              {authSession ? <button type="button" onClick={handleSignOut} className="text-neutral-900 underline">התנתקות</button> : null}
             </div>
           </div>
         </div>
@@ -2184,27 +2184,27 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
           <div className={`p-5 sm:p-8 ${isDark ? 'text-white' : 'text-neutral-950'}`} style={isDark ? { backgroundColor: '#151515' } : undefined}>
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <input value={monthData.dashboardTitle} onChange={(event) => updateMonthField('dashboardTitle', event.target.value)} className="w-full max-w-3xl rounded-xl border border-transparent bg-transparent px-0 py-1 text-3xl font-semibold leading-tight tracking-tight text-neutral-950 outline-none transition placeholder:text-neutral-400 sm:py-2 sm:text-4xl md:text-5xl" placeholder="◊©◊ù ◊î◊ì◊©◊ë◊ï◊®◊ì ◊î◊û◊©◊§◊ó◊™◊ô" />
-                <p className="mt-3 max-w-4xl text-sm leading-7 text-neutral-500 no-orphans no-single-word-lines sm:mt-4 sm:text-base sm:leading-8">{noSingleWordLine('◊û◊û◊ú◊ê◊ô◊ù ◊î◊õ◊†◊°◊ï◊™, ◊î◊ï◊¶◊ê◊ï◊™, ◊ê◊©◊®◊ê◊ô, ◊¢◊¶◊û◊ê◊ô, ◊ß◊®◊†◊ï◊™ ◊ï◊ô◊¢◊ì◊ô◊ù. ◊î◊û◊¢◊®◊õ◊™ ◊û◊ó◊©◊ë◊™ ◊™◊ñ◊®◊ô◊ù, ◊ó◊ô◊°◊õ◊ï◊ü ◊ï◊™◊ï◊ë◊†◊ï◊™ ◊ê◊û◊ô◊™◊ô◊ï◊™.')}</p>
-                <div className="mt-4 inline-flex max-w-full rounded-full px-3 py-2 text-xs font-semibold leading-6 no-orphans sm:px-4 sm:text-sm" style={{ backgroundColor: activeTheme.soft, color: activeTheme.text }}>{`${modeInsight[preferences.financialMode] || modeInsight.Stable} ◊ô◊¢◊ì ◊ó◊ô◊°◊õ◊ï◊ü: ${formatPercent(targetSavingsRate)} | ◊î◊™◊®◊ê◊î ◊ë÷æ${modeConfig.budgetWarningAt}%`}</div>
-                <div className="mt-3 inline-flex max-w-full rounded-full border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium leading-6 text-neutral-600 no-orphans sm:mt-5 sm:px-4 sm:text-sm">{cloudStatus}</div>
+                <input value={monthData.dashboardTitle} onChange={(event) => updateMonthField('dashboardTitle', event.target.value)} className="w-full max-w-3xl rounded-xl border border-transparent bg-transparent px-0 py-1 text-3xl font-semibold leading-tight tracking-tight text-neutral-950 outline-none transition placeholder:text-neutral-400 sm:py-2 sm:text-4xl md:text-5xl" placeholder="שם הדשבורד המשפחתי" />
+                <p className="mt-3 max-w-4xl text-sm leading-7 text-neutral-500 no-orphans no-single-word-lines sm:mt-4 sm:text-base sm:leading-8">{noSingleWordLine('ממלאים הכנסות, הוצאות, אשראי, עצמאי, קרנות ויעדים. המערכת מחשבת תזרים, חיסכון ותובנות אמיתיות.')}</p>
+                <div className="mt-4 inline-flex max-w-full rounded-full px-3 py-2 text-xs font-semibold leading-6 no-orphans sm:px-4 sm:text-sm" style={{ backgroundColor: activeTheme.soft, color: activeTheme.text }}>{noSingleWordLine(`${modeInsight[preferences.financialMode] || modeInsight.Stable} יעד חיסכון: ${formatPercent(targetSavingsRate)} | התראה ב־${modeConfig.budgetWarningAt}%`)}</div>
+                <div className="mt-3 inline-flex max-w-full rounded-full border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium leading-6 text-neutral-600 no-orphans sm:mt-5 sm:px-4 sm:text-sm">{noSingleWordLine(cloudStatus)}</div>
               </div>
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 sm:p-5">
-                <label className="text-xs font-semibold uppercase tracking-widest text-neutral-400">◊ó◊ï◊ì◊©</label>
-                <input type="month" value={selectedMonth} onChange={(event) => ensureMonth(event.target.value)} className="mt-2 w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-base font-semibold text-neutral-900 outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-100 sm:text-lg" />
+              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
+                <label className="text-xs font-semibold uppercase tracking-widest text-neutral-400">חודש</label>
+                <input type="month" value={selectedMonth} onChange={(event) => ensureMonth(event.target.value)} className="mt-2 w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-lg font-semibold text-neutral-900 outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-100" />
               </div>
             </div>
           </div>
 
-          <div className="dark-surface grid grid-cols-1 gap-3 border-t border-neutral-100 bg-white p-4 sm:gap-4 sm:p-6 md:grid-cols-2 xl:grid-cols-4" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
-            <StatCard title="◊°◊î◊¥◊õ ◊î◊õ◊†◊°◊ï◊™" value={SHEKEL.format(totalIncome)} note="◊õ◊ú ◊û◊ß◊ï◊®◊ï◊™ ◊î◊î◊õ◊†◊°◊î" tone="good" />
-            <StatCard title="◊¢◊ï◊¥◊© ◊†◊ï◊õ◊ó◊ô" value={SHEKEL.format(totalBankClosing)} note={`◊©◊ô◊†◊ï◊ô ◊î◊ó◊ï◊ì◊©: ${SHEKEL.format(bankBalanceChange)}`} tone={totalBankClosing >= 0 ? 'good' : 'danger'} />
-            <StatCard title="◊°◊î◊¥◊õ ◊î◊ï◊¶◊ê◊ï◊™" value={SHEKEL.format(totalExpenses)} note={effectiveBudgetTarget ? `${formatPercent(budgetUsageRate)} ◊û◊™◊ï◊ö ◊ô◊¢◊ì ${modeConfig.label}` : `${totalIncome ? formatPercent((totalExpenses / totalIncome) * 100) : '0%'} ◊û◊î◊î◊õ◊†◊°◊î`} tone={(effectiveBudgetTarget && totalExpenses > effectiveBudgetTarget) || (totalIncome && totalExpenses > totalIncome) ? 'danger' : budgetUsageRate >= modeConfig.budgetWarningAt ? 'warn' : 'neutral'} />
-            <StatCard title="◊°◊î◊¥◊õ ◊ê◊©◊®◊ê◊ô" value={SHEKEL.format(totalCreditCards)} note="◊û◊õ◊®◊ò◊ô◊°◊ô ◊î◊ê◊©◊®◊ê◊ô" />
-            <StatCard title="◊¢◊¶◊û◊ê◊ô" value={SHEKEL.format(totalSelfEmployedPayments)} note={includeSelfEmployed ? '◊õ◊ú◊ï◊ú ◊ë◊™◊ñ◊®◊ô◊ù ◊î◊û◊©◊§◊ó◊™◊ô' : '◊ú◊ê ◊õ◊ú◊ï◊ú ◊ë◊™◊ñ◊®◊ô◊ù'} />
-            <StatCard title="◊ó◊°◊õ◊ï◊†◊ï◊™" value={SHEKEL.format(totalPlannedSavings)} note="◊ß◊®◊†◊ï◊™, ◊§◊†◊°◊ô◊î ◊ï◊ô◊¢◊ì◊ô◊ù" tone="good" />
-            <StatCard title="◊ô◊™◊®◊î ◊ê◊ó◊®◊ô ◊î◊õ◊ï◊ú" value={SHEKEL.format(monthlySavings)} note={`${formatPercent(savingsRate)} ◊ó◊ô◊°◊õ◊ï◊ü / ◊ô◊¢◊ì ${formatPercent(targetSavingsRate)}`} tone={monthlySavings >= 0 && savingsRate >= targetSavingsRate ? 'good' : monthlySavings < 0 ? 'danger' : 'neutral'} />
-            <StatCard title="◊©◊ï◊ï◊ô ◊©◊î◊ï◊ñ◊ü" value={SHEKEL.format(totalAssets)} note={`${emergencyMonths.toFixed(1)} ◊ó◊ï◊ì◊©◊ô ◊ó◊ô◊®◊ï◊ù`} />
+          <div className="dark-surface grid grid-cols-1 gap-4 border-t border-neutral-100 bg-white p-6 md:grid-cols-2 xl:grid-cols-4" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
+            <StatCard title="סה״כ הכנסות" value={SHEKEL.format(totalIncome)} note="כל מקורות ההכנסה" tone="good" />
+            <StatCard title="עו״ש נוכחי" value={SHEKEL.format(totalBankClosing)} note={`שינוי החודש: ${SHEKEL.format(bankBalanceChange)}`} tone={totalBankClosing >= 0 ? 'good' : 'danger'} />
+            <StatCard title="סה״כ הוצאות" value={SHEKEL.format(totalExpenses)} note={effectiveBudgetTarget ? `${formatPercent(budgetUsageRate)} מתוך יעד ${modeConfig.label}` : `${totalIncome ? formatPercent((totalExpenses / totalIncome) * 100) : '0%'} מההכנסה`} tone={(effectiveBudgetTarget && totalExpenses > effectiveBudgetTarget) || (totalIncome && totalExpenses > totalIncome) ? 'danger' : budgetUsageRate >= modeConfig.budgetWarningAt ? 'warn' : 'neutral'} />
+            <StatCard title="סה״כ אשראי" value={SHEKEL.format(totalCreditCards)} note="מכרטיסי האשראי" />
+            <StatCard title="עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note={includeSelfEmployed ? 'כלול בתזרים המשפחתי' : 'לא כלול בתזרים'} />
+            <StatCard title="חסכונות" value={SHEKEL.format(totalPlannedSavings)} note="קרנות, פנסיה ויעדים" tone="good" />
+            <StatCard title="יתרה אחרי הכול" value={SHEKEL.format(monthlySavings)} note={`${formatPercent(savingsRate)} חיסכון / יעד ${formatPercent(targetSavingsRate)}`} tone={monthlySavings >= 0 && savingsRate >= targetSavingsRate ? 'good' : monthlySavings < 0 ? 'danger' : 'neutral'} />
+            <StatCard title="שווי שהוזן" value={SHEKEL.format(totalAssets)} note={`${emergencyMonths.toFixed(1)} חודשי חירום`} />
           </div>
         </section>
 
@@ -2218,7 +2218,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       {activeNotifications.map((notification) => (
                         <div key={notification} className="rounded-[24px] border border-amber-200 bg-gradient-to-br from-amber-50 to-white px-5 py-5 shadow-sm">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">‚ö†</div>
+                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">⚠</div>
                             <div>
                               <div className="text-xs font-semibold uppercase tracking-widest text-amber-500">Smart Notification</div>
                               <div className="mt-1 text-sm font-semibold leading-6 text-amber-900 no-orphans">{noSingleWordLine(notification)}</div>
@@ -2232,12 +2232,12 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   {preferences.showMonthlyStory ? (
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">MONTHLY STORY</div>
-                      <h2 className="mt-4 text-4xl font-semibold leading-tight tracking-tight text-neutral-950">◊î◊°◊ô◊§◊ï◊® ◊©◊ú ◊î◊ó◊ï◊ì◊© ◊©◊ú◊õ◊ù</h2>
+                      <h2 className="mt-4 text-4xl font-semibold leading-tight tracking-tight text-neutral-950">הסיפור של החודש שלכם</h2>
                       <p className="mt-5 max-w-3xl text-lg leading-9 text-neutral-600 no-orphans">{noSingleWordLine(monthlyStory)}</p>
                       <div className="mt-8 grid gap-3 md:grid-cols-3">
                         <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 px-5 py-4"><div className="text-xs font-semibold text-neutral-400">Burn Rate</div><div className="mt-2 text-xl font-semibold text-neutral-950">{SHEKEL.format(burnRate)}</div></div>
-                        <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 px-5 py-4"><div className="text-xs font-semibold text-neutral-400">Cash Flow ◊ú◊ó◊ô◊°◊õ◊ï◊ü</div><div className="mt-2 text-xl font-semibold text-neutral-950">{SHEKEL.format(cashFlow)}</div></div>
-                        <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 px-5 py-4"><div className="text-xs font-semibold text-neutral-400">◊©◊ô◊¢◊ï◊® ◊ó◊ô◊°◊õ◊ï◊ü</div><div className="mt-2 text-xl font-semibold text-neutral-950">{formatPercent(savingsRate)}</div></div>
+                        <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 px-5 py-4"><div className="text-xs font-semibold text-neutral-400">Cash Flow לחיסכון</div><div className="mt-2 text-xl font-semibold text-neutral-950">{SHEKEL.format(cashFlow)}</div></div>
+                        <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 px-5 py-4"><div className="text-xs font-semibold text-neutral-400">שיעור חיסכון</div><div className="mt-2 text-xl font-semibold text-neutral-950">{formatPercent(savingsRate)}</div></div>
                       </div>
                     </div>
                   ) : null}
@@ -2247,7 +2247,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       <div className="text-sm font-semibold text-neutral-500">Financial Health</div>
                       <div className="mt-4 text-6xl font-semibold text-neutral-950">{financialHealthScore}</div>
                       <div className="mt-5 h-3 overflow-hidden rounded-full bg-neutral-200"><div className="h-full rounded-full" style={{ width: `${financialHealthScore}%`, backgroundColor: activeTheme.accent }} /></div>
-                      <div className="mt-3 text-sm leading-7 text-neutral-500">◊¶◊ô◊ï◊ü ◊ú◊§◊ô ◊û◊¶◊ë {modeConfig.label}: ◊ß◊©◊ô◊ó◊ï◊™ ◊™◊ß◊¶◊ô◊ë, ◊ó◊®◊ô◊í◊ï◊™, ◊§◊ô◊ñ◊ï◊® ◊î◊ï◊¶◊ê◊ï◊™ ◊ï◊¢◊°◊ß◊ê◊ï◊™ ◊í◊ì◊ï◊ú◊ï◊™.</div>
+                      <div className="mt-3 text-sm leading-7 text-neutral-500">ציון לפי מצב {modeConfig.label}: קשיחות תקציב, חריגות, פיזור הוצאות ועסקאות גדולות.</div>
                     </div>
                   ) : null}
                 </div>
@@ -2258,27 +2258,27 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">ACCOUNTS</div>
-                  <h2 className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">◊ó◊©◊ë◊ï◊†◊ï◊™ ◊ï◊¢◊ï◊¥◊©</h2>
-                  <p className="mt-3 max-w-3xl text-sm leading-7 text-neutral-500 no-orphans">{noSingleWordLine('◊û◊¢◊ú◊ô◊ù ◊§◊ô◊®◊ï◊ò ◊¢◊ï◊¥◊© CSV/Excel ◊û◊î◊ë◊†◊ß, ◊ï◊î◊û◊¢◊®◊õ◊™ ◊û◊ó◊©◊ë◊™ ◊ô◊™◊®◊™ ◊§◊™◊ô◊ó◊î, ◊ô◊™◊®◊î ◊†◊ï◊õ◊ó◊ô◊™ ◊ï◊™◊†◊ï◊¢◊ï◊™. ◊î◊ô◊™◊®◊î ◊ê◊ó◊®◊ô ◊î◊õ◊ï◊ú ◊î◊ô◊ê ◊™◊ñ◊®◊ô◊ù ◊û◊ó◊ï◊©◊ë ◊ï◊ú◊ê ◊†◊õ◊†◊°◊™ ◊ê◊ï◊ò◊ï◊û◊ò◊ô◊™ ◊ú◊¢◊ï◊¥◊©.')}</p>
+                  <h2 className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">חשבונות ועו״ש</h2>
+                  <p className="mt-3 max-w-3xl text-sm leading-7 text-neutral-500 no-orphans">{noSingleWordLine('מעלים פירוט עו״ש CSV/Excel מהבנק, והמערכת מחשבת יתרת פתיחה, יתרה נוכחית ותנועות. היתרה אחרי הכול היא תזרים מחושב ולא נכנסת אוטומטית לעו״ש.')}</p>
                 </div>
-                <PrimaryButton theme={activeTheme} onClick={addBankAccount}>+ ◊î◊ï◊°◊§◊™ ◊ó◊©◊ë◊ï◊ü</PrimaryButton>
+                <PrimaryButton theme={activeTheme} onClick={addBankAccount}>+ הוספת חשבון</PrimaryButton>
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-4">
                 <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">◊ô◊™◊®◊™ ◊§◊™◊ô◊ó◊î</div>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">יתרת פתיחה</div>
                   <div className="mt-3 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankOpening)}</div>
                 </div>
                 <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">◊ô◊™◊®◊î ◊†◊ï◊õ◊ó◊ô◊™</div>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">יתרה נוכחית</div>
                   <div className="mt-3 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankClosing)}</div>
                 </div>
                 <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">◊†◊õ◊†◊° ◊ú◊¢◊ï◊¥◊©</div>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">נכנס לעו״ש</div>
                   <div className="mt-3 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankDeposits)}</div>
                 </div>
                 <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">◊ô◊¶◊ê ◊û◊î◊¢◊ï◊¥◊©</div>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">יצא מהעו״ש</div>
                   <div className="mt-3 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankWithdrawals)}</div>
                 </div>
               </div>
@@ -2287,33 +2287,33 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                 {monthData.bankAccounts.map((account) => (
                   <div key={account.id} className="rounded-[22px] border border-neutral-200 bg-white p-4">
                     <div className="grid gap-3 md:grid-cols-[1.1fr_110px_150px_150px_140px_44px]">
-                      <LabeledField label="◊ó◊©◊ë◊ï◊ü"><Field value={account.name} onChange={(event) => updateRow('bankAccounts', account.id, 'name', event.target.value)} placeholder="◊¢◊ï◊¥◊© ◊û◊©◊ï◊™◊£" /></LabeledField>
-                      <LabeledField label="◊©◊ô◊ô◊ö ◊ú"><Field value={account.owner} onChange={(event) => updateRow('bankAccounts', account.id, 'owner', event.target.value)} placeholder="◊û◊©◊§◊ó◊î" /></LabeledField>
-                      <LabeledField label="◊ô◊™◊®◊™ ◊§◊™◊ô◊ó◊î"><Field type="number" value={account.openingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'openingBalance', event.target.value)} /></LabeledField>
-                      <LabeledField label="◊ô◊™◊®◊î ◊†◊ï◊õ◊ó◊ô◊™"><Field type="number" value={account.closingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'closingBalance', event.target.value)} /></LabeledField>
+                      <LabeledField label="חשבון"><Field value={account.name} onChange={(event) => updateRow('bankAccounts', account.id, 'name', event.target.value)} placeholder="עו״ש משותף" /></LabeledField>
+                      <LabeledField label="שייך ל"><Field value={account.owner} onChange={(event) => updateRow('bankAccounts', account.id, 'owner', event.target.value)} placeholder="משפחה" /></LabeledField>
+                      <LabeledField label="יתרת פתיחה"><Field type="number" value={account.openingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'openingBalance', event.target.value)} /></LabeledField>
+                      <LabeledField label="יתרה נוכחית"><Field type="number" value={account.closingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'closingBalance', event.target.value)} /></LabeledField>
                       <div className="flex items-end">
                         <label className="w-full cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 text-center text-xs font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-white">
-                          ◊ô◊ô◊ë◊ï◊ê ◊¢◊ï◊¥◊©
+                          ייבוא עו״ש
                           <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importBankFile(account.id, file); }} />
                         </label>
                       </div>
-                      <div className="flex items-end"><GhostButton onClick={() => removeRow('bankAccounts', account.id)} className="w-full px-0">√ó</GhostButton></div>
+                      <div className="flex items-end"><GhostButton onClick={() => removeRow('bankAccounts', account.id)} className="w-full px-0">×</GhostButton></div>
                     </div>
-                    {account.importedFile ? <div className="mt-3 rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-600">◊†◊ß◊ú◊ò ◊ß◊ï◊ë◊• ◊¢◊ï◊¥◊©: <strong>{account.importedFile}</strong> ¬∑ {account.transactions?.length || 0} ◊™◊†◊ï◊¢◊ï◊™</div> : null}
+                    {account.importedFile ? <div className="mt-3 rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-600">נקלט קובץ עו״ש: <strong>{account.importedFile}</strong> · {account.transactions?.length || 0} תנועות</div> : null}
                     {account.transactions?.length ? (
                       <div className="mt-3 max-h-64 overflow-auto rounded-2xl border border-neutral-200">
                         <div className="grid grid-cols-[110px_1fr_130px_130px] bg-neutral-100 px-4 py-3 text-xs font-semibold text-neutral-600">
-                          <div>◊™◊ê◊®◊ô◊ö</div>
-                          <div>◊§◊ô◊®◊ï◊ò</div>
-                          <div>◊°◊õ◊ï◊ù</div>
-                          <div>◊ô◊™◊®◊î</div>
+                          <div>תאריך</div>
+                          <div>פירוט</div>
+                          <div>סכום</div>
+                          <div>יתרה</div>
                         </div>
                         {account.transactions.slice(0, 80).map((transaction) => (
                           <div key={transaction.id} className="grid grid-cols-[110px_1fr_130px_130px] gap-3 border-t border-neutral-100 px-4 py-3 text-sm">
                             <div className="text-neutral-500">{transaction.date}</div>
                             <div>{transaction.description}</div>
                             <div className={toNumber(transaction.amount) >= 0 ? 'font-semibold text-[#66725E]' : 'font-semibold text-red-700'}>{SHEKEL.format(transaction.amount)}</div>
-                            <div>{transaction.balance ? SHEKEL.format(transaction.balance) : '‚Äî'}</div>
+                            <div>{transaction.balance ? SHEKEL.format(transaction.balance) : '—'}</div>
                           </div>
                         ))}
                       </div>
@@ -2327,7 +2327,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">MONTHLY COMPARE</div>
-                  <h2 className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">◊î◊©◊ï◊ï◊ê◊î ◊ú◊ê◊ï◊®◊ö ◊ñ◊û◊ü</h2>
+                  <h2 className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">השוואה לאורך זמן</h2>
                   <p className="mt-3 max-w-3xl text-sm leading-7 text-neutral-500 no-orphans">{noSingleWordLine(monthlyCompareStory)}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -2355,14 +2355,14 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       <div key={row.key} className={`rounded-[24px] border p-5 ${improved ? 'border-[#D6DDCF] bg-[#F4F6F1] text-[#66725E]' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
                         <div className="text-xs font-semibold uppercase tracking-widest opacity-70">{row.label}</div>
                         <div className="mt-3 text-2xl font-semibold text-neutral-950">{value}</div>
-                        <div className="mt-2 text-sm font-semibold">{improved ? '◊©◊ô◊§◊ï◊®' : '◊ì◊ï◊®◊© ◊™◊©◊ï◊û◊™ ◊ú◊ë'}: {diff}</div>
+                        <div className="mt-2 text-sm font-semibold">{improved ? 'שיפור' : 'דורש תשומת לב'}: {diff}</div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
                 <div className="mt-6">
-                  <EmptyState title="◊ê◊ô◊ü ◊¢◊ì◊ô◊ô◊ü ◊û◊°◊§◊ô◊ß ◊ó◊ï◊ì◊©◊ô◊ù" text="◊¶◊®◊ô ◊ê◊ï ◊û◊ú◊ê◊ô ◊†◊™◊ï◊†◊ô◊ù ◊ë◊¢◊ï◊ì ◊ó◊ï◊ì◊©◊ô◊ù ◊õ◊ì◊ô ◊ú◊®◊ê◊ï◊™ ◊î◊©◊ï◊ï◊ê◊î ◊ê◊ï◊ò◊ï◊û◊ò◊ô◊™ ◊û◊ï◊ú 3 ◊ó◊ï◊ì◊©◊ô◊ù, 6 ◊ó◊ï◊ì◊©◊ô◊ù, ◊©◊†◊î ◊ê◊ï ◊õ◊ú ◊î◊™◊ß◊ï◊§◊î." />
+                  <EmptyState title="אין עדיין מספיק חודשים" text="צרי או מלאי נתונים בעוד חודשים כדי לראות השוואה אוטומטית מול 3 חודשים, 6 חודשים, שנה או כל התקופה." />
                 </div>
               )}
             </Section>
@@ -2371,22 +2371,22 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               <section className="grid gap-6 lg:grid-cols-3">
                 {preferences.showCategoryChart ? (
                   <Section>
-                    <div className="flex items-center justify-between gap-4"><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">◊î◊™◊§◊ú◊í◊ï◊™ ◊î◊ï◊¶◊ê◊ï◊™ ◊ú◊§◊ô ◊ß◊ò◊í◊ï◊®◊ô◊ï◊™</h2><span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">Heatmap</span></div>
+                    <div className="flex items-center justify-between gap-4"><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">התפלגות הוצאות לפי קטגוריות</h2><span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">Heatmap</span></div>
                     <div className="mx-auto mt-6 h-56 w-56 rounded-full" style={{ background: pieChart }} />
                     <div className="mt-6 space-y-2">
-                      {topCategories.length ? topCategories.map(([category, amount]) => <div key={category} className={`flex justify-between rounded-2xl border px-4 py-3 text-sm ${getBudgetHeatColor(category, amount)}`}><span>{category}</span><strong>{SHEKEL.format(amount)}</strong></div>) : <EmptyState title="◊ê◊ô◊ü ◊¢◊ì◊ô◊ô◊ü ◊ß◊ò◊í◊ï◊®◊ô◊ï◊™" text="◊î◊¢◊ú◊ô ◊§◊ô◊®◊ï◊ò ◊ê◊©◊®◊ê◊ô ◊õ◊ì◊ô ◊ú◊®◊ê◊ï◊™ ◊î◊™◊§◊ú◊í◊ï◊™ ◊¶◊ë◊¢◊ï◊†◊ô◊™ ◊ú◊§◊ô ◊ß◊ò◊í◊ï◊®◊ô◊ï◊™." />}
+                      {topCategories.length ? topCategories.map(([category, amount]) => <div key={category} className={`flex justify-between rounded-2xl border px-4 py-3 text-sm ${getBudgetHeatColor(category, amount)}`}><span>{category}</span><strong>{SHEKEL.format(amount)}</strong></div>) : <EmptyState title="אין עדיין קטגוריות" text="העלי פירוט אשראי כדי לראות התפלגות צבעונית לפי קטגוריות." />}
                     </div>
                   </Section>
                 ) : null}
 
                 {preferences.showTrendChart ? (
                   <Section className="lg:col-span-2">
-                    <div className="flex items-center justify-between gap-4"><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">◊û◊í◊û◊™ 6 ◊ó◊ï◊ì◊©◊ô◊ù</h2><span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">Income ¬∑ Expenses ¬∑ Savings</span></div>
-                    <p className="mt-2 text-sm leading-7 text-neutral-500">◊î◊õ◊†◊°◊ï◊™, ◊î◊ï◊¶◊ê◊ï◊™ ◊ï◊ó◊ô◊°◊õ◊ï◊ü ◊†◊ò◊ï ◊ú◊§◊ô ◊ó◊ï◊ì◊©◊ô◊ù. ◊ë◊ú◊ô ◊°◊§◊®◊ô◊ô◊™ ◊í◊®◊§◊ô◊ù ◊ó◊ô◊¶◊ï◊†◊ô◊™, ◊õ◊ì◊ô ◊©◊î÷æbuild ◊ô◊ô◊©◊ê◊® ◊†◊ß◊ô.</p>
+                    <div className="flex items-center justify-between gap-4"><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">מגמת 6 חודשים</h2><span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">Income · Expenses · Savings</span></div>
+                    <p className="mt-2 text-sm leading-7 text-neutral-500">הכנסות, הוצאות וחיסכון נטו לפי חודשים. בלי ספריית גרפים חיצונית, כדי שה־build יישאר נקי.</p>
                     <div className="mt-6">
                       <TrendLineChart data={trendSixMonths} theme={activeTheme} />
                     </div>
-                    <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-neutral-600">Burn Rate ◊û◊û◊ï◊¶◊¢: <strong>{SHEKEL.format(burnRate)}</strong> | Cash Flow ◊ú◊ó◊ô◊°◊õ◊ï◊ü: <strong>{SHEKEL.format(cashFlow)}</strong></div>
+                    <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-neutral-600">Burn Rate ממוצע: <strong>{SHEKEL.format(burnRate)}</strong> | Cash Flow לחיסכון: <strong>{SHEKEL.format(cashFlow)}</strong></div>
                   </Section>
                 ) : null}
               </section>
@@ -2398,8 +2398,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
           <>
             <Section>
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">◊°◊ô◊õ◊ï◊ù ◊õ◊®◊ò◊ô◊°◊ô ◊ê◊©◊®◊ê◊ô</h2><p className="mt-2 text-sm text-neutral-500">◊õ◊ê◊ü ◊û◊¢◊ú◊ô◊ù CSV/Excel ◊ú◊õ◊ú ◊õ◊®◊ò◊ô◊°, ◊ë◊ï◊ì◊ß◊ô◊ù ◊ß◊ò◊í◊ï◊®◊ô◊ï◊™, ◊ï◊ê◊ñ ◊û◊ê◊©◊®◊ô◊ù ◊î◊õ◊†◊°◊î ◊ú◊î◊ï◊¶◊ê◊ï◊™.</p></div>
-                <PrimaryButton theme={activeTheme} onClick={addCreditCard}>+ ◊î◊ï◊°◊§◊™ ◊õ◊®◊ò◊ô◊°</PrimaryButton>
+                <div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">סיכום כרטיסי אשראי</h2><p className="mt-2 text-sm text-neutral-500">כאן מעלים CSV/Excel לכל כרטיס, בודקים קטגוריות, ואז מאשרים הכנסה להוצאות.</p></div>
+                <PrimaryButton theme={activeTheme} onClick={addCreditCard}>+ הוספת כרטיס</PrimaryButton>
               </div>
               <div className="mt-7 grid gap-8 xl:grid-cols-2">
                 {monthData.creditCards.map((card) => {
@@ -2428,20 +2428,20 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
             <Section>
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">◊î◊ï◊¶◊ê◊ï◊™ ◊ô◊ì◊†◊ô◊ï◊™</h2>
-                  <p className="mt-2 text-sm text-neutral-500">◊î◊ï◊¶◊ê◊ï◊™ ◊©◊ú◊ê ◊†◊õ◊†◊°◊ï◊™ ◊û◊õ◊®◊ò◊ô◊°◊ô ◊î◊ê◊©◊®◊ê◊ô ◊ï◊†◊ó◊©◊ë◊ï◊™ ◊ô◊ó◊ì ◊¢◊ù ◊î◊î◊ï◊¶◊ê◊ï◊™ ◊î◊ó◊ï◊ì◊©◊ô◊ï◊™.</p>
+                  <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">הוצאות ידניות</h2>
+                  <p className="mt-2 text-sm text-neutral-500">הוצאות שלא נכנסות מכרטיסי האשראי ונחשבות יחד עם ההוצאות החודשיות.</p>
                 </div>
-                <PrimaryButton theme={activeTheme} onClick={addManualExpense}>+ ◊î◊ï◊°◊§◊™ ◊î◊ï◊¶◊ê◊î</PrimaryButton>
+                <PrimaryButton theme={activeTheme} onClick={addManualExpense}>+ הוספת הוצאה</PrimaryButton>
               </div>
               <div className="mt-7 overflow-x-auto rounded-[24px] border border-neutral-200 bg-white">
                 <div className="min-w-[720px]">
-                  <div className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700"><div>◊ß◊ò◊í◊ï◊®◊ô◊î</div><div>◊°◊ï◊í</div><div>◊°◊õ◊ï◊ù</div><div /></div>
+                  <div className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700"><div>קטגוריה</div><div>סוג</div><div>סכום</div><div /></div>
                   {monthData.manualExpenses.map((expense) => (
                     <div key={expense.id} className="grid grid-cols-[minmax(320px,1fr)_180px_180px_60px] gap-3 border-t border-neutral-100 p-4">
                       <Field value={expense.category} onChange={(event) => updateRow('manualExpenses', expense.id, 'category', event.target.value)} className="w-full" />
-                      <SelectField value={expense.type} onChange={(event) => updateRow('manualExpenses', expense.id, 'type', event.target.value)} className="w-full"><option>◊ß◊ë◊ï◊¢◊î</option><option>◊û◊©◊™◊†◊î</option><option>◊ó◊ô◊°◊õ◊ï◊ü</option><option>◊ó◊ì ◊§◊¢◊û◊ô◊™</option></SelectField>
+                      <SelectField value={expense.type} onChange={(event) => updateRow('manualExpenses', expense.id, 'type', event.target.value)} className="w-full"><option>קבועה</option><option>משתנה</option><option>חיסכון</option><option>חד פעמית</option></SelectField>
                       <Field type="number" value={expense.amount} onChange={(event) => updateRow('manualExpenses', expense.id, 'amount', event.target.value)} className="w-full" />
-                      <GhostButton onClick={() => removeRow('manualExpenses', expense.id)} className="px-0">√ó</GhostButton>
+                      <GhostButton onClick={() => removeRow('manualExpenses', expense.id)} className="px-0">×</GhostButton>
                     </div>
                   ))}
                 </div>
@@ -2449,10 +2449,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
             </Section>
 
             <Section>
-              <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">◊õ◊ú ◊¢◊°◊ß◊ê◊ï◊™ ◊î◊ê◊©◊®◊ê◊ô ◊î◊û◊°◊ï◊†◊†◊ï◊™</h2>
+              <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">כל עסקאות האשראי המסוננות</h2>
               <div className="mt-6 overflow-x-auto rounded-[24px] border border-neutral-200 bg-white">
                 <div className="min-w-[860px]">
-                  <div className="grid grid-cols-[110px_1fr_170px_120px_90px] bg-neutral-100 px-6 py-4 text-sm font-semibold text-neutral-700"><div>◊™◊ê◊®◊ô◊ö</div><div>◊ë◊ô◊™ ◊¢◊°◊ß</div><div>◊ß◊ò◊í◊ï◊®◊ô◊î ◊ú◊ï◊û◊ì◊™</div><div>◊°◊õ◊ï◊ù</div><div>◊ñ◊ô◊î◊ï◊ô</div></div>
+                  <div className="grid grid-cols-[110px_1fr_170px_120px_90px] bg-neutral-100 px-6 py-4 text-sm font-semibold text-neutral-700"><div>תאריך</div><div>בית עסק</div><div>קטגוריה לומדת</div><div>סכום</div><div>זיהוי</div></div>
                   {filteredTransactions.map((transaction) => {
                     const isRecurring = recurringTransactions.some((item) => item.id === transaction.id);
                     return (
@@ -2461,11 +2461,11 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                         <div>{transaction.merchant}</div>
                         <SelectField value={transaction.category} onChange={(event) => updateTransactionCategory(transaction.id, event.target.value)}>{EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</SelectField>
                         <div className="font-semibold">{SHEKEL.format(transaction.amount)}</div>
-                        <div>{isRecurring ? '◊ó◊ï◊ñ◊® ◊ß◊ë◊ï◊¢' : '‚Äî'}</div>
+                        <div>{isRecurring ? 'חוזר קבוע' : '—'}</div>
                       </div>
                     );
                   })}
-                  {filteredTransactions.length === 0 ? <div className="p-16 text-center text-neutral-400">◊ú◊ê ◊†◊û◊¶◊ê◊ï ◊¢◊°◊ß◊ê◊ï◊™ ◊ú◊§◊ô ◊î◊ó◊ô◊§◊ï◊© ◊ï◊î◊§◊ô◊ú◊ò◊®◊ô◊ù ◊©◊ë◊ó◊®◊™◊ù.</div> : null}
+                  {filteredTransactions.length === 0 ? <div className="p-16 text-center text-neutral-400">לא נמצאו עסקאות לפי החיפוש והפילטרים שבחרתם.</div> : null}
                 </div>
               </div>
             </Section>
@@ -2475,23 +2475,23 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         {activeTab === 'savings' ? (
           <>
             <Section>
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">◊ß◊®◊†◊ï◊™, ◊§◊†◊°◊ô◊î ◊ï◊ó◊°◊õ◊ï◊†◊ï◊™</h2><p className="mt-2 text-sm text-neutral-500">◊î◊§◊®◊©◊ï◊™ ◊ó◊ï◊ì◊©◊ô◊ï◊™ ◊ú◊ß◊®◊ü ◊î◊©◊™◊ú◊û◊ï◊™, ◊§◊†◊°◊ô◊î ◊ï◊ó◊°◊õ◊ï◊†◊ï◊™ ◊ß◊ë◊ï◊¢◊ô◊ù.</p></div><PrimaryButton theme={activeTheme} onClick={addSavingsProduct}>+ ◊î◊ï◊°◊§◊™ ◊ó◊ô◊°◊õ◊ï◊ü</PrimaryButton></div>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">קרנות, פנסיה וחסכונות</h2><p className="mt-2 text-sm text-neutral-500">הפרשות חודשיות לקרן השתלמות, פנסיה וחסכונות קבועים.</p></div><PrimaryButton theme={activeTheme} onClick={addSavingsProduct}>+ הוספת חיסכון</PrimaryButton></div>
               <div className="mt-7 grid gap-3">
                 {monthData.savingsProducts.map((product) => (
                   <div key={product.id} className="grid gap-3 rounded-[24px] border border-neutral-200 p-4 md:grid-cols-[1.4fr_150px_130px_160px_160px_44px]">
-                    <LabeledField label="◊©◊ù ◊î◊ó◊ô◊°◊õ◊ï◊ü"><Field value={product.name} onChange={(event) => updateRow('savingsProducts', product.id, 'name', event.target.value)} placeholder="◊ú◊û◊©◊ú ◊§◊†◊°◊ô◊î ◊†◊ï◊¢◊î" /></LabeledField>
-                    <LabeledField label="◊°◊ï◊í"><SelectField value={product.type} onChange={(event) => updateRow('savingsProducts', product.id, 'type', event.target.value)}><option>◊ß◊®◊ü ◊î◊©◊™◊ú◊û◊ï◊™</option><option>◊§◊†◊°◊ô◊î</option><option>◊ß◊ï◊§◊™ ◊í◊û◊ú</option><option>◊ó◊ô◊°◊õ◊ï◊ü</option><option>◊î◊©◊ß◊¢◊ï◊™</option></SelectField></LabeledField>
-                    <LabeledField label="◊©◊ô◊ô◊ö ◊ú"><Field value={product.owner} onChange={(event) => updateRow('savingsProducts', product.id, 'owner', event.target.value)} placeholder="◊†◊ï◊¢◊î / ◊ê◊ï◊®◊ü" /></LabeledField>
-                    <LabeledField label="◊î◊§◊ß◊ì◊î ◊ó◊ï◊ì◊©◊ô◊™"><Field type="number" value={product.monthlyDeposit} onChange={(event) => updateRow('savingsProducts', product.id, 'monthlyDeposit', event.target.value)} placeholder="‚Ç™ ◊ú◊ó◊ï◊ì◊©" /></LabeledField>
-                    <LabeledField label="◊ô◊™◊®◊î ◊†◊ï◊õ◊ó◊ô◊™"><Field type="number" value={product.currentBalance} onChange={(event) => updateRow('savingsProducts', product.id, 'currentBalance', event.target.value)} placeholder="◊õ◊û◊î ◊†◊¶◊ë◊®" /></LabeledField>
-                    <div className="flex items-end"><GhostButton onClick={() => removeRow('savingsProducts', product.id)} className="w-full px-0">√ó</GhostButton></div>
+                    <LabeledField label="שם החיסכון"><Field value={product.name} onChange={(event) => updateRow('savingsProducts', product.id, 'name', event.target.value)} placeholder="למשל פנסיה נועה" /></LabeledField>
+                    <LabeledField label="סוג"><SelectField value={product.type} onChange={(event) => updateRow('savingsProducts', product.id, 'type', event.target.value)}><option>קרן השתלמות</option><option>פנסיה</option><option>קופת גמל</option><option>חיסכון</option><option>השקעות</option></SelectField></LabeledField>
+                    <LabeledField label="שייך ל"><Field value={product.owner} onChange={(event) => updateRow('savingsProducts', product.id, 'owner', event.target.value)} placeholder="נועה / אורן" /></LabeledField>
+                    <LabeledField label="הפקדה חודשית"><Field type="number" value={product.monthlyDeposit} onChange={(event) => updateRow('savingsProducts', product.id, 'monthlyDeposit', event.target.value)} placeholder="₪ לחודש" /></LabeledField>
+                    <LabeledField label="יתרה נוכחית"><Field type="number" value={product.currentBalance} onChange={(event) => updateRow('savingsProducts', product.id, 'currentBalance', event.target.value)} placeholder="כמה נצבר" /></LabeledField>
+                    <div className="flex items-end"><GhostButton onClick={() => removeRow('savingsProducts', product.id)} className="w-full px-0">×</GhostButton></div>
                   </div>
                 ))}
               </div>
             </Section>
 
             <Section>
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">◊ô◊¢◊ì◊ô ◊ó◊ô◊°◊õ◊ï◊ü</h2><p className="mt-2 text-sm text-neutral-500">◊ò◊ô◊°◊î ◊ú◊ô◊§◊ü, ◊ó◊™◊ï◊†◊î, ◊ß◊®◊ü ◊ó◊ô◊®◊ï◊ù ◊ï◊õ◊ú ◊ô◊¢◊ì ◊ê◊ó◊®.</p></div><PrimaryButton theme={activeTheme} onClick={addSavingGoal}>+ ◊î◊ï◊°◊§◊™ ◊ô◊¢◊ì</PrimaryButton></div>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">יעדי חיסכון</h2><p className="mt-2 text-sm text-neutral-500">טיסה ליפן, חתונה, קרן חירום וכל יעד אחר.</p></div><PrimaryButton theme={activeTheme} onClick={addSavingGoal}>+ הוספת יעד</PrimaryButton></div>
               <div className="mt-6 grid gap-5 md:grid-cols-3">
                 {monthData.savingGoals.map((goal) => {
                   const progress = toNumber(goal.targetAmount) ? Math.min(100, Math.round((toNumber(goal.currentAmount) / toNumber(goal.targetAmount)) * 100)) : 0;
@@ -2501,14 +2501,14 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   const boostedEta = Math.ceil(remaining / (monthlyDeposit + 500));
                   return (
                     <div key={goal.id} className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
-                      <LabeledField label="◊©◊ù ◊î◊ô◊¢◊ì"><Field value={goal.name} onChange={(event) => updateRow('savingGoals', goal.id, 'name', event.target.value)} className="w-full font-semibold" placeholder="◊ú◊û◊©◊ú ◊ò◊ô◊°◊î ◊ú◊ô◊§◊ü" /></LabeledField>
+                      <LabeledField label="שם היעד"><Field value={goal.name} onChange={(event) => updateRow('savingGoals', goal.id, 'name', event.target.value)} className="w-full font-semibold" placeholder="למשל טיסה ליפן" /></LabeledField>
                       <div className="mt-3 grid gap-3">
-                        <LabeledField label="◊°◊õ◊ï◊ù ◊ô◊¢◊ì"><Field type="number" value={goal.targetAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'targetAmount', event.target.value)} placeholder="◊õ◊û◊î ◊¶◊®◊ô◊ö ◊ú◊î◊í◊ô◊¢" /></LabeledField>
-                        <LabeledField label="◊†◊¶◊ë◊® ◊¢◊ì ◊¢◊õ◊©◊ô◊ï"><Field type="number" value={goal.currentAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'currentAmount', event.target.value)} placeholder="◊õ◊û◊î ◊õ◊ë◊® ◊ô◊©" /></LabeledField>
-                        <LabeledField label="◊î◊§◊ß◊ì◊î ◊ó◊ï◊ì◊©◊ô◊™"><Field type="number" value={goal.monthlyDeposit} onChange={(event) => updateRow('savingGoals', goal.id, 'monthlyDeposit', event.target.value)} placeholder="◊õ◊û◊î ◊û◊ï◊°◊ô◊§◊ô◊ù ◊õ◊ú ◊ó◊ï◊ì◊©" /></LabeledField>
+                        <LabeledField label="סכום יעד"><Field type="number" value={goal.targetAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'targetAmount', event.target.value)} placeholder="כמה צריך להגיע" /></LabeledField>
+                        <LabeledField label="נצבר עד עכשיו"><Field type="number" value={goal.currentAmount} onChange={(event) => updateRow('savingGoals', goal.id, 'currentAmount', event.target.value)} placeholder="כמה כבר יש" /></LabeledField>
+                        <LabeledField label="הפקדה חודשית"><Field type="number" value={goal.monthlyDeposit} onChange={(event) => updateRow('savingGoals', goal.id, 'monthlyDeposit', event.target.value)} placeholder="כמה מוסיפים כל חודש" /></LabeledField>
                       </div>
-                      <div className="mt-4 flex justify-between text-sm font-semibold"><span>{progress}%</span><button onClick={() => removeRow('savingGoals', goal.id)} className="text-neutral-700">◊û◊ó◊ô◊ß◊î</button></div>
-                      <div className="mt-3 rounded-2xl border border-neutral-200 bg-white p-3 text-sm leading-7 text-neutral-600"><div>ETA ◊ú◊ô◊¢◊ì: <strong>{Number.isFinite(etaMonths) ? `${etaMonths} ◊ó◊ï◊ì◊©◊ô◊ù` : '◊ú◊ê ◊û◊ï◊í◊ì◊®'}</strong></div><div className="mt-1">◊ê◊ù ◊™◊í◊ì◊ô◊ú◊ï ◊ë÷æ‚Ç™500 ◊ë◊ó◊ï◊ì◊© ◊™◊í◊ô◊¢◊ï ◊ë◊¢◊®◊ö ◊™◊ï◊ö <strong>{Number.isFinite(boostedEta) ? `${boostedEta} ◊ó◊ï◊ì◊©◊ô◊ù` : '‚Äî'}</strong>.</div></div>
+                      <div className="mt-4 flex justify-between text-sm font-semibold"><span>{progress}%</span><button onClick={() => removeRow('savingGoals', goal.id)} className="text-neutral-700">מחיקה</button></div>
+                      <div className="mt-3 rounded-2xl border border-neutral-200 bg-white p-3 text-sm leading-7 text-neutral-600"><div>ETA ליעד: <strong>{Number.isFinite(etaMonths) ? `${etaMonths} חודשים` : 'לא מוגדר'}</strong></div><div className="mt-1">אם תגדילו ב־₪500 בחודש תגיעו בערך תוך <strong>{Number.isFinite(boostedEta) ? `${boostedEta} חודשים` : '—'}</strong>.</div></div>
                       <div className="mt-2 h-3 overflow-hidden rounded-full bg-white"><div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: activeTheme.accent }} /></div>
                     </div>
                   );
@@ -2516,37 +2516,37 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               </div>
             </Section>
 
-            <Section><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">◊ß◊®◊ü ◊ó◊ô◊®◊ï◊ù</h2><p className="mt-2 text-sm text-neutral-500">◊û◊ú◊ê◊ï ◊°◊õ◊ï◊ù ◊ó◊ô◊°◊õ◊ï◊ü ◊†◊ñ◊ô◊ú ◊†◊ï◊õ◊ó◊ô.</p><Field type="number" value={monthData.emergencyFund} onChange={(event) => updateMonthField('emergencyFund', toNumber(event.target.value))} className="mt-6 w-full text-xl font-semibold" /></Section>
+            <Section><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">קרן חירום</h2><p className="mt-2 text-sm text-neutral-500">מלאו סכום חיסכון נזיל נוכחי.</p><Field type="number" value={monthData.emergencyFund} onChange={(event) => updateMonthField('emergencyFund', toNumber(event.target.value))} className="mt-6 w-full text-xl font-semibold" /></Section>
           </>
         ) : null}
 
         {activeTab === 'income' ? (
           <section className="grid gap-6 lg:grid-cols-2">
             <Section>
-              <div className="flex items-center justify-between gap-4"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">◊î◊õ◊†◊°◊ï◊™</h2><p className="mt-2 text-sm text-neutral-500">◊ê◊§◊©◊® ◊ú◊ô◊ô◊ë◊ê ◊î◊õ◊†◊°◊ï◊™ ◊û÷æPDF ◊™◊ú◊ï◊©, CSV ◊ê◊ï Excel. ◊ê◊ù ◊î÷æPDF ◊ò◊ß◊°◊ò◊ï◊ê◊ú◊ô, ◊î◊û◊¢◊®◊õ◊™ ◊™◊†◊°◊î ◊ú◊ñ◊î◊ï◊™ ◊†◊ò◊ï ◊ú◊™◊©◊ú◊ï◊ù ◊ê◊ï◊ò◊ï◊û◊ò◊ô◊™.</p></div><div className="flex flex-wrap gap-3"><label className="cursor-pointer rounded-xl bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800">◊ô◊ô◊ë◊ï◊ê ◊î◊õ◊†◊°◊ï◊™ PDF/CSV/Excel<input type="file" accept="application/pdf,.csv,.xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importIncomeFile(file); }} /></label><label className="cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-white">◊¶◊ô◊®◊ï◊£ ◊™◊ú◊ï◊© PDF<input type="file" accept="application/pdf" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) attachSalarySlipFile(file); }} /></label><PrimaryButton theme={activeTheme} onClick={addIncome}>+ ◊î◊ï◊°◊§◊î</PrimaryButton></div></div>
-              {(monthData.attachedDocuments || []).length ? <div className="mt-4 space-y-2 rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-600">{monthData.attachedDocuments.map((document) => <div key={document.id} className="flex items-center justify-between gap-3"><span>◊™◊ú◊ï◊© ◊û◊¶◊ï◊®◊£: <strong>{document.name}</strong></span><button type="button" onClick={() => removeAttachedDocument(document.id)} className="font-semibold text-neutral-700">◊î◊°◊®◊î</button></div>)}</div> : null}
-              <div className="mt-6 space-y-3">{monthData.incomes.map((income) => <InputRow key={income.id}><Field value={income.name} onChange={(event) => updateRow('incomes', income.id, 'name', event.target.value)} /><Field type="number" value={income.amount} onChange={(event) => updateRow('incomes', income.id, 'amount', event.target.value)} /><GhostButton onClick={() => removeRow('incomes', income.id)} className="px-0">√ó</GhostButton></InputRow>)}</div>
+              <div className="flex items-center justify-between gap-4"><div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">הכנסות</h2><p className="mt-2 text-sm text-neutral-500">אפשר לייבא הכנסות מ־PDF תלוש, CSV או Excel. אם ה־PDF טקסטואלי, המערכת תנסה לזהות נטו לתשלום אוטומטית.</p></div><div className="flex flex-wrap gap-3"><label className="cursor-pointer rounded-xl bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800">ייבוא הכנסות PDF/CSV/Excel<input type="file" accept="application/pdf,.csv,.xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importIncomeFile(file); }} /></label><label className="cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-white">צירוף תלוש PDF<input type="file" accept="application/pdf" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) attachSalarySlipFile(file); }} /></label><PrimaryButton theme={activeTheme} onClick={addIncome}>+ הוספה</PrimaryButton></div></div>
+              {(monthData.attachedDocuments || []).length ? <div className="mt-4 space-y-2 rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-600">{monthData.attachedDocuments.map((document) => <div key={document.id} className="flex items-center justify-between gap-3"><span>תלוש מצורף: <strong>{document.name}</strong></span><button type="button" onClick={() => removeAttachedDocument(document.id)} className="font-semibold text-neutral-700">הסרה</button></div>)}</div> : null}
+              <div className="mt-6 space-y-3">{monthData.incomes.map((income) => <InputRow key={income.id}><Field value={income.name} onChange={(event) => updateRow('incomes', income.id, 'name', event.target.value)} /><Field type="number" value={income.amount} onChange={(event) => updateRow('incomes', income.id, 'amount', event.target.value)} /><GhostButton onClick={() => removeRow('incomes', income.id)} className="px-0">×</GhostButton></InputRow>)}</div>
             </Section>
 
             <Section>
-              <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">◊î◊õ◊†◊°◊ï◊™ ◊ê◊ï◊®◊ü / ◊¢◊¶◊û◊ê◊ô</h2><p className="mt-2 text-sm text-neutral-500">◊ê◊ù ◊î◊¢◊°◊ß ◊†◊§◊®◊ì, ◊û◊ñ◊ô◊†◊ô◊ù ◊õ◊ê◊ü ◊®◊ß ◊ê◊™ ◊î◊°◊õ◊ï◊ù ◊©◊ê◊ï◊®◊ü ◊û◊¢◊ë◊ô◊® ◊ú◊ó◊©◊ë◊ï◊ü ◊î◊û◊©◊ï◊™◊£ ◊õ◊î◊õ◊†◊°◊î. ◊ê◊§◊©◊® ◊ú◊î◊ì◊ú◊ô◊ß ◊û◊¶◊ë ◊¢◊¶◊û◊ê◊ô ◊®◊ß ◊ê◊ù ◊®◊ï◊¶◊ô◊ù ◊ú◊õ◊ú◊ï◊ú ◊û◊¢◊¥◊û, ◊û◊° ◊ï◊ë◊ô◊ò◊ï◊ó ◊ú◊ê◊ï◊û◊ô ◊ë◊™◊ñ◊®◊ô◊ù ◊î◊ë◊ô◊™.</p>
+              <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">הכנסות אורן / עצמאי</h2><p className="mt-2 text-sm text-neutral-500">אם העסק נפרד, מזינים כאן רק את הסכום שאורן מעביר לחשבון המשותף כהכנסה. אפשר להדליק מצב עצמאי רק אם רוצים לכלול מע״מ, מס וביטוח לאומי בתזרים הבית.</p>
               <div className="mt-5 rounded-[24px] border border-neutral-200 bg-neutral-50 p-4">
                 <label className="flex items-center justify-between gap-4 text-sm font-semibold text-neutral-700">
-                  <span>◊ú◊õ◊ú◊ï◊ú ◊¢◊¶◊û◊ê◊ô ◊ë◊™◊ñ◊®◊ô◊ù ◊î◊û◊©◊§◊ó◊™◊ô</span>
+                  <span>לכלול עצמאי בתזרים המשפחתי</span>
                   <input type="checkbox" checked={includeSelfEmployed} onChange={(event) => updatePreference('includeSelfEmployed', event.target.checked)} className="h-5 w-5" style={{ accentColor: activeTheme.accent }} />
                 </label>
-                <p className="mt-3 text-xs leading-6 text-neutral-500">◊õ◊ë◊ï◊ô: ◊î◊¢◊°◊ß ◊†◊©◊ê◊® ◊û◊ó◊ï◊• ◊ú◊ì◊©◊ë◊ï◊®◊ì, ◊ï◊®◊ß ◊î◊¢◊ë◊®◊î/◊û◊©◊õ◊ï◊®◊™ ◊ú◊ó◊©◊ë◊ï◊ü ◊î◊û◊©◊ï◊™◊£ ◊†◊°◊§◊®◊™ ◊õ◊î◊õ◊†◊°◊î. ◊ì◊ï◊ú◊ß: ◊™◊©◊ú◊ï◊û◊ô ◊¢◊¶◊û◊ê◊ô ◊†◊°◊§◊®◊ô◊ù ◊õ◊î◊ï◊¶◊ê◊ï◊™ ◊ë◊ô◊™.</p>
+                <p className="mt-3 text-xs leading-6 text-neutral-500">כבוי: העסק נשאר מחוץ לדשבורד, ורק העברה/משכורת לחשבון המשותף נספרת כהכנסה. דולק: תשלומי עצמאי נספרים כהוצאות בית.</p>
               </div>
-              <div className="mt-6 grid gap-4 md:grid-cols-2">{[['owner', '◊ë◊¢◊ú ◊î◊¢◊°◊ß', 'text'], ['salaryTransferToHousehold', '◊î◊¢◊ë◊®◊î / ◊û◊©◊õ◊ï◊®◊™ ◊ú◊ó◊©◊ë◊ï◊ü ◊î◊û◊©◊ï◊™◊£', 'number'], ['grossRevenue', '◊î◊õ◊†◊°◊î ◊¢◊°◊ß◊ô◊™ ◊ë◊®◊ï◊ò◊ï', 'number'], ['vatCollected', '◊û◊¢◊¥◊û ◊©◊†◊í◊ë◊î ◊û◊ú◊ß◊ï◊ó◊ï◊™', 'number'], ['vatPaidOnExpenses', '◊û◊¢◊¥◊û ◊¢◊ú ◊î◊ï◊¶◊ê◊ï◊™ ◊û◊ï◊õ◊®◊ï◊™', 'number'], ['incomeTaxAdvance', '◊û◊ß◊ì◊û◊™ ◊û◊° ◊î◊õ◊†◊°◊î', 'number'], ['nationalInsurance', '◊ë◊ô◊ò◊ï◊ó ◊ú◊ê◊ï◊û◊ô', 'number'], ['businessExpenses', '◊î◊ï◊¶◊ê◊ï◊™ ◊¢◊°◊ß◊ô◊ï◊™ ◊©◊©◊ï◊ú◊û◊ï ◊î◊ó◊ï◊ì◊©', 'number']].map(([field, label, type]) => <label key={field} className="text-sm font-semibold text-neutral-600">{label}<Field type={type} value={monthData.selfEmployed[field]} onChange={(event) => updateSelfEmployedField(field, event.target.value)} className="mt-2 w-full" /></label>)}</div>
-              <div className="mt-6 grid gap-4 md:grid-cols-3"><StatCard title="◊û◊¢◊¥◊û ◊¶◊§◊ï◊ô" value={SHEKEL.format(selfEmployedVatDue)} note="◊†◊í◊ë◊î ◊§◊ó◊ï◊™ ◊û◊ï◊õ◊®" /><StatCard title="◊û◊° + ◊ë◊ô◊ò◊ï◊ó" value={SHEKEL.format(toNumber(monthData.selfEmployed.incomeTaxAdvance) + toNumber(monthData.selfEmployed.nationalInsurance))} note="◊™◊©◊ú◊ï◊û◊ô ◊ó◊ï◊ë◊î" /><StatCard title="◊°◊î◊¥◊õ ◊¢◊¶◊û◊ê◊ô" value={SHEKEL.format(totalSelfEmployedPayments)} note={includeSelfEmployed ? '◊õ◊ú◊ï◊ú ◊ë◊ë◊ô◊™' : '◊û◊ó◊ï◊• ◊ú◊ë◊ô◊™'} /></div>
+              <div className="mt-6 grid gap-4 md:grid-cols-2">{[['owner', 'בעל העסק', 'text'], ['salaryTransferToHousehold', 'העברה / משכורת לחשבון המשותף', 'number'], ['grossRevenue', 'הכנסה עסקית ברוטו', 'number'], ['vatCollected', 'מע״מ שנגבה מלקוחות', 'number'], ['vatPaidOnExpenses', 'מע״מ על הוצאות מוכרות', 'number'], ['incomeTaxAdvance', 'מקדמת מס הכנסה', 'number'], ['nationalInsurance', 'ביטוח לאומי', 'number'], ['businessExpenses', 'הוצאות עסקיות ששולמו החודש', 'number']].map(([field, label, type]) => <label key={field} className="text-sm font-semibold text-neutral-600">{label}<Field type={type} value={monthData.selfEmployed[field]} onChange={(event) => updateSelfEmployedField(field, event.target.value)} className="mt-2 w-full" /></label>)}</div>
+              <div className="mt-6 grid gap-4 md:grid-cols-3"><StatCard title="מע״מ צפוי" value={SHEKEL.format(selfEmployedVatDue)} note="נגבה פחות מוכר" /><StatCard title="מס + ביטוח" value={SHEKEL.format(toNumber(monthData.selfEmployed.incomeTaxAdvance) + toNumber(monthData.selfEmployed.nationalInsurance))} note="תשלומי חובה" /><StatCard title="סה״כ עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note={includeSelfEmployed ? 'כלול בבית' : 'מחוץ לבית'} /></div>
             </Section>
           </section>
         ) : null}
 
         {activeTab === 'insights' ? (
           <section className="grid gap-6 lg:grid-cols-2">
-            {preferences.showSmartInsightCards ? <Section><div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">◊™◊ï◊ë◊†◊ï◊™ ◊ó◊õ◊û◊ï◊™</h2><p className="mt-2 text-sm text-neutral-500">◊™◊ï◊ë◊†◊ï◊™ ◊û◊ó◊ï◊©◊ë◊ï◊™ ◊ô◊©◊ô◊®◊ï◊™ ◊û◊î◊†◊™◊ï◊†◊ô◊ù: ◊ó◊®◊ô◊í◊ï◊™, ◊™◊ß◊¶◊ô◊ë◊ô◊ù, ◊ë◊™◊ô ◊¢◊°◊ß ◊û◊ï◊ë◊ô◊ú◊ô◊ù, ◊ó◊ô◊ï◊ë◊ô◊ù ◊ó◊ï◊ñ◊®◊ô◊ù ◊ï◊ì◊§◊ï◊°◊ô◊ù ◊ó◊ï◊ì◊©◊ô◊ô◊ù.</p></div><div className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: activeTheme.soft, color: activeTheme.text }}>◊û◊™◊¢◊ì◊õ◊ü ◊ê◊ï◊ò◊ï◊û◊ò◊ô◊™</div></div><div className="mt-5 grid gap-4">{realInsights.map((insight, index) => <div key={insight} className="flex items-start gap-4 rounded-[24px] border border-neutral-200 bg-white p-5 shadow-sm"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-100 text-lg font-semibold text-neutral-500">{index % 3 === 0 ? '‚óî' : index % 3 === 1 ? '‚ñ≤' : '‚ú¶'}</div><div className="flex-1 text-sm leading-7 text-neutral-700 no-orphans">{noSingleWordLine(insight)}</div></div>)}</div></Section> : null}
-            {preferences.showRecurringDetection ? <Section><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">◊ñ◊ô◊î◊ï◊ô ◊ó◊ô◊ï◊ë◊ô◊ù ◊ß◊ë◊ï◊¢◊ô◊ù</h2><p className="mt-2 text-sm text-neutral-500">◊ñ◊ô◊î◊ï◊ô ◊û◊†◊ï◊ô◊ô◊ù, ◊ë◊ô◊ò◊ï◊ó◊ô◊ù, ◊°◊ú◊ï◊ú◊® ◊ï◊©◊õ◊ô◊®◊ï◊™ ◊ú◊§◊ô ◊û◊ô◊ú◊ï◊™ ◊û◊§◊™◊ó ◊ï◊ó◊ñ◊®◊î ◊ë◊ô◊ü ◊ó◊ï◊ì◊©◊ô◊ù.</p><div className="mt-5 space-y-3">{recurringTransactions.length ? recurringTransactions.map((item) => <div key={item.id} className="flex justify-between rounded-2xl bg-neutral-50 p-4 text-sm"><span>{item.merchant}</span><strong>{SHEKEL.format(item.amount)}</strong></div>) : <EmptyState title="◊ê◊ô◊ü ◊¢◊ì◊ô◊ô◊ü ◊ó◊ô◊ï◊ë◊ô◊ù ◊ß◊ë◊ï◊¢◊ô◊ù" text="◊î◊¢◊ú◊ô ◊§◊ô◊®◊ï◊ò◊ô◊ù ◊©◊ú ◊õ◊û◊î ◊ó◊ï◊ì◊©◊ô◊ù ◊õ◊ì◊ô ◊©◊†◊ï◊õ◊ú ◊ú◊ñ◊î◊ï◊™ ◊û◊†◊ï◊ô◊ô◊ù ◊ï◊™◊©◊ú◊ï◊û◊ô◊ù ◊ó◊ï◊ñ◊®◊ô◊ù ◊ë◊¶◊ï◊®◊î ◊ó◊õ◊û◊î." />}</div></Section> : null}
+            {preferences.showSmartInsightCards ? <Section><div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">תובנות חכמות</h2><p className="mt-2 text-sm text-neutral-500">תובנות מחושבות ישירות מהנתונים: חריגות, תקציבים, בתי עסק מובילים, חיובים חוזרים ודפוסים חודשיים.</p></div><div className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: activeTheme.soft, color: activeTheme.text }}>מתעדכן אוטומטית</div></div><div className="mt-5 grid gap-4">{realInsights.map((insight, index) => <div key={insight} className="flex items-start gap-4 rounded-[24px] border border-neutral-200 bg-white p-5 shadow-sm"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-100 text-lg font-semibold text-neutral-500">{index % 3 === 0 ? '◔' : index % 3 === 1 ? '▲' : '✦'}</div><div className="flex-1 text-sm leading-7 text-neutral-700 no-orphans">{noSingleWordLine(insight)}</div></div>)}</div></Section> : null}
+            {preferences.showRecurringDetection ? <Section><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">זיהוי חיובים קבועים</h2><p className="mt-2 text-sm text-neutral-500">זיהוי מנויים, ביטוחים, סלולר ושכירות לפי מילות מפתח וחזרה בין חודשים.</p><div className="mt-5 space-y-3">{recurringTransactions.length ? recurringTransactions.map((item) => <div key={item.id} className="flex justify-between rounded-2xl bg-neutral-50 p-4 text-sm"><span>{item.merchant}</span><strong>{SHEKEL.format(item.amount)}</strong></div>) : <EmptyState title="אין עדיין חיובים קבועים" text="העלי פירוטים של כמה חודשים כדי שנוכל לזהות מנויים ותשלומים חוזרים בצורה חכמה." />}</div></Section> : null}
           </section>
         ) : null}
 
@@ -2554,18 +2554,18 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
           <>
             <Section>
               <div className="flex flex-col gap-2">
-                <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">◊î◊™◊ê◊û◊î ◊ê◊ô◊©◊ô◊™</h2>
+                <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">התאמה אישית</h2>
                 <p className="text-sm leading-7 text-neutral-500">
-                  ◊õ◊ê◊ü ◊û◊í◊ì◊ô◊®◊ô◊ù ◊ê◊ô◊ö ◊î◊ò◊ï◊§◊° ◊ï◊î◊ì◊©◊ë◊ï◊®◊ì ◊ô◊™◊†◊î◊í◊ï: ◊©◊û◊ï◊™, ◊ô◊¢◊ì◊ô◊ù ◊ï◊û◊î ◊ô◊ï◊¶◊í ◊ë◊û◊°◊ö ◊î◊®◊ê◊©◊ô.
+                  כאן מגדירים איך הטופס והדשבורד יתנהגו: שמות, יעדים ומה יוצג במסך הראשי.
                 </p>
               </div>
 
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
                 <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
-                  <h3 className="text-lg font-semibold text-neutral-950">◊§◊®◊ò◊ô ◊î◊ë◊ô◊™</h3>
+                  <h3 className="text-lg font-semibold text-neutral-950">פרטי הבית</h3>
                   <div className="mt-4 grid gap-3">
                     <label className="text-sm font-semibold text-neutral-600">
-                      ◊©◊ù ◊î◊ì◊©◊ë◊ï◊®◊ì
+                      שם הדשבורד
                       <Field
                         value={monthData.dashboardTitle}
                         onChange={(event) => updateMonthField('dashboardTitle', event.target.value)}
@@ -2573,7 +2573,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       />
                     </label>
                     <label className="text-sm font-semibold text-neutral-600">
-                      ◊û◊ñ◊î◊î ◊ë◊ô◊™ / Household ID
+                      מזהה בית / Household ID
                       <Field
                         value={householdProfileId}
                         onChange={(event) => updatePreference('householdProfileId', event.target.value || DEFAULT_SUPABASE_PROFILE_ID)}
@@ -2582,7 +2582,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                     </label>
                     <div className="grid gap-3 md:grid-cols-2">
                       <label className="text-sm font-semibold text-neutral-600">
-                        ◊û◊©◊™◊û◊©/◊™ ◊®◊ê◊©◊ï◊ü/◊î
+                        משתמש/ת ראשון/ה
                         <Field
                           value={preferences.primaryPerson}
                           onChange={(event) => updatePreference('primaryPerson', event.target.value)}
@@ -2590,7 +2590,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                         />
                       </label>
                       <label className="text-sm font-semibold text-neutral-600">
-                        ◊û◊©◊™◊û◊©/◊™ ◊©◊†◊ô/◊î
+                        משתמש/ת שני/ה
                         <Field
                           value={preferences.secondaryPerson}
                           onChange={(event) => updatePreference('secondaryPerson', event.target.value)}
@@ -2603,28 +2603,28 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                         theme={activeTheme}
                         onClick={async () => {
                           try {
-                            setCloudStatus('◊©◊ï◊û◊®...');
+                            setCloudStatus('שומר...');
                             await saveFinanceStateToSupabase(months, learnedRules, preferences, householdProfileId, supabaseConfig);
-                            setCloudStatus('◊†◊©◊û◊® ◊ë◊¢◊†◊ü');
+                            setCloudStatus('נשמר בענן');
                           } catch (error) {
-                            setCloudStatus(`◊©◊í◊ô◊ê◊î ◊ë◊©◊û◊ô◊®◊î: ${error?.message || '◊ú◊ê ◊ô◊ì◊ï◊¢'}`);
+                            setCloudStatus(`שגיאה בשמירה: ${error?.message || 'לא ידוע'}`);
                           }
                         }}
                       >
-                        ◊©◊û◊ï◊® ◊î◊í◊ì◊®◊ï◊™ ◊ë◊¢◊†◊ü
+                        שמור הגדרות בענן
                       </PrimaryButton>
                       <GhostButton onClick={() => window.location.reload()}>
-                        ◊®◊¢◊†◊ü ◊ó◊ô◊ë◊ï◊®
+                        רענן חיבור
                       </GhostButton>
                     </div>
                   </div>
                 </div>
 
                 <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
-                  <h3 className="text-lg font-semibold text-neutral-950">◊ô◊¢◊ì◊ô◊ù ◊ó◊ï◊ì◊©◊ô◊ô◊ù</h3>
+                  <h3 className="text-lg font-semibold text-neutral-950">יעדים חודשיים</h3>
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     <label className="text-sm font-semibold text-neutral-600">
-                      ◊ô◊¢◊ì ◊î◊ï◊¶◊ê◊ï◊™ ◊ó◊ï◊ì◊©◊ô
+                      יעד הוצאות חודשי
                       <Field
                         type="number"
                         value={preferences.monthlyBudgetTarget}
@@ -2633,7 +2633,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       />
                     </label>
                     <label className="text-sm font-semibold text-neutral-600">
-                      ◊ô◊¢◊ì ◊©◊ô◊¢◊ï◊® ◊ó◊ô◊°◊õ◊ï◊ü ◊ë◊ê◊ó◊ï◊ñ◊ô◊ù
+                      יעד שיעור חיסכון באחוזים
                       <Field
                         type="number"
                         value={preferences.savingsRateTarget}
@@ -2651,10 +2651,10 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   {[
                     ['showMonthlyStory', 'Monthly Story'],
                     ['showFinancialHealth', 'Financial Health'],
-                    ['showCategoryChart', '◊í◊®◊£ ◊ß◊ò◊í◊ï◊®◊ô◊ï◊™'],
-                    ['showTrendChart', '◊í◊®◊£ ◊û◊í◊û◊î'],
-                    ['showSmartInsightCards', '◊õ◊®◊ò◊ô◊°◊ô ◊™◊ï◊ë◊†◊ï◊™'],
-                    ['showRecurringDetection', '◊ñ◊ô◊î◊ï◊ô ◊ó◊ô◊ï◊ë◊ô◊ù ◊ß◊ë◊ï◊¢◊ô◊ù'],
+                    ['showCategoryChart', 'גרף קטגוריות'],
+                    ['showTrendChart', 'גרף מגמה'],
+                    ['showSmartInsightCards', 'כרטיסי תובנות'],
+                    ['showRecurringDetection', 'זיהוי חיובים קבועים'],
                   ].map(([field, label]) => (
                     <label key={field} className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700">
                       <span>{label}</span>
@@ -2709,8 +2709,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                           <div className="font-semibold text-neutral-900">{mode}</div>
                           <div className="mt-1 text-sm text-neutral-500">{operatingModeMessages[mode]}</div>
                           <div className="mt-3 grid gap-2 text-xs text-neutral-500 md:grid-cols-3">
-                            <span>◊ô◊¢◊ì ◊ó◊ô◊°◊õ◊ï◊ü {formatPercent(config.savingsTarget)}</span>
-                            <span>◊î◊™◊®◊ê◊î ◊ë÷æ{config.budgetWarningAt}%</span>
+                            <span>יעד חיסכון {formatPercent(config.savingsTarget)}</span>
+                            <span>התראה ב־{config.budgetWarningAt}%</span>
                             <span>{config.notificationTone}</span>
                           </div>
                         </button>
@@ -2725,15 +2725,15 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                 <div className="mt-4 grid gap-3 md:grid-cols-4">
                   <div className="rounded-2xl bg-neutral-50 p-4 text-sm">
                     <strong>LocalStorage</strong>
-                    <div className="mt-1 text-neutral-500">{setupHealth.localStorage ? '◊§◊¢◊ô◊ú' : '◊ú◊ê ◊ñ◊û◊ô◊ü'}</div>
+                    <div className="mt-1 text-neutral-500">{setupHealth.localStorage ? 'פעיל' : 'לא זמין'}</div>
                   </div>
                   <div className="rounded-2xl bg-neutral-50 p-4 text-sm">
                     <strong>Supabase ENV</strong>
-                    <div className="mt-1 text-neutral-500">{setupHealth.supabaseEnv ? '◊û◊ï◊í◊ì◊®' : '◊ú◊ê ◊û◊ï◊í◊ì◊®'}</div>
+                    <div className="mt-1 text-neutral-500">{setupHealth.supabaseEnv ? 'מוגדר' : 'לא מוגדר'}</div>
                   </div>
                   <div className="rounded-2xl bg-neutral-50 p-4 text-sm">
                     <strong>Excel Parser</strong>
-                    <div className="mt-1 text-neutral-500">{setupHealth.xlsxParser ? '◊§◊¢◊ô◊ú' : '◊ó◊°◊® xlsx'}</div>
+                    <div className="mt-1 text-neutral-500">{setupHealth.xlsxParser ? 'פעיל' : 'חסר xlsx'}</div>
                   </div>
                   <div className="rounded-2xl bg-neutral-50 p-4 text-sm">
                     <strong>Household</strong>
@@ -2741,7 +2741,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   </div>
                 </div>
                 <p className="mt-4 text-xs leading-6 text-neutral-500">
-                  ◊ñ◊î ◊ú◊ê ◊ì◊û◊ï: ◊õ◊ú ◊°◊ò◊ò◊ï◊° ◊õ◊ê◊ü ◊û◊©◊ß◊£ ◊ó◊ô◊ë◊ï◊® ◊ê◊û◊ô◊™◊ô ◊ë◊ß◊ï◊ì. ◊ê◊ù Supabase ENV ◊ú◊ê ◊û◊ï◊í◊ì◊®, ◊î◊û◊¢◊®◊õ◊™ ◊¢◊ï◊ë◊ì◊™ ◊ë◊û◊¶◊ë LocalStorage + JSON Backup.
+                  זה לא דמו: כל סטטוס כאן משקף חיבור אמיתי בקוד. אם Supabase ENV לא מוגדר, המערכת עובדת במצב LocalStorage + JSON Backup.
                 </p>
               </div>
 
@@ -2750,9 +2750,9 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   <h3 className="text-lg font-semibold text-neutral-950">Smart Notifications</h3>
                   <div className="mt-4 space-y-3">
                     {[
-                      ['budget80', '◊î◊™◊®◊ê◊î ◊ú◊§◊ô ◊û◊¶◊ë ◊§◊ô◊†◊†◊°◊ô'],
-                      ['woltSpike', '◊î◊™◊®◊ê◊î ◊õ◊©◊ï◊ï◊ú◊ò ◊¢◊ï◊ú◊î ◊û◊©◊û◊¢◊ï◊™◊ô◊™'],
-                      ['savingsDrop', '◊î◊™◊®◊ê◊î ◊õ◊©◊©◊ô◊¢◊ï◊® ◊î◊ó◊ô◊°◊õ◊ï◊ü ◊ô◊ï◊®◊ì'],
+                      ['budget80', 'התראה לפי מצב פיננסי'],
+                      ['woltSpike', 'התראה כשוולט עולה משמעותית'],
+                      ['savingsDrop', 'התראה כששיעור החיסכון יורד'],
                     ].map(([field, label]) => (
                       <label key={field} className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700">
                         <span>{label}</span>
@@ -2787,9 +2787,9 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                     })}
                   </div>
                   <div className="mt-5 grid gap-3 md:grid-cols-3">
-                    <PrimaryButton theme={activeTheme} onClick={exportBackup}>◊ô◊ô◊¶◊ï◊ê ◊í◊ô◊ë◊ï◊ô JSON</PrimaryButton>
+                    <PrimaryButton theme={activeTheme} onClick={exportBackup}>ייצוא גיבוי JSON</PrimaryButton>
                     <label className="cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-center text-sm font-semibold text-neutral-700">
-                      ◊ô◊ô◊ë◊ï◊ê ◊í◊ô◊ë◊ï◊ô
+                      ייבוא גיבוי
                       <input
                         type="file"
                         accept="application/json"
@@ -2800,26 +2800,26 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                         }}
                       />
                     </label>
-                    <GhostButton onClick={resetCurrentMonth}>◊ê◊ô◊§◊ï◊° ◊ó◊ï◊ì◊© ◊†◊ï◊õ◊ó◊ô</GhostButton>
+                    <GhostButton onClick={resetCurrentMonth}>איפוס חודש נוכחי</GhostButton>
                   </div>
                   <p className="mt-4 text-xs leading-6 text-neutral-500">
-                    Cloud Sync ◊¢◊ï◊ë◊ì ◊®◊ß ◊ê◊ù Supabase ◊û◊ï◊í◊ì◊®. Local Only ◊©◊ï◊û◊® ◊ë◊ì◊§◊ì◊§◊ü. ◊ô◊ô◊¶◊ï◊ê/◊ô◊ô◊ë◊ï◊ê JSON ◊¢◊ï◊ë◊ì ◊™◊û◊ô◊ì.
+                    Cloud Sync עובד רק אם Supabase מוגדר. Local Only שומר בדפדפן. ייצוא/ייבוא JSON עובד תמיד.
                   </p>
                 </div>
               </div>
             </Section>
 
             <Section>
-              <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">◊ó◊ô◊§◊ï◊© ◊ï◊§◊ô◊ú◊ò◊®◊ô◊ù</h2>
+              <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">חיפוש ופילטרים</h2>
               <div className="mt-5 grid gap-3">
-                <Field value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="◊ó◊ô◊§◊ï◊© ◊ë◊ô◊™ ◊¢◊°◊ß, ◊ú◊û◊©◊ú ◊ï◊ï◊ú◊ò" />
+                <Field value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="חיפוש בית עסק, למשל וולט" />
                 <SelectField value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-                  <option>◊î◊õ◊ï◊ú</option>
+                  <option>הכול</option>
                   {EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
                 </SelectField>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <Field value={minAmount} onChange={(event) => setMinAmount(event.target.value)} type="number" placeholder="◊°◊õ◊ï◊ù ◊û◊ô◊†◊ô◊û◊ï◊ù" />
-                  <Field value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} type="number" placeholder="◊°◊õ◊ï◊ù ◊û◊ß◊°◊ô◊û◊ï◊ù" />
+                  <Field value={minAmount} onChange={(event) => setMinAmount(event.target.value)} type="number" placeholder="סכום מינימום" />
+                  <Field value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} type="number" placeholder="סכום מקסימום" />
                 </div>
               </div>
             </Section>
@@ -2829,4 +2829,3 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     </div>
   );
 }
-
