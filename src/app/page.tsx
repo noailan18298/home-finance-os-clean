@@ -733,9 +733,17 @@ function getMonthDataWeight(monthData) {
 function mergeMonthKeepingRicher(localMonth, cloudMonth) {
   if (!localMonth) return normalizeMonthData(cloudMonth);
   if (!cloudMonth) return normalizeMonthData(localMonth);
+
+  const localHasData = hasMeaningfulMonths({ localMonth });
+  const cloudHasData = hasMeaningfulMonths({ cloudMonth });
+
+  if (cloudHasData && !localHasData) return normalizeMonthData(cloudMonth);
+  if (localHasData && !cloudHasData) return normalizeMonthData(localMonth);
+
   const localWeight = getMonthDataWeight(localMonth);
   const cloudWeight = getMonthDataWeight(cloudMonth);
-  return normalizeMonthData(cloudWeight > localWeight ? cloudMonth : localMonth);
+
+  return normalizeMonthData(cloudWeight >= localWeight ? cloudMonth : localMonth);
 }
 
 function mergeMonthsKeepingRicher(localMonths = {}, cloudMonths = {}) {
