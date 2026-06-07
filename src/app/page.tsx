@@ -196,10 +196,11 @@ function setStorageItem(key, value) {
 }
 
 // These defaults stay empty because Supabase connection details are now stored in global settings.
-const DEFAULT_SUPABASE_URL = '';
-const DEFAULT_SUPABASE_ANON_KEY = '';
-const SUPABASE_URL = DEFAULT_SUPABASE_URL;
-const SUPABASE_ANON_KEY = DEFAULT_SUPABASE_ANON_KEY;
+const SUPABASE_URL =
+  globalPreferences?.supabaseUrl || DEFAULT_SUPABASE_URL;
+
+const SUPABASE_ANON_KEY =
+  globalPreferences?.supabaseAnonKey || DEFAULT_SUPABASE_ANON_KEY;
 
 function getFinancialModeConfig(mode) {
   return FINANCIAL_MODES[mode] || FINANCIAL_MODES.Stable;
