@@ -1365,7 +1365,7 @@ function StatCard({ title, value, note, tone = 'neutral' }) {
   );
 }
 
-<div className="dark-surface grid grid-cols-1 gap-3 border-t border-neutral-100 bg-white p-4 sm:gap-4 sm:p-6 md:grid-cols-2 xl:grid-cols-4"
+function Section({ children, className = '' }) {
   return <section className={`rounded-[24px] border border-neutral-200 bg-white p-5 shadow-sm sm:p-8 ${className}`}>{children}</section>;
 }
 
