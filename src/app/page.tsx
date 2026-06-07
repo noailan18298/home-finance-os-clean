@@ -197,7 +197,7 @@ function setStorageItem(key, value) {
 
 // These defaults stay empty because Supabase connection details are now stored in global settings.
 const SUPABASE_URL =
-  globalPreferences?.supabaseUrl || DEFAULT_SUPABASE_URL;
+  globalPreferences?.supabaseAnonKey || DEFAULT_SUPABASE_URL;
 
 const SUPABASE_ANON_KEY =
   globalPreferences?.supabaseAnonKey || DEFAULT_SUPABASE_ANON_KEY;
