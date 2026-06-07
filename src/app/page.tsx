@@ -197,8 +197,8 @@ function setStorageItem(key, value) {
 
 // These defaults stay empty because Supabase connection details are now stored in global settings.
 // These defaults stay empty because Supabase connection details are now stored in global settings.
-const DEFAULT_SUPABASE_URL = '';
-const DEFAULT_SUPABASE_ANON_KEY = '';
+const DEFAULT_SUPABASE_URL = 'https://weqrtoovivzbunaakpca.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_5wCORNNAyljwtOZHY67oew_4iQz1o4_';
 
 const SUPABASE_URL = DEFAULT_SUPABASE_URL;
 const SUPABASE_ANON_KEY = DEFAULT_SUPABASE_ANON_KEY;
