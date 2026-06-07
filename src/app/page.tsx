@@ -196,11 +196,12 @@ function setStorageItem(key, value) {
 }
 
 // These defaults stay empty because Supabase connection details are now stored in global settings.
-const SUPABASE_URL =
-  globalPreferences?.supabaseAnonKey || DEFAULT_SUPABASE_URL;
+// These defaults stay empty because Supabase connection details are now stored in global settings.
+const DEFAULT_SUPABASE_URL = '';
+const DEFAULT_SUPABASE_ANON_KEY = '';
 
-const SUPABASE_ANON_KEY =
-  globalPreferences?.supabaseAnonKey || DEFAULT_SUPABASE_ANON_KEY;
+const SUPABASE_URL = DEFAULT_SUPABASE_URL;
+const SUPABASE_ANON_KEY = DEFAULT_SUPABASE_ANON_KEY;
 
 function getFinancialModeConfig(mode) {
   return FINANCIAL_MODES[mode] || FINANCIAL_MODES.Stable;
@@ -2568,24 +2569,6 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                       <Field
                         value={householdProfileId}
                         onChange={(event) => updatePreference('householdProfileId', event.target.value || DEFAULT_SUPABASE_PROFILE_ID)}
-                        className="mt-2 w-full"
-                      />
-                    </label>
-                    <label className="text-sm font-semibold text-neutral-600">
-                      Supabase URL
-                      <Field
-                        value={preferences.supabaseUrl || ''}
-                        onChange={(event) => updatePreference('supabaseUrl', event.target.value)}
-                        placeholder="https://xxxx.supabase.co"
-                        className="mt-2 w-full"
-                      />
-                    </label>
-                    <label className="text-sm font-semibold text-neutral-600">
-                      Supabase Publishable Key
-                      <Field
-                        value={preferences.supabaseAnonKey || ''}
-                        onChange={(event) => updatePreference('supabaseAnonKey', event.target.value)}
-                        placeholder="sb_publishable_..."
                         className="mt-2 w-full"
                       />
                     </label>
