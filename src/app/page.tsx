@@ -1020,10 +1020,59 @@ async function loadFinanceStateFromSupabase(profileId = DEFAULT_SUPABASE_PROFILE
 }
 
 // Upserts the full app state into Supabase by profile_id so one household keeps one cloud row.
+async function sfunction hasMeaningfulMonths(months) {
+  if (!months || typeof months !== 'object') return false;
+
+  return Object.values(months).some((data) => {
+    const month = normalizeMonthData(data);
+
+    return (
+      month.incomes.some((item) => toNumber(item.amount) > 0) ||
+      month.manualExpenses.some((item) => toNumber(item.amount) > 0) ||
+      month.creditCards.some((card) =>
+        (card.transactions || []).length > 0 ||
+        (card.pendingTransactions || []).length > 0 ||
+        Boolean(card.importedFile)
+      ) ||
+      month.bankAccounts.some((account) =>
+        toNumber(account.openingBalance) !== 0 ||
+        toNumber(account.closingBalance) !== 0 ||
+        (account.transactions || []).length > 0 ||
+        Boolean(account.importedFile)
+      ) ||
+      month.savingsProducts.some((item) =>
+        toNumber(item.currentBalance) > 0 ||
+        toNumber(item.monthlyDeposit) > 0
+      ) ||
+      month.savingGoals.some((item) =>
+        toNumber(item.currentAmount) > 0 ||
+        toNumber(item.monthlyDeposit) > 0
+      ) ||
+      toNumber(month.emergencyFund) > 0 ||
+      (month.attachedDocuments || []).length > 0
+    );
+  });
+}
+
 async function saveFinanceStateToSupabase(months, learnedRules, globalPreferences, profileId = DEFAULT_SUPABASE_PROFILE_ID, config = {}) {
   const supabaseUrl = config.url || SUPABASE_URL;
   const supabaseKey = config.key || SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseKey) return;
+
+  const existingState = await loadFinanceStateFromSupabase(profileId, config).catch(() => null);
+
+  const incomingHasData = hasMeaningfulMonths(months);
+  const cloudHasData = hasMeaningfulMonths(existingState?.months);
+
+  const safeMonths = !incomingHasData && cloudHasData
+    ? existingState.months
+    : months;
+
+  const safePreferences = mergeCloudPreferences(
+    existingState?.global_preferences,
+    globalPreferences
+  );
+
   const response = await fetch(`${supabaseUrl}/rest/v1/finance_app_state?on_conflict=profile_id`, {
     method: 'POST',
     headers: {
@@ -1032,8 +1081,15 @@ async function saveFinanceStateToSupabase(months, learnedRules, globalPreference
       'Content-Type': 'application/json',
       Prefer: 'resolution=merge-duplicates',
     },
-    body: JSON.stringify({ profile_id: profileId || DEFAULT_SUPABASE_PROFILE_ID, months, learned_rules: learnedRules, global_preferences: normalizePreferences(globalPreferences), updated_at: new Date().toISOString() }),
+    body: JSON.stringify({
+      profile_id: profileId || DEFAULT_SUPABASE_PROFILE_ID,
+      months: safeMonths,
+      learned_rules: learnedRules,
+      global_preferences: normalizePreferences(safePreferences),
+      updated_at: new Date().toISOString(),
+    }),
   });
+
   if (!response.ok) {
     const details = await response.text().catch(() => '');
     throw new Error(`Supabase save failed: ${response.status} ${details}`);
