@@ -1020,7 +1020,7 @@ async function loadFinanceStateFromSupabase(profileId = DEFAULT_SUPABASE_PROFILE
 }
 
 // Upserts the full app state into Supabase by profile_id so one household keeps one cloud row.
-async function sfunction hasMeaningfulMonths(months) {
+function hasMeaningfulMonths(months) {
   if (!months || typeof months !== 'object') return false;
 
   return Object.values(months).some((data) => {
