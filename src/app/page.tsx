@@ -1443,8 +1443,8 @@ function TrendLineChart({ data, theme }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-[24px] border border-neutral-200 bg-neutral-50 p-4">
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full min-w-[520px]" role="img" aria-label="גרף מגמות הכנסות הוצאות וחיסכון">
+    <div className="w-full overflow-hidden rounded-[22px] border border-neutral-200 bg-neutral-50 p-3 sm:rounded-[24px] sm:p-4">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full" role="img" aria-label="גרף מגמות הכנסות הוצאות וחיסכון">
         <rect x="0" y="0" width={width} height={height} rx="24" fill="white" />
         {ticks.map((tick) => {
           const y = yFor(tick);
@@ -1482,7 +1482,7 @@ function TrendLineChart({ data, theme }) {
 function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
   const isPending = mode === 'pending';
   return (
-    <div className="mt-5 max-h-[900px] overflow-auto rounded-[24px] border border-neutral-200 bg-white">
+    <div className="mt-5 max-h-[900px] w-full overflow-x-auto rounded-[24px] border border-neutral-200 bg-white">
       <div className="min-w-[720px]">
         <div className="md:sticky md:top-0 z-10 grid grid-cols-[110px_minmax(180px,1fr)_170px_120px_44px] bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700">
           <div>תאריך</div>
@@ -2159,7 +2159,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
         .nowrap-chip { white-space: nowrap; }
       `}</style>
 
-      <div className="mx-auto max-w-7xl space-y-5 sm:space-y-7">
+      <div className="mx-auto w-full max-w-7xl overflow-x-hidden space-y-5 sm:space-y-7">
         <div className="dark-nav md:sticky md:top-0 z-40 rounded-2xl border border-neutral-200 bg-white/95 p-2 shadow-sm backdrop-blur-xl" style={isDark ? { backgroundColor: 'rgba(18, 18, 18, 0.96)', borderColor: '#333333' } : undefined}>
           <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {TABS.map((tab) => (
@@ -2370,11 +2370,11 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
             </Section>
 
             {(preferences.showCategoryChart || preferences.showTrendChart) ? (
-              <section className="grid gap-6 lg:grid-cols-3">
+              <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
                 {preferences.showCategoryChart ? (
                   <Section>
                     <div className="flex items-center justify-between gap-4"><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">התפלגות הוצאות לפי קטגוריות</h2><span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">Heatmap</span></div>
-                    <div className="mx-auto mt-6 h-56 w-56 rounded-full" style={{ background: pieChart }} />
+                    <div className="mx-auto mt-5 h-40 w-40 rounded-full sm:h-56 sm:w-56" style={{ background: pieChart }} />
                     <div className="mt-6 space-y-2">
                       {topCategories.length ? topCategories.map(([category, amount]) => <div key={category} className={`flex justify-between rounded-2xl border px-4 py-3 text-sm ${getBudgetHeatColor(category, amount)}`}><span>{category}</span><strong>{SHEKEL.format(amount)}</strong></div>) : <EmptyState title="אין עדיין קטגוריות" text="העלי פירוט אשראי כדי לראות התפלגות צבעונית לפי קטגוריות." />}
                     </div>
