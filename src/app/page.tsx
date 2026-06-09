@@ -1386,7 +1386,7 @@ function PrimaryButton({ children, className = '', theme = THEME_STYLES.Sage, ..
   return (
     <button
       {...props}
-      function SelectField({ children, className = '', ...props }) {   return <select {...props} className={`rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-100 ${className}`}>{children}</select>; }
+      className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-50 ${className}`}
       style={{ backgroundColor: accent }}
       onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = accentHover; }}
       onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = accent; }}
