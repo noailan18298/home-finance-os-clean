@@ -1386,7 +1386,7 @@ function PrimaryButton({ children, className = '', theme = THEME_STYLES.Sage, ..
   return (
     <button
       {...props}
-      className={`rounded-xl px-5 py-3 text-sm font-semibold text-white transition disabled:opacity-50 ${className}`}
+      function SelectField({ children, className = '', ...props }) {   return <select {...props} className={`rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-100 ${className}`}>{children}</select>; }
       style={{ backgroundColor: accent }}
       onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = accentHover; }}
       onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = accent; }}
@@ -1397,15 +1397,15 @@ function PrimaryButton({ children, className = '', theme = THEME_STYLES.Sage, ..
 }
 
 function GhostButton({ children, className = '', ...props }) {
-  return <button {...props} className={`rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-neutral-50 ${className}`}>{children}</button>;
+  return <button {...props} className={`rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-neutral-50 ${className}`}>{children}</button>;
 }
 
 function Field({ className = '', ...props }) {
-  return <input {...props} className={`rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-100 ${className}`} />;
+  return <input {...props} className={`rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-100 ${className}`} />;
 }
 
 function SelectField({ children, className = '', ...props }) {
-  return <select {...props} className={`rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-100 ${className}`}>{children}</select>;
+  return <select {...props} className={`rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-100 ${className}`}>{children}</select>;
 }
 
 function LabeledField({ label, children }) {
@@ -2287,8 +2287,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
               <div className="mt-5 grid gap-3">
                 {monthData.bankAccounts.map((account) => (
-                  <div key={account.id} className="rounded-[22px] border border-neutral-200 bg-white p-4">
-                    <div className="grid gap-3 xl:grid-cols-[1.4fr_120px_160px_160px_150px_52px]">
+                  <div key={account.id} className="rounded-[18px] border border-neutral-200 bg-white p-3">
+                    <div className="grid gap-2 xl:grid-cols-[minmax(220px,1.6fr)_90px_120px_120px_120px_36px]">
                       <LabeledField label="חשבון"><Field value={account.name} onChange={(event) => updateRow('bankAccounts', account.id, 'name', event.target.value)} placeholder="עו״ש משותף" /></LabeledField>
                       <LabeledField label="שייך ל"><Field value={account.owner} onChange={(event) => updateRow('bankAccounts', account.id, 'owner', event.target.value)} placeholder="משפחה" /></LabeledField>
                       <LabeledField label="יתרת פתיחה"><Field type="number" value={account.openingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'openingBalance', event.target.value)} /></LabeledField>
