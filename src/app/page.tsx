@@ -2302,6 +2302,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 <div className="flex items-end">
   <GhostButton onClick={() => removeRow('bankAccounts', account.id)} className="w-full px-0">×</GhostButton>
 </div>
+                    </div>
                     {account.importedFile ? <div className="mt-3 rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-600">נקלט קובץ עו״ש: <strong>{account.importedFile}</strong> · {account.transactions?.length || 0} תנועות</div> : null}
                     {account.transactions?.length ? (
                       <div className="mt-3 max-h-64 overflow-auto rounded-2xl border border-neutral-200">
