@@ -1482,7 +1482,7 @@ function TrendLineChart({ data, theme }) {
 function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
   const isPending = mode === 'pending';
   return (
-    <div className="mt-5 max-h-[900px] w-full overflow-x-auto rounded-[24px] border border-neutral-200 bg-white">
+    <div className="mt-5 max-h-[900px] overflow-auto rounded-[24px] border border-neutral-200 bg-white">
       <div className="min-w-[720px]">
         <div className="md:sticky md:top-0 z-10 grid grid-cols-[110px_minmax(180px,1fr)_170px_120px_44px] bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700">
           <div>תאריך</div>
