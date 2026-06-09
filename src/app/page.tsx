@@ -2288,19 +2288,20 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               <div className="mt-5 grid gap-3">
                 {monthData.bankAccounts.map((account) => (
                   <div key={account.id} className="rounded-[18px] border border-neutral-200 bg-white p-3">
-                    <div className="grid gap-2 xl:grid-cols-[minmax(220px,1.6fr)_90px_120px_120px_120px_36px]">
+                    <div className="grid gap-3 xl:grid-cols-[1.5fr_1fr_1fr_1fr]">
                       <LabeledField label="חשבון"><Field value={account.name} onChange={(event) => updateRow('bankAccounts', account.id, 'name', event.target.value)} placeholder="עו״ש משותף" /></LabeledField>
                       <LabeledField label="שייך ל"><Field value={account.owner} onChange={(event) => updateRow('bankAccounts', account.id, 'owner', event.target.value)} placeholder="משפחה" /></LabeledField>
                       <LabeledField label="יתרת פתיחה"><Field type="number" value={account.openingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'openingBalance', event.target.value)} /></LabeledField>
                       <LabeledField label="יתרה נוכחית"><Field type="number" value={account.closingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'closingBalance', event.target.value)} /></LabeledField>
-                      <div className="flex items-end">
-                        <label className="w-full cursor-pointer rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 text-center text-xs font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-white">
-                          ייבוא עו״ש
-                          <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importBankFile(account.id, file); }} />
-                        </label>
-                      </div>
-                      <div className="flex items-end"><GhostButton onClick={() => removeRow('bankAccounts', account.id)} className="w-full px-0">×</GhostButton></div>
-                    </div>
+                     <div className="flex items-end xl:col-span-3">
+  <label className="w-full cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-center text-xs font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-white">
+    ייבוא עו״ש
+    <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importBankFile(account.id, file); }} />
+  </label>
+</div>
+<div className="flex items-end">
+  <GhostButton onClick={() => removeRow('bankAccounts', account.id)} className="w-full px-0">×</GhostButton>
+</div>
                     {account.importedFile ? <div className="mt-3 rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-600">נקלט קובץ עו״ש: <strong>{account.importedFile}</strong> · {account.transactions?.length || 0} תנועות</div> : null}
                     {account.transactions?.length ? (
                       <div className="mt-3 max-h-64 overflow-auto rounded-2xl border border-neutral-200">
