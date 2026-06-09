@@ -2196,7 +2196,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
             </div>
           </div>
 
-          <div className="dark-surface grid grid-cols-1 gap-4 border-t border-neutral-100 bg-white p-6 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2 xl:grid-cols-4" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
+          <div className="dark-surface grid grid-cols-1 gap-3 border-t border-neutral-100 bg-white p-4 sm:gap-4 sm:p-6 md:grid-cols-2 xl:grid-cols-4" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
             <StatCard title="סה״כ הכנסות" value={SHEKEL.format(totalIncome)} note="כל מקורות ההכנסה" tone="good" />
             <StatCard title="עו״ש נוכחי" value={SHEKEL.format(totalBankClosing)} note={`שינוי החודש: ${SHEKEL.format(bankBalanceChange)}`} tone={totalBankClosing >= 0 ? 'good' : 'danger'} />
             <StatCard title="סה״כ הוצאות" value={SHEKEL.format(totalExpenses)} note={effectiveBudgetTarget ? `${formatPercent(budgetUsageRate)} מתוך יעד ${modeConfig.label}` : `${totalIncome ? formatPercent((totalExpenses / totalIncome) * 100) : '0%'} מההכנסה`} tone={(effectiveBudgetTarget && totalExpenses > effectiveBudgetTarget) || (totalIncome && totalExpenses > totalIncome) ? 'danger' : budgetUsageRate >= modeConfig.budgetWarningAt ? 'warn' : 'neutral'} />
@@ -2212,7 +2212,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
           <>
             {(preferences.showMonthlyStory || preferences.showFinancialHealth || activeNotifications.length > 0) ? (
               <Section>
-                <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
+                <div className="grid gap-4 xl:grid-cols-[1.4fr_0.6fr]">
                   {activeNotifications.length > 0 ? (
                     <div className="grid gap-3 md:grid-cols-3 lg:col-span-2">
                       {activeNotifications.map((notification) => (
@@ -2347,7 +2347,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                 </div>
               </div>
               {monthlyCompare.hasPrevious ? (
-                <div className="mt-6 grid gap-3 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {monthlyCompare.rows.map((row) => {
                     const isGoodDirection = row.key === 'income' || row.key === 'net' || row.key === 'savingsRate' || row.key === 'savings';
                     const improved = isGoodDirection ? row.diff >= 0 : row.diff <= 0;
