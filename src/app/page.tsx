@@ -2288,7 +2288,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
               <div className="mt-5 grid gap-3">
                 {monthData.bankAccounts.map((account) => (
                   <div key={account.id} className="rounded-[22px] border border-neutral-200 bg-white p-4">
-                    <div className="grid gap-3 md:grid-cols-[1.1fr_110px_150px_150px_140px_44px]">
+                    <div className="grid gap-3 xl:grid-cols-[1.4fr_120px_160px_160px_150px_52px]">
                       <LabeledField label="חשבון"><Field value={account.name} onChange={(event) => updateRow('bankAccounts', account.id, 'name', event.target.value)} placeholder="עו״ש משותף" /></LabeledField>
                       <LabeledField label="שייך ל"><Field value={account.owner} onChange={(event) => updateRow('bankAccounts', account.id, 'owner', event.target.value)} placeholder="משפחה" /></LabeledField>
                       <LabeledField label="יתרת פתיחה"><Field type="number" value={account.openingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'openingBalance', event.target.value)} /></LabeledField>
