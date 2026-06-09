@@ -2307,7 +2307,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       </LabeledField>
     </div>
 
-    <div className="flex gap-2 xl:w-[220px]">
+    <div className="flex gap-2 items-end">
       <label className="flex-1 cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-center text-xs font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-white">
         ייבוא עו״ש
         <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importBankFile(account.id, file); }} />
