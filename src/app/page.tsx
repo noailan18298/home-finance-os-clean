@@ -2003,7 +2003,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const rawSelfEmployedPayments = selfEmployedVatDue + toNumber(monthData.selfEmployed.incomeTaxAdvance) + toNumber(monthData.selfEmployed.nationalInsurance) + toNumber(monthData.selfEmployed.businessExpenses);
   const totalSelfEmployedPayments = includeSelfEmployed ? rawSelfEmployedPayments : 0;
   const totalExpenses = totalCreditCards + totalManualExpenses + totalSelfEmployedPayments;
-  const monthlySavings = totalIncome - totalExpenses - totalPlannedSavings;
+  const remainingAfterEverything = totalIncome - totalExpenses - totalPlannedSavings;
+  const monthlySavings = remainingAfterEverything;
   const savingsRate = totalIncome ? (monthlySavings / totalIncome) * 100 : 0;
   const emergencyMonths = toNumber(monthData.emergencyFund) / (totalExpenses || 1);
   const totalAssets = totalBankClosing + toNumber(monthData.emergencyFund) + monthData.savingsProducts.reduce((sum, item) => sum + toNumber(item.currentBalance), 0) + monthData.savingGoals.reduce((sum, item) => sum + toNumber(item.currentAmount), 0);
