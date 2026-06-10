@@ -1270,7 +1270,29 @@ function clearAuthSession() {
 }
 
 // Password login is prepared for Supabase Auth, but the login screen is currently disabled until global settings are stable.
-async function signInWithSupabasePassword(email, password, config = {}) {
+async function signUpWithSupabasePassword(email, password, config = {}) {
+  const supabaseUrl = config.url || SUPABASE_URL;
+  const supabaseKey = config.key || SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) throw new Error('חסרים Supabase URL או Publishable Key');
+  if (!email || !password) throw new Error('צריך להזין אימייל וסיסמה');
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => '');
+    throw new Error(`ההרשמה נכשלה: ${response.status} ${details}`);
+  }
+
+  return signInWithSupabasePassword(email, password, config);
+}
   const supabaseUrl = config.url || SUPABASE_URL;
   const supabaseKey = config.key || SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseKey) throw new Error('חסרים Supabase URL או Publishable Key');
@@ -1594,7 +1616,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const activeTheme = getSafeTheme(preferences.themeMood);
   const isDark = preferences.themeMood === 'Dark';
   const modeConfig = getFinancialModeConfig(preferences.financialMode);
-  const householdProfileId = preferences.householdProfileId || DEFAULT_SUPABASE_PROFILE_ID;
+  const householdProfileId = authSession?.user_id || preferences.householdProfileId || DEFAULT_SUPABASE_PROFILE_ID;
   const supabaseConfig = {
     url: preferences.supabaseUrl || SUPABASE_URL,
     key: preferences.supabaseAnonKey || SUPABASE_ANON_KEY,
@@ -2082,7 +2104,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
 
   // Auth UI is intentionally disabled for now until global settings and cloud sync are fully stable.
   // Login UI is intentionally parked behind false until Supabase Auth is enabled as a separate step.
-  if (false && !authSession && preferences.syncMode !== 'Local Only') {
+  if (!authSession && preferences.syncMode !== 'Local Only') {
     return (
       <div dir="rtl" className={`min-h-screen p-6 text-right transition-colors duration-300 ${activeTheme.page}`} style={{ fontFamily: 'Circular, Arial, Helvetica, sans-serif' }}>
         <div className="mx-auto flex min-h-[calc(100vh-48px)] max-w-5xl items-center justify-center">
@@ -2101,6 +2123,24 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
                   <Field type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} className="mt-2 w-full" placeholder="••••••••" />
                 </label>
                 <PrimaryButton theme={activeTheme} type="submit" className="mt-2 w-full">כניסה</PrimaryButton>
+                <GhostButton
+  type="button"
+  onClick={async () => {
+    try {
+      setAuthStatus('יוצרת משתמש...');
+      const session = await signUpWithSupabasePassword(authEmail, authPassword, supabaseConfig);
+      setAuthSession(session);
+      setAuthPassword('');
+      setAuthStatus('נרשמת והתחברת');
+      setCloudStatus('נוצר בית פיננסי חדש');
+    } catch (error) {
+      setAuthStatus(error?.message || 'ההרשמה נכשלה');
+    }
+  }}
+  className="w-full"
+>
+  הרשמה חדשה
+</GhostButton>
               </form>
               {authStatus ? <div className="mt-4 rounded-2xl bg-neutral-50 p-4 text-sm leading-7 text-neutral-600">{authStatus}</div> : null}
             </section>
