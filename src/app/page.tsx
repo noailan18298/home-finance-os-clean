@@ -694,9 +694,9 @@ function getMonthTotals(data) {
   const selfEmployedVatDue = Math.max(0, toNumber(safeData.selfEmployed.vatCollected) - toNumber(safeData.selfEmployed.vatPaidOnExpenses));
   const selfEmployedRaw = selfEmployedVatDue + toNumber(safeData.selfEmployed.incomeTaxAdvance) + toNumber(safeData.selfEmployed.nationalInsurance) + toNumber(safeData.selfEmployed.businessExpenses);
   const selfEmployed = includeSelfEmployed ? selfEmployedRaw : 0;
-  const savings = savingsProducts + savingGoals;
-  const expenses = credit + manual + savings + selfEmployed;
-  const net = income - expenses;
+const savings = savingsProducts + savingGoals;
+const expenses = credit + manual + selfEmployed;
+const net = income - expenses - savings;
   const savingsRate = income ? (net / income) * 100 : 0;
   return { income, credit, manual, savings, selfEmployed, selfEmployedRaw, expenses, net, savingsRate };
 }
@@ -2002,8 +2002,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const selfEmployedVatDue = Math.max(0, toNumber(monthData.selfEmployed.vatCollected) - toNumber(monthData.selfEmployed.vatPaidOnExpenses));
   const rawSelfEmployedPayments = selfEmployedVatDue + toNumber(monthData.selfEmployed.incomeTaxAdvance) + toNumber(monthData.selfEmployed.nationalInsurance) + toNumber(monthData.selfEmployed.businessExpenses);
   const totalSelfEmployedPayments = includeSelfEmployed ? rawSelfEmployedPayments : 0;
-  const totalExpenses = totalCreditCards + totalManualExpenses + totalPlannedSavings + totalSelfEmployedPayments;
-  const monthlySavings = totalIncome - totalExpenses;
+  const totalExpenses = totalCreditCards + totalManualExpenses + totalSelfEmployedPayments;
+  const monthlySavings = totalIncome - totalExpenses - totalPlannedSavings;
   const savingsRate = totalIncome ? (monthlySavings / totalIncome) * 100 : 0;
   const emergencyMonths = toNumber(monthData.emergencyFund) / (totalExpenses || 1);
   const totalAssets = totalBankClosing + toNumber(monthData.emergencyFund) + monthData.savingsProducts.reduce((sum, item) => sum + toNumber(item.currentBalance), 0) + monthData.savingGoals.reduce((sum, item) => sum + toNumber(item.currentAmount), 0);
