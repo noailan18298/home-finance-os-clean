@@ -1269,32 +1269,11 @@ function clearAuthSession() {
   setStorageItem(AUTH_STORAGE_KEY, '');
 }
 
-// Password login is prepared for Supabase Auth, but the login screen is currently disabled until global settings are stable.
-async function signUpWithSupabasePassword(email, password, config = {}) {
+// Password login for Supabase Auth.
+async function signInWithSupabasePassword(email, password, config = {}) {
   const supabaseUrl = config.url || SUPABASE_URL;
   const supabaseKey = config.key || SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseKey) throw new Error('חסרים Supabase URL או Publishable Key');
-  if (!email || !password) throw new Error('צריך להזין אימייל וסיסמה');
-
-  const response = await fetch(`${supabaseUrl}/auth/v1/signup`, {
-    method: 'POST',
-    headers: {
-      apikey: supabaseKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, password }),
-  });
-
-  if (!response.ok) {
-    const details = await response.text().catch(() => '');
-    throw new Error(`ההרשמה נכשלה: ${response.status} ${details}`);
-  }
-
-  return signInWithSupabasePassword(email, password, config);
-}
-  const supabaseUrl = config.url || SUPABASE_URL;
-  const supabaseKey = config.key || SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseKey) throw new Error('חסרים Supabase URL או Publishable Key');
   if (!email || !password) throw new Error('צריך להזין אימייל וסיסמה');
 
@@ -1320,10 +1299,34 @@ async function signUpWithSupabasePassword(email, password, config = {}) {
     user_id: data.user?.id || '',
     expires_at: Date.now() + Math.max(1, Number(data.expires_in || 3600) - 60) * 1000,
   };
+
   setStorageItem(AUTH_STORAGE_KEY, JSON.stringify(session));
   return session;
 }
 
+async function signUpWithSupabasePassword(email, password, config = {}) {
+  const supabaseUrl = config.url || SUPABASE_URL;
+  const supabaseKey = config.key || SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) throw new Error('חסרים Supabase URL או Publishable Key');
+  if (!email || !password) throw new Error('צריך להזין אימייל וסיסמה');
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => '');
+    throw new Error(`ההרשמה נכשלה: ${response.status} ${details}`);
+  }
+
+  return signInWithSupabasePassword(email, password, config);
+}
 // Lightweight runtime checks catch common parser/calculation regressions while developing in the browser canvas.
 function runSmokeTests() {
   console.assert(APP_BUILD_MARKER === 'finance-dashboard-build-v14', 'build marker failed');
