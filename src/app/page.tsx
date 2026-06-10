@@ -2084,26 +2084,40 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
       }).join(', ')})`
     : 'conic-gradient(#dddddd 0% 100%)';
 
-  async function handleSignIn(event) {
-    event.preventDefault();
-    try {
-      setAuthStatus('מתחברת...');
-      const session = await signInWithSupabasePassword(authEmail, authPassword, supabaseConfig);
-      setAuthSession(session);
-      setAuthPassword('');
-      setAuthStatus('מחוברת');
-      setCloudStatus('מחוברת לחשבון Supabase');
-    } catch (error) {
-      setAuthStatus(error?.message || 'הכניסה נכשלה');
-    }
+  function applyAuthSession(session) {
+  setAuthSession(session);
+  setSelectedMonth(getCurrentMonthKey());
+  setMonths({ [getCurrentMonthKey()]: createDefaultMonth() });
+  setLearnedRules({});
+  setHasLoadedCloud(false);
+  setHasAttemptedCloudLoad(false);
+}
+
+async function handleSignIn(event) {
+  event.preventDefault();
+  try {
+    setAuthStatus('מתחברת...');
+    const session = await signInWithSupabasePassword(authEmail, authPassword, supabaseConfig);
+    applyAuthSession(session);
+    setAuthPassword('');
+    setAuthStatus('מחוברת');
+    setCloudStatus('מחוברת לחשבון Supabase');
+  } catch (error) {
+    setAuthStatus(error?.message || 'הכניסה נכשלה');
   }
+}
 
   function handleSignOut() {
-    clearAuthSession();
-    setAuthSession(null);
-    setAuthStatus('התנתקת');
-    setCloudStatus('התנתקת, נשמר מקומית עד כניסה מחדש');
-  }
+  clearAuthSession();
+  setAuthSession(null);
+  setSelectedMonth(getCurrentMonthKey());
+  setMonths({ [getCurrentMonthKey()]: createDefaultMonth() });
+  setLearnedRules({});
+  setHasLoadedCloud(false);
+  setHasAttemptedCloudLoad(false);
+  setAuthStatus('התנתקת');
+  setCloudStatus('התנתקת, נשמר מקומית עד כניסה מחדש');
+}
 
   // Auth UI is intentionally disabled for now until global settings and cloud sync are fully stable.
   // Login UI is intentionally parked behind false until Supabase Auth is enabled as a separate step.
@@ -2132,7 +2146,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     try {
       setAuthStatus('יוצרת משתמש...');
       const session = await signUpWithSupabasePassword(authEmail, authPassword, supabaseConfig);
-      setAuthSession(session);
+      applyAuthSession(session);
       setAuthPassword('');
       setAuthStatus('נרשמת והתחברת');
       setCloudStatus('נוצר בית פיננסי חדש');
