@@ -2128,8 +2128,10 @@ async function handleSignIn(event) {
           <div className="grid w-full gap-6 lg:grid-cols-[1fr_0.9fr]">
             <section className="rounded-[32px] border border-neutral-200 bg-white p-8 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">SECURE ACCESS</div>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight text-neutral-950">כניסה לדשבורד הפיננסי</h1>
-              <p className="mt-4 text-sm leading-7 text-neutral-500">הכניסה משתמשת ב־Supabase Auth עם אימייל וסיסמה. אחרי הכניסה, שמירה וטעינה בענן ישתמשו ב־access token של המשתמש.</p>
+              <h1 className="mt-4 text-4xl font-semibold tracking-tight text-neutral-950">כניסה למערכת</h1>
+              <p className="mt-4 text-sm leading-7 text-neutral-500">
+  התחברי עם המייל והסיסמה שלך. לכל משתמש נוצר בית פיננסי פרטי ונפרד.
+</p>
               <form onSubmit={handleSignIn} className="mt-7 grid gap-4">
                 <label className="text-sm font-semibold text-neutral-600">
                   אימייל
@@ -2139,24 +2141,30 @@ async function handleSignIn(event) {
                   סיסמה
                   <Field type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} className="mt-2 w-full" placeholder="••••••••" />
                 </label>
-                <PrimaryButton theme={activeTheme} type="submit" className="mt-2 w-full">כניסה</PrimaryButton>
+                <PrimaryButton theme={activeTheme} type="submit" className="mt-2 w-full">
+  כניסה
+</PrimaryButton>
+
+<div className="text-center text-xs font-medium text-neutral-400">
+  אין לך חשבון?
+</div>
                 <GhostButton
   type="button"
   onClick={async () => {
     try {
-      setAuthStatus('יוצרת משתמש...');
+      setAuthStatus('יוצרת חשבון...');
       const session = await signUpWithSupabasePassword(authEmail, authPassword, supabaseConfig);
       applyAuthSession(session);
       setAuthPassword('');
-      setAuthStatus('נרשמת והתחברת');
+      setAuthStatus('החשבון נוצר והתחברת');
       setCloudStatus('נוצר בית פיננסי חדש');
     } catch (error) {
-      setAuthStatus(error?.message || 'ההרשמה נכשלה');
+      setAuthStatus(error?.message || 'יצירת החשבון נכשלה');
     }
   }}
   className="w-full"
 >
-  הרשמה חדשה
+  יצירת חשבון חדש
 </GhostButton>
               </form>
               {authStatus ? <div className="mt-4 rounded-2xl bg-neutral-50 p-4 text-sm leading-7 text-neutral-600">{authStatus}</div> : null}
