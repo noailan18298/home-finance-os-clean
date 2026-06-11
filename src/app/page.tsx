@@ -188,21 +188,6 @@ function isInternalTransferTransaction(transaction) {
   );
 }
 
-function detectCurrencyFromRow(row) {
-  const text = normalizeMerchantName(Array.isArray(row) ? row.join(' ') : row);
-
-  if (text.includes('usd') || text.includes('$') || text.includes('דולר')) return 'USD';
-  if (text.includes('eur') || text.includes('€') || text.includes('יורו')) return 'EUR';
-  if (text.includes('gbp') || text.includes('£') || text.includes('לישט')) return 'GBP';
-
-  return 'ILS';
-}
-
-function convertToIls(amount, currency) {
-  const rate = CURRENCY_RATES_TO_ILS[currency] || 1;
-  return toNumber(amount) * rate;
-}
-
 const DEFAULT_FX_RATES_TO_ILS = {
   ILS: 1,
   USD: 3.7,
@@ -499,8 +484,6 @@ const isCreditRefund =
   normalizeMerchantName(rowText).includes('refund') ||
   rawAmount < 0;
 
-const currency = detectCurrencyFromRow(row);
-const amountIls = convertToIls(rawAmount, currency);
 const amount = isCreditRefund ? -Math.abs(amountIls) : Math.abs(amountIls);
       const date = row[dateIndex] || row.find((cell) => String(cell || '').includes('/')) || row.find((cell) => String(cell || '').includes('-')) || '';
       const merchant = row[merchantIndex] || row.find((cell, index) => index !== dateIndex && index !== finalAmountIndex && String(cell || '').trim() && Math.abs(toNumber(cell)) === 0) || 'עסקה';
