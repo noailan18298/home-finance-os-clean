@@ -1631,7 +1631,26 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
             <SelectField value={transaction.category} onChange={(event) => isPending ? onUpdate(cardId, transaction.id, 'category', event.target.value) : onUpdate(transaction.id, event.target.value)}>
               {EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
             </SelectField>
-            {isPending ? <Field type="number" value={transaction.amount} onChange={(event) => onUpdate(cardId, transaction.id, 'amount', event.target.value)} /> : <div className="px-3 py-3 text-sm font-semibold text-neutral-900">{SHEKEL.format(transaction.amount)}</div>}
+            {isPending ? (
+  <div className="grid gap-1">
+    <Field
+      type="number"
+      value={transaction.amount}
+      onChange={(event) => onUpdate(cardId, transaction.id, 'amount', event.target.value)}
+    />
+    {transaction.currency && transaction.currency !== 'ILS' ? (
+      <div className="text-xs font-semibold text-neutral-500">
+        {transaction.originalAmount} {transaction.currency}
+      </div>
+    ) : null}
+  </div>
+) : (
+  <div className="px-3 py-3 text-sm font-semibold text-neutral-900">
+    {transaction.currency && transaction.currency !== 'ILS'
+      ? `${transaction.originalAmount} ${transaction.currency} (${SHEKEL.format(transaction.amount)})`
+      : SHEKEL.format(transaction.amount)}
+  </div>
+)}
             <GhostButton onClick={() => onRemove(cardId, transaction.id)} className="px-0">×</GhostButton>
           </div>
         ))}
