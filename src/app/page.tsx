@@ -10,6 +10,7 @@ import * as XLSX from 'xlsx';
 const STORAGE_KEY = 'family-finance-os-stable-v14';
 const SETTINGS_STORAGE_KEY = 'family-finance-os-global-settings-v1';
 const AUTH_STORAGE_KEY = 'family-finance-os-auth-session-v1';
+const FX_RATES_STORAGE_KEY = 'family-finance-os-fx-rates-v1';
 const DEFAULT_SUPABASE_PROFILE_ID = 'default-household';
 const APP_BUILD_MARKER = 'finance-dashboard-build-v14';
 
@@ -96,6 +97,8 @@ const EXPENSE_CATEGORIES = [
   'מיסים ותשלומים',
   'דיור וחשבונות',
   'חיסכון והשקעות',
+  'העברה פנימית',
+  'מט״ח / ארנק אשראי',
   'הוצאות עסקיות',
   'שונות',
   'אחר',
@@ -159,7 +162,104 @@ const RECURRING_KEYWORDS = [
   'netflix', 'spotify', 'icloud', 'google', 'apple', 'cellcom', 'partner', 'pelephone', 'hot', 'yes',
   'ביטוח', 'הראל', 'מגדל', 'כלל', 'סלקום', 'פרטנר', 'פלאפון', 'שכירות',
 ];
+const INTERNAL_TRANSFER_CATEGORIES = [
+  'העברת כספים',
+  'משיכת מזומן',
+  'חיסכון והשקעות',
+  'העברה פנימית',
+  'מט״ח / ארנק אשראי',
+];
 
+function isInternalTransferTransaction(transaction) {
+  const category = transaction?.category || '';
+  const text = normalizeMerchantName(`${transaction?.merchant || ''} ${transaction?.description || ''}`);
+
+  return (
+    INTERNAL_TRANSFER_CATEGORIES.includes(category) ||
+    text.includes('ארנק') ||
+    text.includes('מט״ח') ||
+    text.includes('מטח') ||
+    text.includes('חיוב חודשי') ||
+    text.includes('חיוב כרטיס') ||
+    text.includes('כרטיס אשראי') ||
+    text.includes('max it') ||
+    text.includes('max') ||
+    text.includes('מקס')
+  );
+}
+
+function detectCurrencyFromRow(row) {
+  const text = normalizeMerchantName(Array.isArray(row) ? row.join(' ') : row);
+
+  if (text.includes('usd') || text.includes('$') || text.includes('דולר')) return 'USD';
+  if (text.includes('eur') || text.includes('€') || text.includes('יורו')) return 'EUR';
+  if (text.includes('gbp') || text.includes('£') || text.includes('לישט')) return 'GBP';
+
+  return 'ILS';
+}
+
+function convertToIls(amount, currency) {
+  const rate = CURRENCY_RATES_TO_ILS[currency] || 1;
+  return toNumber(amount) * rate;
+}
+
+const DEFAULT_FX_RATES_TO_ILS = {
+  ILS: 1,
+  USD: 3.7,
+  EUR: 4.0,
+  GBP: 4.7,
+};
+
+function getStoredFxRates() {
+  const saved = safeJsonParse(getStorageItem(FX_RATES_STORAGE_KEY), null);
+  if (!saved || typeof saved !== 'object') return DEFAULT_FX_RATES_TO_ILS;
+  return { ...DEFAULT_FX_RATES_TO_ILS, ...(saved.rates || saved) };
+}
+
+function setStoredFxRates(rates) {
+  setStorageItem(FX_RATES_STORAGE_KEY, JSON.stringify({
+    updatedAt: new Date().toISOString(),
+    rates: { ...DEFAULT_FX_RATES_TO_ILS, ...rates },
+  }));
+}
+
+async function fetchFxRatesToIls() {
+  try {
+    const response = await fetch('https://api.frankfurter.dev/v1/latest?base=ILS&symbols=USD,EUR,GBP');
+    if (!response.ok) throw new Error('FX request failed');
+
+    const data = await response.json();
+    const ratesFromIls = data?.rates || {};
+
+    const ratesToIls = {
+      ILS: 1,
+      USD: ratesFromIls.USD ? 1 / ratesFromIls.USD : DEFAULT_FX_RATES_TO_ILS.USD,
+      EUR: ratesFromIls.EUR ? 1 / ratesFromIls.EUR : DEFAULT_FX_RATES_TO_ILS.EUR,
+      GBP: ratesFromIls.GBP ? 1 / ratesFromIls.GBP : DEFAULT_FX_RATES_TO_ILS.GBP,
+    };
+
+    setStoredFxRates(ratesToIls);
+    return ratesToIls;
+  } catch {
+    return getStoredFxRates();
+  }
+}
+
+function detectCurrencyFromRow(row) {
+  const rawText = Array.isArray(row) ? row.join(' ') : String(row || '');
+  const text = normalizeMerchantName(rawText);
+
+  if (rawText.includes('$') || text.includes('usd') || text.includes('דולר')) return 'USD';
+  if (rawText.includes('€') || text.includes('eur') || text.includes('יורו')) return 'EUR';
+  if (rawText.includes('£') || text.includes('gbp') || text.includes('לישט')) return 'GBP';
+
+  return 'ILS';
+}
+
+function convertToIls(amount, currency, fxRates = DEFAULT_FX_RATES_TO_ILS) {
+  const rate = fxRates?.[currency] || 1;
+  return toNumber(amount) * rate;
+}
 const SHEKEL = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 });
 
 function getPublicEnv(key) {
@@ -365,7 +465,7 @@ function findAmountIndex(headers, sampleRows) {
 
 // Normalizes CSV/Excel rows into pending credit-card transactions.
 // Converts raw CSV/Excel rows into pending transactions, even when bank exports use different Hebrew/English column names.
-function normalizeImportedRows(rows, learnedRules = {}) {
+function normalizeImportedRows(rows, learnedRules = {}, fxRates = DEFAULT_FX_RATES_TO_ILS) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
   const cleanedRows = rows.map((row) => (Array.isArray(row) ? row.map((cell) => String(cell || '').trim()) : [])).filter((row) => row.some(Boolean));
   if (!cleanedRows.length) return [];
@@ -389,7 +489,19 @@ function normalizeImportedRows(rows, learnedRules = {}) {
   return dataRows
     .map((row) => {
       const amountCell = finalAmountIndex >= 0 ? row[finalAmountIndex] : [...row].reverse().find((cell) => Math.abs(toNumber(cell)) > 0);
-      const amount = Math.abs(toNumber(amountCell));
+      const rawAmount = toNumber(amountCell);
+const currency = detectCurrencyFromRow(row);
+const amountIls = convertToIls(rawAmount, currency, fxRates);
+const rowText = row.join(' ');
+const isCreditRefund =
+  normalizeMerchantName(rowText).includes('זיכוי') ||
+  normalizeMerchantName(rowText).includes('החזר') ||
+  normalizeMerchantName(rowText).includes('refund') ||
+  rawAmount < 0;
+
+const currency = detectCurrencyFromRow(row);
+const amountIls = convertToIls(rawAmount, currency);
+const amount = isCreditRefund ? -Math.abs(amountIls) : Math.abs(amountIls);
       const date = row[dateIndex] || row.find((cell) => String(cell || '').includes('/')) || row.find((cell) => String(cell || '').includes('-')) || '';
       const merchant = row[merchantIndex] || row.find((cell, index) => index !== dateIndex && index !== finalAmountIndex && String(cell || '').trim() && Math.abs(toNumber(cell)) === 0) || 'עסקה';
       const importedCategory = importedCategoryIndex >= 0 ? row[importedCategoryIndex] : '';
@@ -400,10 +512,12 @@ function normalizeImportedRows(rows, learnedRules = {}) {
         date,
         merchant,
         amount,
-        category: detectCategory(merchant, learnedRules, importedCategory),
+originalAmount: Math.abs(rawAmount),
+currency,
+category: detectCategory(merchant, learnedRules, importedCategory),
       };
     })
-    .filter((transaction) => transaction.amount > 0 && normalizeMerchantName(transaction.merchant) !== normalizeMerchantName('עסקה') && !normalizeMerchantName(transaction.merchant).includes('סך הכל'));
+    .filter((transaction) => Math.abs(transaction.amount) > 0 && normalizeMerchantName(transaction.merchant) !== normalizeMerchantName('עסקה') && !normalizeMerchantName(transaction.merchant).includes('סך הכל'));
 }
 
 function normalizeBankRows(rows) {
@@ -480,21 +594,21 @@ function getBankBalancesFromTransactions(transactions, fallbackOpening = 0, fall
   return { openingBalance, closingBalance };
 }
 
-function parseCsvText(text, learnedRules = {}) {
+function parseCsvText(text, learnedRules = {}, fxRates = DEFAULT_FX_RATES_TO_ILS) {
   const carriageReturn = String.fromCharCode(13);
   const lineFeed = String.fromCharCode(10);
   const normalizedText = String(text || '').split(carriageReturn).join('');
   const rawLines = normalizedText.split(lineFeed);
   const lines = rawLines.map((line) => line.trim()).filter(Boolean);
-  return normalizeImportedRows(lines.map((line) => splitCsvLine(line)), learnedRules);
+  return normalizeImportedRows(lines.map((line) => splitCsvLine(line)), learnedRules, fxRates);
 }
 
 // Reads the first sheet from an uploaded Excel file and sends it through the same transaction normalizer as CSV.
-function parseExcelArrayBuffer(buffer, learnedRules = {}) {
+function parseExcelArrayBuffer(buffer, learnedRules = {}, fxRates = DEFAULT_FX_RATES_TO_ILS) {
   const workbook = XLSX.read(buffer, { type: 'array' });
   const allTransactions = workbook.SheetNames.flatMap((sheetName) => {
     const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: false, defval: '' });
-    return normalizeImportedRows(rows, learnedRules).map((transaction) => ({
+    return normalizeImportedRows(rows, learnedRules, fxRates).map((transaction) => ({
       ...transaction,
       sourceSheet: sheetName,
     }));
@@ -1624,6 +1738,7 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authStatus, setAuthStatus] = useState('');
+  const [fxRates, setFxRates] = useState(getStoredFxRates);
 
   const monthData = normalizeMonthData(months[selectedMonth]);
   const preferences = normalizePreferences(globalPreferences);
@@ -1643,7 +1758,15 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     householdProfileId,
     xlsxParser: Boolean(XLSX && XLSX.read),
   };
+  useEffect(() => {
+  async function loadFxRates() {
+    const rates = await fetchFxRatesToIls();
+    setFxRates(rates);
+  }
 
+  loadFxRates();
+}, []);
+  
   // Initial cloud load merges cloud state into local state without wiping missing months or settings.
   useEffect(() => {
     // Cloud load merges Supabase data into local state without deleting the currently selected month.
@@ -1908,8 +2031,8 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
     try {
       const lower = file.name.toLowerCase();
       let importedTransactions = [];
-      if (lower.endsWith('.csv')) importedTransactions = parseCsvText(await file.text(), learnedRules);
-      else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) importedTransactions = parseExcelArrayBuffer(await file.arrayBuffer(), learnedRules);
+      if (lower.endsWith('.csv')) importedTransactions = parseCsvText(await file.text(), learnedRules, fxRates);
+else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) importedTransactions = parseExcelArrayBuffer(await file.arrayBuffer(), learnedRules, fxRates);
       else {
         alert('נא להעלות CSV או Excel');
         return;
@@ -2004,7 +2127,11 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const totalBankDeposits = allBankTransactions.filter((transaction) => toNumber(transaction.amount) > 0).reduce((sum, transaction) => sum + toNumber(transaction.amount), 0);
   const totalBankWithdrawals = allBankTransactions.filter((transaction) => toNumber(transaction.amount) < 0).reduce((sum, transaction) => sum + Math.abs(toNumber(transaction.amount)), 0);
   const allCreditTransactions = useMemo(() => monthData.creditCards.flatMap((card) => card.transactions || []), [monthData.creditCards]);
-  const totalCreditCards = allCreditTransactions.reduce((sum, item) => sum + toNumber(item.amount), 0);
+  const realCreditTransactions = allCreditTransactions.filter((transaction) => !isInternalTransferTransaction(transaction));
+const internalCreditTransfers = allCreditTransactions.filter(isInternalTransferTransaction);
+
+const totalCreditCards = realCreditTransactions.reduce((sum, item) => sum + toNumber(item.amount), 0);
+const totalInternalCreditTransfers = internalCreditTransfers.reduce((sum, item) => sum + toNumber(item.amount), 0);
   const totalManualExpenses = monthData.manualExpenses.reduce((sum, item) => sum + toNumber(item.amount), 0);
   const totalSavingsProducts = monthData.savingsProducts.reduce((sum, item) => sum + toNumber(item.monthlyDeposit), 0);
   const totalSavingGoals = monthData.savingGoals.reduce((sum, item) => sum + toNumber(item.monthlyDeposit), 0);
@@ -2025,8 +2152,8 @@ const totalAssets =
 const netWorth = totalAssets;
 const emergencyMonths = toNumber(monthData.emergencyFund) / (totalExpenses || 1);
   const bankVsCalculatedCashFlow = bankBalanceChange - remainingCashFlow;
-  const categoryTotals = useMemo(() => getCategoryTotals(allCreditTransactions), [allCreditTransactions]);
-  const recurringTransactions = useMemo(() => detectRecurringTransactions(allCreditTransactions, months, selectedMonth), [allCreditTransactions, months, selectedMonth]);
+  const categoryTotals = useMemo(() => getCategoryTotals(realCreditTransactions), [realCreditTransactions]);
+  const recurringTransactions = useMemo(() => detectRecurringTransactions(realCreditTransactions, months, selectedMonth), [realCreditTransactions, months, selectedMonth]);
   const monthlyCompare = useMemo(() => getMonthlyCompare(months, selectedMonth, comparePeriod), [months, selectedMonth, comparePeriod]);
   const trend = useMemo(() => getMonthlyTrend(months), [months]);
   const trendSixMonths = useMemo(() => trend.slice(-6), [trend]);
@@ -2036,7 +2163,7 @@ const emergencyMonths = toNumber(monthData.emergencyFund) / (totalExpenses || 1)
   const topCategories = useMemo(() => Object.entries(categoryTotals).sort((a, b) => toNumber(b[1]) - toNumber(a[1])).slice(0, 6), [categoryTotals]);
   const filteredTransactions = useMemo(() => {
     const normalizedSearch = normalizeMerchantName(searchTerm);
-    return allCreditTransactions.filter((transaction) => {
+    return realCreditTransactions.filter((transaction) => {
       const merchantMatch = normalizeMerchantName(transaction.merchant).includes(normalizedSearch);
       const categoryMatch = categoryFilter === 'הכול' || transaction.category === categoryFilter;
       const amount = toNumber(transaction.amount);
