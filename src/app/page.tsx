@@ -1623,7 +1623,7 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
   return (
     <div className="mt-5 max-h-[900px] overflow-auto rounded-[24px] border border-neutral-200 bg-white">
       <div className="min-w-[720px]">
-        <div className="md:sticky md:top-0 z-10 grid grid-cols-[110px_minmax(180px,1fr)_170px_120px_44px] bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700">
+        <div className="md:sticky md:top-0 z-10 grid grid-cols-[110px_minmax(180px,1fr)_170px_190px_52px] bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700">
           <div>תאריך</div>
           <div>{isPending ? 'בית עסק' : 'עסקה'}</div>
           <div>{isPending ? 'קטגוריה' : 'קטגוריה לומדת'}</div>
@@ -1631,29 +1631,27 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
           <div />
         </div>
         {rows.map((transaction) => (
-          <div key={transaction.id} className="grid grid-cols-[110px_minmax(180px,1fr)_170px_120px_44px] gap-4 border-t border-neutral-100 p-4">
+          <div key={transaction.id} className="grid grid-cols-[110px_minmax(180px,1fr)_170px_190px_52px] gap-4 border-t border-neutral-100 p-4">
             {isPending ? <Field value={transaction.date || ''} onChange={(event) => onUpdate(cardId, transaction.id, 'date', event.target.value)} /> : <div className="px-3 py-3 text-sm text-neutral-500">{transaction.date}</div>}
             {isPending ? <Field value={transaction.merchant} onChange={(event) => onUpdate(cardId, transaction.id, 'merchant', event.target.value)} /> : <Field value={transaction.merchant} readOnly className="bg-neutral-50" />}
             <SelectField value={transaction.category} onChange={(event) => isPending ? onUpdate(cardId, transaction.id, 'category', event.target.value) : onUpdate(transaction.id, event.target.value)}>
               {EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
             </SelectField>
-            {isPending ? (
-  <div className="grid gap-1">
-    <Field
-      type="number"
-      value={transaction.amount}
-      onChange={(event) => onUpdate(cardId, transaction.id, 'amount', event.target.value)}
-    />
-    {transaction.currency && transaction.currency !== 'ILS' ? (
-      <div className="text-xs font-semibold text-neutral-500">
-        {transaction.originalAmount} {transaction.currency}
-      </div>
-    ) : null}
-  </div>
+{isPending ? (
+  <Field
+    type="text"
+    value={
+      transaction.currency && transaction.currency !== 'ILS'
+        ? `${transaction.originalAmount || transaction.amount} ${transaction.currency}`
+        : SHEKEL.format(transaction.amount)
+    }
+    onChange={(event) => onUpdate(cardId, transaction.id, 'amount', event.target.value)}
+    className="w-full text-left"
+  />
 ) : (
-  <div className="px-3 py-3 text-sm font-semibold text-neutral-900">
+  <div className="px-3 py-3 text-left text-sm font-semibold text-neutral-900">
     {transaction.currency && transaction.currency !== 'ILS'
-      ? `${transaction.originalAmount} ${transaction.currency} (${SHEKEL.format(transaction.amount)})`
+      ? `${transaction.originalAmount || transaction.amount} ${transaction.currency}`
       : SHEKEL.format(transaction.amount)}
   </div>
 )}
