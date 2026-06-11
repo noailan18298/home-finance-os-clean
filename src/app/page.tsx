@@ -694,12 +694,22 @@ function getMonthTotals(data) {
   const selfEmployedVatDue = Math.max(0, toNumber(safeData.selfEmployed.vatCollected) - toNumber(safeData.selfEmployed.vatPaidOnExpenses));
   const selfEmployedRaw = selfEmployedVatDue + toNumber(safeData.selfEmployed.incomeTaxAdvance) + toNumber(safeData.selfEmployed.nationalInsurance) + toNumber(safeData.selfEmployed.businessExpenses);
   const selfEmployed = includeSelfEmployed ? selfEmployedRaw : 0;
-const savings = savingsProducts + savingGoals;
-const expenses = credit + manual + selfEmployed;
-const net = income - expenses - savings;
-  const savingsRate = income ? (net / income) * 100 : 0;
-  return { income, credit, manual, savings, selfEmployed, selfEmployedRaw, expenses, net, savingsRate };
-}
+const savingsTransfers = savingsProducts + savingGoals;
+const realExpenses = credit + manual + selfEmployed;
+const remainingCashFlow = income - realExpenses - savingsTransfers;
+const savingsRate = income ? (savingsTransfers / income) * 100 : 0;
+
+return {
+  income,
+  credit,
+  manual,
+  savings: savingsTransfers,
+  selfEmployed,
+  selfEmployedRaw,
+  expenses: realExpenses,
+  net: remainingCashFlow,
+  savingsRate,
+};
 
 function getPreviousMonthKey(monthKey) {
   if (!monthKey || !monthKey.includes('-')) return '';
@@ -2003,12 +2013,12 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const rawSelfEmployedPayments = selfEmployedVatDue + toNumber(monthData.selfEmployed.incomeTaxAdvance) + toNumber(monthData.selfEmployed.nationalInsurance) + toNumber(monthData.selfEmployed.businessExpenses);
   const totalSelfEmployedPayments = includeSelfEmployed ? rawSelfEmployedPayments : 0;
   const totalExpenses = totalCreditCards + totalManualExpenses + totalSelfEmployedPayments;
-  const remainingAfterEverything = totalIncome - totalExpenses - totalPlannedSavings;
-  const monthlySavings = remainingAfterEverything;
-  const savingsRate = totalIncome ? (monthlySavings / totalIncome) * 100 : 0;
+const remainingCashFlow = totalIncome - totalExpenses - totalPlannedSavings;
+const savingsRate = totalIncome ? (totalPlannedSavings / totalIncome) * 100 : 0;
+const netWorth = totalAssets;
   const emergencyMonths = toNumber(monthData.emergencyFund) / (totalExpenses || 1);
   const totalAssets = totalBankClosing + toNumber(monthData.emergencyFund) + monthData.savingsProducts.reduce((sum, item) => sum + toNumber(item.currentBalance), 0) + monthData.savingGoals.reduce((sum, item) => sum + toNumber(item.currentAmount), 0);
-  const bankVsCalculatedCashFlow = bankBalanceChange - monthlySavings;
+  const bankVsCalculatedCashFlow = bankBalanceChange - remainingCashFlow;
   const categoryTotals = useMemo(() => getCategoryTotals(allCreditTransactions), [allCreditTransactions]);
   const recurringTransactions = useMemo(() => detectRecurringTransactions(allCreditTransactions, months, selectedMonth), [allCreditTransactions, months, selectedMonth]);
   const monthlyCompare = useMemo(() => getMonthlyCompare(months, selectedMonth, comparePeriod), [months, selectedMonth, comparePeriod]);
@@ -2060,9 +2070,9 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   ].filter(Boolean);
 
   const monthlyStory = totalIncome
-    ? `במצב ${modeConfig.label}, החודש הוצאתם ${SHEKEL.format(totalExpenses)} שהם ${formatPercent((totalExpenses / totalIncome) * 100)} מההכנסה. העו״ש הנוכחי הוא יתרה אמיתית מהבנק/הזנה ידנית, והיתרה המחושבת אחרי הכול נשארת מדד תזרים בלבד. יעד החיסכון למצב הזה הוא ${formatPercent(targetSavingsRate)}, והיתרה המחושבת אחרי הכול היא ${SHEKEL.format(monthlySavings)}.`
-    : `מצב ${modeConfig.label} פעיל. התחילו להזין הכנסות והוצאות כדי לקבל סיפור פיננסי חודשי מותאם.`;
-
+  ? `במצב ${modeConfig.label}, ההוצאות האמיתיות החודש הן ${SHEKEL.format(totalExpenses)}, והועברו לחיסכון ${SHEKEL.format(totalPlannedSavings)}. העו״ש הנוכחי הוא נתון אמיתי שהוזן ידנית או הגיע מהבנק. אחרי הוצאות והעברות לחיסכון נשאר תזרים חודשי של ${SHEKEL.format(remainingCashFlow)}. שיעור החיסכון הוא ${formatPercent(savingsRate)} מתוך יעד של ${formatPercent(targetSavingsRate)}.`
+  : `מצב ${modeConfig.label} פעיל. התחילו להזין הכנסות, הוצאות, עו״ש וחסכונות כדי להבין את המצב הפיננסי האמיתי.`;
+  
   const monthlyCompareStory = monthlyCompare.hasPrevious
     ? `לעומת ממוצע ${monthlyCompare.period.label} (${monthlyCompare.compareMonthKeys.length} חודשים), ההוצאות ${monthlyCompare.current.expenses >= monthlyCompare.previous.expenses ? 'עלו' : 'ירדו'} ב־${SHEKEL.format(Math.abs(monthlyCompare.current.expenses - monthlyCompare.previous.expenses))}, והיתרה ${monthlyCompare.current.net >= monthlyCompare.previous.net ? 'השתפרה' : 'נחלשה'} ב־${SHEKEL.format(Math.abs(monthlyCompare.current.net - monthlyCompare.previous.net))}.`
     : `אין עדיין מספיק חודשים להשוואת ${monthlyCompare.period.label}. הוסיפי עוד חודשים כדי לקבל Monthly Compare אמיתי ורחב יותר.`;
@@ -2268,9 +2278,9 @@ async function handleSignIn(event) {
             <StatCard title="סה״כ הוצאות" value={SHEKEL.format(totalExpenses)} note={effectiveBudgetTarget ? `${formatPercent(budgetUsageRate)} מתוך יעד ${modeConfig.label}` : `${totalIncome ? formatPercent((totalExpenses / totalIncome) * 100) : '0%'} מההכנסה`} tone={(effectiveBudgetTarget && totalExpenses > effectiveBudgetTarget) || (totalIncome && totalExpenses > totalIncome) ? 'danger' : budgetUsageRate >= modeConfig.budgetWarningAt ? 'warn' : 'neutral'} />
             <StatCard title="סה״כ אשראי" value={SHEKEL.format(totalCreditCards)} note="מכרטיסי האשראי" />
             <StatCard title="עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note={includeSelfEmployed ? 'כלול בתזרים המשפחתי' : 'לא כלול בתזרים'} />
-            <StatCard title="חסכונות" value={SHEKEL.format(totalPlannedSavings)} note="קרנות, פנסיה ויעדים" tone="good" />
-            <StatCard title="יתרה אחרי הכול" value={SHEKEL.format(monthlySavings)} note={`${formatPercent(savingsRate)} חיסכון / יעד ${formatPercent(targetSavingsRate)}`} tone={monthlySavings >= 0 && savingsRate >= targetSavingsRate ? 'good' : monthlySavings < 0 ? 'danger' : 'neutral'} />
-            <StatCard title="שווי שהוזן" value={SHEKEL.format(totalAssets)} note={`${emergencyMonths.toFixed(1)} חודשי חירום`} />
+            <StatCard title="העברות לחיסכון" value={SHEKEL.format(totalPlannedSavings)} note="לא הוצאה, אלא העברה פנימית" tone="good" />
+            <StatCard title="עודף / גירעון חודשי" value={SHEKEL.format(remainingCashFlow)} note={`אחרי הוצאות אמיתיות והעברות לחיסכון`} tone={remainingCashFlow >= 0 ? 'good' : 'danger'} />
+            <StatCard title="שווי נטו שהוזן" value={SHEKEL.format(netWorth)} note={`עו״ש + חסכונות + יעדים + קרן חירום`} tone="good" />
           </div>
         </section>
 
