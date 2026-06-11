@@ -1667,8 +1667,6 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
     </div>
   )}
 </div>
-  />
-) : (
   <div className="px-3 py-3 text-left text-sm font-semibold text-neutral-900">
     {transaction.currency && transaction.currency !== 'ILS'
       ? `${transaction.originalAmount || transaction.amount} ${transaction.currency}`
