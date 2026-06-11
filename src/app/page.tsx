@@ -230,21 +230,7 @@ async function fetchFxRatesToIls() {
   }
 }
 
-function detectCurrencyFromRow(row) {
-  const rawText = Array.isArray(row) ? row.join(' ') : String(row || '');
-  const text = normalizeMerchantName(rawText);
 
-  if (rawText.includes('$') || text.includes('usd') || text.includes('דולר')) return 'USD';
-  if (rawText.includes('€') || text.includes('eur') || text.includes('יורו')) return 'EUR';
-  if (rawText.includes('£') || text.includes('gbp') || text.includes('לישט')) return 'GBP';
-
-  return 'ILS';
-}
-
-function convertToIls(amount, currency, fxRates = DEFAULT_FX_RATES_TO_ILS) {
-  const rate = fxRates?.[currency] || 1;
-  return toNumber(amount) * rate;
-}
 const SHEKEL = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 });
 
 function getPublicEnv(key) {
@@ -478,10 +464,15 @@ function normalizeImportedRows(rows, learnedRules = {}, fxRates = DEFAULT_FX_RAT
 const currency = detectCurrencyFromRow(row);
 const amountIls = convertToIls(rawAmount, currency, fxRates);
 const rowText = row.join(' ');
+const normalizedRowText = normalizeMerchantName(rowText);
+
 const isCreditRefund =
-  normalizeMerchantName(rowText).includes('זיכוי') ||
-  normalizeMerchantName(rowText).includes('החזר') ||
-  normalizeMerchantName(rowText).includes('refund') ||
+  normalizedRowText.includes('זיכוי') ||
+  normalizedRowText.includes('זכות') ||
+  normalizedRowText.includes('החזר') ||
+  normalizedRowText.includes('refund') ||
+  normalizedRowText.includes('credit') ||
+  String(amountCell || '').includes('-') ||
   rawAmount < 0;
 
 const amount = isCreditRefund ? -Math.abs(amountIls) : Math.abs(amountIls);
