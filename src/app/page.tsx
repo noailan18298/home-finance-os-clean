@@ -1621,56 +1621,86 @@ function TrendLineChart({ data, theme }) {
 
 function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
   const isPending = mode === 'pending';
+
+  function formatTransactionAmount(transaction) {
+    if (transaction.currency && transaction.currency !== 'ILS') {
+      return `${transaction.originalAmount || transaction.amount} ${transaction.currency}`;
+    }
+
+    return SHEKEL.format(transaction.amount);
+  }
+
   return (
     <div className="mt-5 max-h-[900px] overflow-auto rounded-[24px] border border-neutral-200 bg-white">
       <div className="min-w-[720px]">
-        <div className="md:sticky md:top-0 z-10 grid grid-cols-[110px_minmax(180px,1fr)_170px_190px_52px] bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700">
+        <div className="md:sticky md:top-0 z-10 grid grid-cols-[110px_minmax(180px,1fr)_170px_170px_52px] bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700">
           <div>תאריך</div>
           <div>{isPending ? 'בית עסק' : 'עסקה'}</div>
           <div>{isPending ? 'קטגוריה' : 'קטגוריה לומדת'}</div>
           <div>סכום</div>
           <div />
         </div>
+
         {rows.map((transaction) => (
-          <div key={transaction.id} className="grid grid-cols-[110px_minmax(180px,1fr)_170px_190px_52px] gap-4 border-t border-neutral-100 p-4">
-            {isPending ? <Field value={transaction.date || ''} onChange={(event) => onUpdate(cardId, transaction.id, 'date', event.target.value)} /> : <div className="px-3 py-3 text-sm text-neutral-500">{transaction.date}</div>}
-            {isPending ? <Field value={transaction.merchant} onChange={(event) => onUpdate(cardId, transaction.id, 'merchant', event.target.value)} /> : <Field value={transaction.merchant} readOnly className="bg-neutral-50" />}
-            <SelectField value={transaction.category} onChange={(event) => isPending ? onUpdate(cardId, transaction.id, 'category', event.target.value) : onUpdate(transaction.id, event.target.value)}>
-              {EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+          <div
+            key={transaction.id}
+            className="grid grid-cols-[110px_minmax(180px,1fr)_170px_170px_52px] gap-4 border-t border-neutral-100 p-4"
+          >
+            {isPending ? (
+              <Field
+                value={transaction.date || ''}
+                onChange={(event) => onUpdate(cardId, transaction.id, 'date', event.target.value)}
+              />
+            ) : (
+              <div className="px-3 py-3 text-sm text-neutral-500">{transaction.date}</div>
+            )}
+
+            {isPending ? (
+              <Field
+                value={transaction.merchant}
+                onChange={(event) => onUpdate(cardId, transaction.id, 'merchant', event.target.value)}
+              />
+            ) : (
+              <Field value={transaction.merchant} readOnly className="bg-neutral-50" />
+            )}
+
+            <SelectField
+              value={transaction.category}
+              onChange={(event) =>
+                isPending
+                  ? onUpdate(cardId, transaction.id, 'category', event.target.value)
+                  : onUpdate(transaction.id, event.target.value)
+              }
+            >
+              {EXPENSE_CATEGORIES.map((category) => (
+                <option key={category}>{category}</option>
+              ))}
             </SelectField>
-{isPending ? (
-  <div className="grid gap-1">
-    <Field
-      type="number"
-      value={transaction.amount}
-      onChange={(event) =>
-        onUpdate(cardId, transaction.id, 'amount', event.target.value)
-      }
-    />
 
-    {transaction.currency && (
-      <div className="mt-1 text-xs text-neutral-500">
-        {transaction.currency}
-      </div>
-    )}
-  </div>
-) : (
-  <div className="px-3 py-3 text-left text-sm font-semibold text-neutral-900">
-    {transaction.currency && transaction.currency !== 'ILS'
-      ? `${transaction.originalAmount || transaction.amount} ${transaction.currency}`
-      : SHEKEL.format(transaction.amount)}
-  </div>
-)}
+            {isPending ? (
+              <Field
+                type="number"
+                value={transaction.amount}
+                onChange={(event) => onUpdate(cardId, transaction.id, 'amount', event.target.value)}
+                className="w-full text-left"
+              />
+            ) : (
+              <div className="px-3 py-3 text-left text-sm font-semibold text-neutral-900">
+                {formatTransactionAmount(transaction)}
+              </div>
+            )}
 
-  {transaction.currency && (
-    <div className="text-xs text-neutral-500 mt-1">
-      {transaction.currency}
-    </div>
-  )}
-            <GhostButton onClick={() => onRemove(cardId, transaction.id)} className="px-0">×</GhostButton>
+            <GhostButton onClick={() => onRemove(cardId, transaction.id)} className="px-0">
+              ×
+            </GhostButton>
           </div>
         ))}
-        {rows.length === 0 ? <div className="p-10 text-center text-sm text-neutral-400">עדיין לא העלית פירוט אשראי. העלי CSV או Excel כדי להתחיל ניתוח חכם של ההוצאות.</div> : null}
+
+        {rows.length === 0 ? (
+          <div className="p-10 text-center text-sm text-neutral-400">
+            עדיין לא העלית פירוט אשראי. העלי CSV או Excel כדי להתחיל ניתוח חכם של ההוצאות.
+          </div>
+        ) : null}
       </div>
     </div>
   );
