@@ -468,7 +468,7 @@ function normalizeImportedRows(rows, learnedRules = {}, fxRates = DEFAULT_FX_RAT
 
   const dateIndex = hasHeader ? findHeaderIndex(headers, ['date', 'תאריך', 'תאריך עסקה', 'תאריך רכישה', 'תאריך חיוב'], 0) : 0;
   const merchantIndex = hasHeader ? findHeaderIndex(headers, ['merchant', 'בית עסק', 'שם בית העסק', 'שם בית עסק', 'ספק', 'תיאור', 'פירוט', 'שם', 'פרטים'], 1) : 1;
-  const importedCategoryIndex = hasHeader ? findHeaderIndex(headers, ['קטגוריה', 'category'], -1) : -1;
+  const currencyIndex = hasHeader ? findHeaderIndex(headers, ['מטבע', 'currency', 'סוג מטבע', 'curr'], -1) : -1;
   const amountIndex = hasHeader ? findHeaderIndex(headers, ['סכום חיוב', 'amount charged', 'חיוב', 'סכום', 'חובה', 'זכות', 'amount', 'charge', 'total'], -1) : findAmountIndex(headers, sampleRows);
   const finalAmountIndex = amountIndex >= 0 ? amountIndex : findAmountIndex(headers, sampleRows);
 
@@ -476,7 +476,7 @@ function normalizeImportedRows(rows, learnedRules = {}, fxRates = DEFAULT_FX_RAT
     .map((row) => {
       const amountCell = finalAmountIndex >= 0 ? row[finalAmountIndex] : [...row].reverse().find((cell) => Math.abs(toNumber(cell)) > 0);
       const rawAmount = toNumber(amountCell);
-const currency = detectCurrencyFromRow(row);
+const currency = detectCurrencyFromRow(currencyIndex >= 0 ? `${row[currencyIndex]} ${row.join(' ')}` : row);
 const amountIls = convertToIls(rawAmount, currency, fxRates);
 const rowText = row.join(' ');
 const normalizedRowText = normalizeMerchantName(rowText);
@@ -1638,15 +1638,35 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
               {EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
             </SelectField>
 {isPending ? (
-  <Field
-    type="text"
-    value={
-      transaction.currency && transaction.currency !== 'ILS'
-        ? `${transaction.originalAmount || transaction.amount} ${transaction.currency}`
-        : SHEKEL.format(transaction.amount)
-    }
-    onChange={(event) => onUpdate(cardId, transaction.id, 'amount', event.target.value)}
-    className="w-full text-left"
+  <div className="grid gap-1">
+    <Field
+      type="number"
+      value={transaction.amount}
+      onChange={(event) =>
+        onUpdate(cardId, transaction.id, 'amount', event.target.value)
+      }
+    />
+
+    {transaction.currency && (
+      <div className="mt-1 text-xs text-neutral-500">
+        {transaction.currency}
+      </div>
+    )}
+  </div>
+) : (
+  <div className="px-3 py-3 text-left text-sm font-semibold text-neutral-900">
+    {transaction.currency && transaction.currency !== 'ILS'
+      ? `${transaction.originalAmount || transaction.amount} ${transaction.currency}`
+      : SHEKEL.format(transaction.amount)}
+  </div>
+)}
+
+  {transaction.currency && (
+    <div className="text-xs text-neutral-500 mt-1">
+      {transaction.currency}
+    </div>
+  )}
+</div>
   />
 ) : (
   <div className="px-3 py-3 text-left text-sm font-semibold text-neutral-900">
@@ -2113,7 +2133,7 @@ else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) importedTransactions
   function addTransaction(cardId) {
     setSelectedMonthData({
       ...monthData,
-      creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, transactions: [...(card.transactions || []), { id: makeId('tx'), date: '', merchant: 'עסקה חדשה', category: 'אחר', amount: 0 }] } : card)),
+      creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, transactions: [...(card.transactions || []), { id: makeId('tx'), date: '', merchant: 'עסקה חדשה', category: 'אחר', amount: 0, originalAmount: 0, currency: 'ILS' }] } : card)),
     });
   }
 
