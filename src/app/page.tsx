@@ -710,6 +710,7 @@ return {
   net: remainingCashFlow,
   savingsRate,
 };
+}
 
 function getPreviousMonthKey(monthKey) {
   if (!monthKey || !monthKey.includes('-')) return '';
@@ -2015,9 +2016,14 @@ export default function PersonalIsraeliFamilyFinanceDashboard() {
   const totalExpenses = totalCreditCards + totalManualExpenses + totalSelfEmployedPayments;
 const remainingCashFlow = totalIncome - totalExpenses - totalPlannedSavings;
 const savingsRate = totalIncome ? (totalPlannedSavings / totalIncome) * 100 : 0;
+const totalAssets =
+  totalBankClosing +
+  toNumber(monthData.emergencyFund) +
+  monthData.savingsProducts.reduce((sum, item) => sum + toNumber(item.currentBalance), 0) +
+  monthData.savingGoals.reduce((sum, item) => sum + toNumber(item.currentAmount), 0);
+
 const netWorth = totalAssets;
-  const emergencyMonths = toNumber(monthData.emergencyFund) / (totalExpenses || 1);
-  const totalAssets = totalBankClosing + toNumber(monthData.emergencyFund) + monthData.savingsProducts.reduce((sum, item) => sum + toNumber(item.currentBalance), 0) + monthData.savingGoals.reduce((sum, item) => sum + toNumber(item.currentAmount), 0);
+const emergencyMonths = toNumber(monthData.emergencyFund) / (totalExpenses || 1);
   const bankVsCalculatedCashFlow = bankBalanceChange - remainingCashFlow;
   const categoryTotals = useMemo(() => getCategoryTotals(allCreditTransactions), [allCreditTransactions]);
   const recurringTransactions = useMemo(() => detectRecurringTransactions(allCreditTransactions, months, selectedMonth), [allCreditTransactions, months, selectedMonth]);
