@@ -172,12 +172,14 @@ const INTERNAL_TRANSFER_CATEGORIES = [
 
 function isInternalTransferTransaction(transaction) {
   const category = transaction?.category || '';
-  const text = normalizeMerchantName(`${transaction?.merchant || ''} ${transaction?.description || ''}`);
+  const text = normalizeMerchantName(`${transaction?.merchant || ''} ${transaction?.description || ''} ${transaction?.notes || ''} ${transaction?.sourceSheet || ''}`);
 
   const isWalletOrCardSettlement =
-    text.includes('ארנק') ||
-    text.includes('מט״ח') ||
-    text.includes('מטח') ||
+    text.includes('רכישת מטח') ||
+    text.includes('רכישת מט״ח') ||
+    text.includes('ארנק מטח') ||
+    text.includes('ארנק מט״ח') ||
+    text.includes('עסקאות בחיוב מיידי') ||
     text.includes('חיוב חודשי') ||
     text.includes('חיוב כרטיס') ||
     text.includes('כרטיס אשראי') ||
@@ -504,7 +506,9 @@ const amount = isCreditRefund ? -Math.abs(amountIls) : Math.abs(amountIls);
         amount,
 originalAmount: Math.abs(rawAmount),
 currency,
-category: detectCategory(merchant, learnedRules, importedCategory),
+category: normalizeMerchantName(`${merchant} ${rowText}`).includes('רכישת מטח') || normalizeMerchantName(`${merchant} ${rowText}`).includes('רכישת מט״ח')
+  ? 'מט״ח / ארנק אשראי'
+  : detectCategory(merchant, learnedRules, importedCategory),
       };
     })
     .filter((transaction) => Math.abs(transaction.amount) > 0 && normalizeMerchantName(transaction.merchant) !== normalizeMerchantName('עסקה') && !normalizeMerchantName(transaction.merchant).includes('סך הכל'));
@@ -1482,7 +1486,7 @@ function runSmokeTests() {
 
 if (typeof window !== 'undefined') runSmokeTests();
 
-function StatCard({ title, value, note, tone = 'neutral' }) {
+function StatCard({ title, value, note, tone = 'neutral', help = '' }) {
   const toneClass = {
     neutral: 'border-neutral-200 bg-white',
     good: 'border-neutral-200 bg-white',
@@ -1498,7 +1502,14 @@ function StatCard({ title, value, note, tone = 'neutral' }) {
 
   return (
     <div className={`min-h-[150px] rounded-[22px] border ${toneClass} p-4 shadow-sm transition hover:shadow-md sm:min-h-[180px] sm:p-5 lg:min-h-[140px]`}>
-      <div className="text-center text-xs font-semibold uppercase tracking-widest text-neutral-400">{title}</div>
+      <div className="flex items-center justify-center gap-2 text-center text-xs font-semibold uppercase tracking-widest text-neutral-400">
+  <span>{title}</span>
+  {help ? (
+    <span title={help} className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-neutral-300 text-[11px] text-neutral-500">
+      ?
+    </span>
+  ) : null}
+</div>
       <div className="mt-4 text-center text-2xl font-semibold tracking-tight text-neutral-950 sm:mt-6 sm:text-3xl">{value}</div>
       <div className={`mt-4 px-1 text-center text-xs font-medium leading-6 sm:mt-6 sm:px-2 sm:text-sm sm:leading-7 ${noteClass} no-single-word-lines`}>{noSingleWordLine(note)}</div>
     </div>
@@ -2478,7 +2489,13 @@ async function handleSignIn(event) {
             <StatCard title="סה״כ אשראי" value={SHEKEL.format(totalCreditCards)} note="מכרטיסי האשראי" />
             <StatCard title="עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note={includeSelfEmployed ? 'כלול בתזרים המשפחתי' : 'לא כלול בתזרים'} />
             <StatCard title="העברות לחיסכון" value={SHEKEL.format(totalPlannedSavings)} note="לא הוצאה, אלא העברה פנימית" tone="good" />
-            <StatCard title="עודף / גירעון חודשי" value={SHEKEL.format(remainingCashFlow)} note={`אחרי הוצאות אמיתיות והעברות לחיסכון`} tone={remainingCashFlow >= 0 ? 'good' : 'danger'} />
+            <StatCard
+  title="עודף / גירעון חודשי"
+  value={SHEKEL.format(remainingCashFlow)}
+  note="אחרי הוצאות אמיתיות והעברות לחיסכון"
+  tone={remainingCashFlow >= 0 ? 'good' : 'danger'}
+  help="הכנסות פחות הוצאות אמיתיות פחות העברות לחיסכון. אם המספר שלילי, החודש בגירעון תזרימי."
+/>
             <StatCard title="שווי נטו שהוזן" value={SHEKEL.format(netWorth)} note={`עו״ש + חסכונות + יעדים + קרן חירום`} tone="good" />
           </div>
         </section>
