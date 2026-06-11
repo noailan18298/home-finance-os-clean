@@ -468,7 +468,8 @@ function normalizeImportedRows(rows, learnedRules = {}, fxRates = DEFAULT_FX_RAT
 
   const dateIndex = hasHeader ? findHeaderIndex(headers, ['date', 'תאריך', 'תאריך עסקה', 'תאריך רכישה', 'תאריך חיוב'], 0) : 0;
   const merchantIndex = hasHeader ? findHeaderIndex(headers, ['merchant', 'בית עסק', 'שם בית העסק', 'שם בית עסק', 'ספק', 'תיאור', 'פירוט', 'שם', 'פרטים'], 1) : 1;
-  const currencyIndex = hasHeader ? findHeaderIndex(headers, ['מטבע', 'currency', 'סוג מטבע', 'curr'], -1) : -1;
+const importedCategoryIndex = hasHeader ? findHeaderIndex(headers, ['קטגוריה', 'category'], -1) : -1;
+const currencyIndex = hasHeader ? findHeaderIndex(headers, ['מטבע', 'currency', 'סוג מטבע', 'curr'], -1) : -1;
   const amountIndex = hasHeader ? findHeaderIndex(headers, ['סכום חיוב', 'amount charged', 'חיוב', 'סכום', 'חובה', 'זכות', 'amount', 'charge', 'total'], -1) : findAmountIndex(headers, sampleRows);
   const finalAmountIndex = amountIndex >= 0 ? amountIndex : findAmountIndex(headers, sampleRows);
 
