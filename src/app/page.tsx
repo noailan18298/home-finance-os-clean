@@ -174,18 +174,18 @@ function isInternalTransferTransaction(transaction) {
   const category = transaction?.category || '';
   const text = normalizeMerchantName(`${transaction?.merchant || ''} ${transaction?.description || ''}`);
 
-  return (
-    INTERNAL_TRANSFER_CATEGORIES.includes(category) ||
+  const isWalletOrCardSettlement =
     text.includes('ארנק') ||
     text.includes('מט״ח') ||
     text.includes('מטח') ||
     text.includes('חיוב חודשי') ||
     text.includes('חיוב כרטיס') ||
     text.includes('כרטיס אשראי') ||
-    text.includes('max it') ||
-    text.includes('max') ||
-    text.includes('מקס')
-  );
+    text.includes('סיכום חיובים') ||
+    text.includes('חיוב מקס') ||
+    text.includes('מקס איט פיננ');
+
+  return INTERNAL_TRANSFER_CATEGORIES.includes(category) || isWalletOrCardSettlement;
 }
 
 const DEFAULT_FX_RATES_TO_ILS = {
@@ -230,6 +230,21 @@ async function fetchFxRatesToIls() {
   }
 }
 
+function detectCurrencyFromRow(row) {
+  const rawText = Array.isArray(row) ? row.join(' ') : String(row || '');
+  const text = normalizeMerchantName(rawText);
+
+  if (rawText.includes('$') || text.includes('usd') || text.includes('דולר')) return 'USD';
+  if (rawText.includes('€') || text.includes('eur') || text.includes('יורו')) return 'EUR';
+  if (rawText.includes('£') || text.includes('gbp') || text.includes('לישט')) return 'GBP';
+
+  return 'ILS';
+}
+
+function convertToIls(amount, currency, fxRates = DEFAULT_FX_RATES_TO_ILS) {
+  const rate = fxRates?.[currency] || 1;
+  return toNumber(amount) * rate;
+}
 
 const SHEKEL = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 });
 
