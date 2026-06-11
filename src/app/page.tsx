@@ -2153,11 +2153,29 @@ else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) importedTransactions
   }
 
   function addTransaction(cardId) {
-    setSelectedMonthData({
-      ...monthData,
-      creditCards: monthData.creditCards.map((card) => (card.id === cardId ? { ...card, transactions: [...(card.transactions || []), { id: makeId('tx'), date: '', merchant: 'עסקה חדשה', category: 'אחר', amount: 0, originalAmount: 0, currency: 'ILS' }] } : card)),
-    });
-  }
+  setSelectedMonthData({
+    ...monthData,
+    creditCards: monthData.creditCards.map((card) =>
+      card.id === cardId
+        ? {
+            ...card,
+            pendingTransactions: [
+              ...(card.pendingTransactions || []),
+              {
+                id: makeId('tx'),
+                date: '',
+                merchant: 'עסקה חדשה',
+                category: 'אחר',
+                amount: 0,
+                originalAmount: 0,
+                currency: 'ILS',
+              },
+            ],
+          }
+        : card
+    ),
+  });
+}
 
   function removeTransaction(cardId, transactionId) {
     setSelectedMonthData({
