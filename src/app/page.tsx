@@ -1666,13 +1666,6 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
       {transaction.currency}
     </div>
   )}
-</div>
-  <div className="px-3 py-3 text-left text-sm font-semibold text-neutral-900">
-    {transaction.currency && transaction.currency !== 'ILS'
-      ? `${transaction.originalAmount || transaction.amount} ${transaction.currency}`
-      : SHEKEL.format(transaction.amount)}
-  </div>
-)}
             <GhostButton onClick={() => onRemove(cardId, transaction.id)} className="px-0">×</GhostButton>
           </div>
         ))}
