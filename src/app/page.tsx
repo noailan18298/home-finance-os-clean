@@ -1487,6 +1487,7 @@ function runSmokeTests() {
 if (typeof window !== 'undefined') runSmokeTests();
 
 function StatCard({ title, value, note, tone = 'neutral', help = '' }) {
+  const [showHelp, setShowHelp] = useState(false);
   const toneClass = {
     neutral: 'border-neutral-200 bg-white',
     good: 'border-neutral-200 bg-white',
@@ -1505,11 +1506,20 @@ function StatCard({ title, value, note, tone = 'neutral', help = '' }) {
       <div className="flex items-center justify-center gap-2 text-center text-xs font-semibold uppercase tracking-widest text-neutral-400">
   <span>{title}</span>
   {help ? (
-    <span title={help} className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-neutral-300 text-[11px] text-neutral-500">
-      ?
-    </span>
+    <button
+  type="button"
+  onClick={() => setShowHelp((current) => !current)}
+  className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-neutral-300 text-[11px] text-neutral-500"
+>
+  ?
+</button>
   ) : null}
 </div>
+      {showHelp && help ? (
+  <div className="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-center text-xs leading-6 text-neutral-600">
+    {help}
+  </div>
+) : null}
       <div className="mt-4 text-center text-2xl font-semibold tracking-tight text-neutral-950 sm:mt-6 sm:text-3xl">{value}</div>
       <div className={`mt-4 px-1 text-center text-xs font-medium leading-6 sm:mt-6 sm:px-2 sm:text-sm sm:leading-7 ${noteClass} no-single-word-lines`}>{noSingleWordLine(note)}</div>
     </div>
