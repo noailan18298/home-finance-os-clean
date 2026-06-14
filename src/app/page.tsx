@@ -402,6 +402,33 @@ function detectCategory(merchant = '', learnedRules = {}, importedCategory = '')
   }
   return 'אחר';
 }
+function detectNecessity(category = '', merchant = '') {
+  const text = normalizeMerchantName(`${category} ${merchant}`);
+
+  if (
+    text.includes('דיור') ||
+    text.includes('חשבונות') ||
+    text.includes('מזון') ||
+    text.includes('בריאות') ||
+    text.includes('רפואה') ||
+    text.includes('ביטוחים') ||
+    text.includes('מיסים')
+  ) {
+    return 'חיוני';
+  }
+
+  if (
+    text.includes('תחבורה') ||
+    text.includes('רכבים') ||
+    text.includes('פארם') ||
+    text.includes('ספרים') ||
+    text.includes('דפוס')
+  ) {
+    return 'חשוב';
+  }
+
+  return 'מותרות';
+}
 
 // A tiny CSV parser that supports quoted fields, commas, semicolons, and tabs.
 // Parses CSV rows while respecting quoted cells, commas, semicolons, tabs, and escaped quotes.
@@ -499,21 +526,21 @@ const amount = isCreditRefund ? -Math.abs(amountIls) : Math.abs(amountIls);
       const importedCategory = importedCategoryIndex >= 0 ? row[importedCategoryIndex] : '';
       const normalizedMerchant = normalizeMerchantName(merchant);
       const isSummaryRow = normalizedMerchant.includes('סך הכל') || normalizedMerchant.includes('total') || normalizedMerchant.includes('סהכ');
-      return {
-        id: makeId('tx'),
-        date,
-        merchant,
-        amount,
-originalAmount: Math.abs(rawAmount),
-currency,
-category: normalizeMerchantName(`${merchant} ${rowText}`).includes('רכישת מטח') || normalizeMerchantName(`${merchant} ${rowText}`).includes('רכישת מט״ח')
+      const detectedCategory = normalizeMerchantName(`${merchant} ${rowText}`).includes('רכישת מטח') || normalizeMerchantName(`${merchant} ${rowText}`).includes('רכישת מט״ח')
   ? 'מט״ח / ארנק אשראי'
-  : detectCategory(merchant, learnedRules, importedCategory),
-      };
-    })
-    .filter((transaction) => Math.abs(transaction.amount) > 0 && normalizeMerchantName(transaction.merchant) !== normalizeMerchantName('עסקה') && !normalizeMerchantName(transaction.merchant).includes('סך הכל'));
-}
+  : detectCategory(merchant, learnedRules, importedCategory);
 
+return {
+  id: makeId('tx'),
+  date,
+  merchant,
+  amount,
+  originalAmount: Math.abs(rawAmount),
+  currency,
+  category: detectedCategory,
+  necessity: detectNecessity(detectedCategory, merchant),
+};
+      
 function normalizeBankRows(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
   const cleanedRows = rows.map((row) => (Array.isArray(row) ? row.map((cell) => String(cell || '').trim()) : [])).filter((row) => row.some(Boolean));
@@ -2190,6 +2217,7 @@ else if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) importedTransactions
                 amount: 0,
                 originalAmount: 0,
                 currency: 'ILS',
+necessity: 'מותרות',
               },
             ],
           }
