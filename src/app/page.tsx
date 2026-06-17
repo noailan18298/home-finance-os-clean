@@ -482,23 +482,30 @@ function findAmountIndex(headers, sampleRows) {
 // Converts raw CSV/Excel rows into pending transactions, even when bank exports use different Hebrew/English column names.
 function normalizeImportedRows(rows, learnedRules = {}, fxRates = DEFAULT_FX_RATES_TO_ILS) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
-  const cleanedRows = rows.map((row) => (Array.isArray(row) ? row.map((cell) => String(cell || '').trim()) : [])).filter((row) => row.some(Boolean));
+
+  const cleanedRows = rows
+    .map((row) => (Array.isArray(row) ? row.map((cell) => String(cell || '').trim()) : []))
+    .filter((row) => row.some(Boolean));
+
   if (!cleanedRows.length) return [];
 
   const headerCandidates = cleanedRows.slice(0, 25);
   const headerRowIndex = headerCandidates.findIndex((row) => {
     const joined = row.join(' ').toLowerCase();
-    return ['date', 'תאריך', 'amount', 'סכום', 'merchant', 'בית עסק', 'שם בית העסק', 'תיאור', 'פירוט', 'חיוב', 'זכות', 'חובה'].some((word) => joined.includes(word));
+    return ['date', 'תאריך', 'amount', 'סכום', 'merchant', 'בית עסק', 'שם בית העסק', 'תיאור', 'פירוט', 'חיוב', 'זכות', 'חובה'].some((word) =>
+      joined.includes(word)
+    );
   });
+
   const hasHeader = headerRowIndex >= 0;
   const headers = hasHeader ? cleanedRows[headerRowIndex] : cleanedRows[0] || [];
   const dataRows = hasHeader ? cleanedRows.slice(headerRowIndex + 1) : cleanedRows;
   const sampleRows = dataRows.slice(0, 30);
 
   const dateIndex = hasHeader ? findHeaderIndex(headers, ['date', 'תאריך', 'תאריך עסקה', 'תאריך רכישה', 'תאריך חיוב'], 0) : 0;
-  const merchantIndex = hasHeader ? findHeaderIndex(headers, ['merchant', 'בית עסק', 'שם בית העסק', 'שם בית עסק', 'ספק', 'תיאור', 'פירוט', 'שם', 'פרטים'], 1) : 1;
-const importedCategoryIndex = hasHeader ? findHeaderIndex(headers, ['קטגוריה', 'category'], -1) : -1;
-const currencyIndex = hasHeader ? findHeaderIndex(headers, ['מטבע', 'currency', 'סוג מטבע', 'curr'], -1) : -1;
+  const merchantIndex = hasHeader ? findHeaderIndex(headers, ['merchant', 'בית עסק', 'שם בית העסק', 'ספק', 'תיאור', 'פירוט', 'שם', 'פרטים'], 1) : 1;
+  const importedCategoryIndex = hasHeader ? findHeaderIndex(headers, ['קטגוריה', 'category'], -1) : -1;
+  const currencyIndex = hasHeader ? findHeaderIndex(headers, ['מטבע', 'currency', 'סוג מטבע', 'curr'], -1) : -1;
   const amountIndex = hasHeader ? findHeaderIndex(headers, ['סכום חיוב', 'amount charged', 'חיוב', 'סכום', 'חובה', 'זכות', 'amount', 'charge', 'total'], -1) : findAmountIndex(headers, sampleRows);
   const finalAmountIndex = amountIndex >= 0 ? amountIndex : findAmountIndex(headers, sampleRows);
 
@@ -506,45 +513,48 @@ const currencyIndex = hasHeader ? findHeaderIndex(headers, ['מטבע', 'currenc
     .map((row) => {
       const amountCell = finalAmountIndex >= 0 ? row[finalAmountIndex] : [...row].reverse().find((cell) => Math.abs(toNumber(cell)) > 0);
       const rawAmount = toNumber(amountCell);
-const currency = detectCurrencyFromRow(currencyIndex >= 0 ? `${row[currencyIndex]} ${row.join(' ')}` : row);
-const amountIls = convertToIls(rawAmount, currency, fxRates);
-const rowText = row.join(' ');
-const normalizedRowText = normalizeMerchantName(rowText);
+      const currency = detectCurrencyFromRow(currencyIndex >= 0 ? `${row[currencyIndex]} ${row.join(' ')}` : row);
+      const amountIls = convertToIls(rawAmount, currency, fxRates);
+      const rowText = row.join(' ');
+      const normalizedRowText = normalizeMerchantName(rowText);
 
-const isCreditRefund =
-  normalizedRowText.includes('זיכוי') ||
-  normalizedRowText.includes('זכות') ||
-  normalizedRowText.includes('החזר') ||
-  normalizedRowText.includes('refund') ||
-  normalizedRowText.includes('credit') ||
-  String(amountCell || '').includes('-') ||
-  rawAmount < 0;
+      const isCreditRefund =
+        normalizedRowText.includes('זיכוי') ||
+        normalizedRowText.includes('זכות') ||
+        normalizedRowText.includes('החזר') ||
+        normalizedRowText.includes('refund') ||
+        normalizedRowText.includes('credit') ||
+        String(amountCell || '').includes('-') ||
+        rawAmount < 0;
 
-const amount = isCreditRefund ? -Math.abs(amountIls) : Math.abs(amountIls);
+      const amount = isCreditRefund ? -Math.abs(amountIls) : Math.abs(amountIls);
       const date = row[dateIndex] || row.find((cell) => String(cell || '').includes('/')) || row.find((cell) => String(cell || '').includes('-')) || '';
       const merchant = row[merchantIndex] || row.find((cell, index) => index !== dateIndex && index !== finalAmountIndex && String(cell || '').trim() && Math.abs(toNumber(cell)) === 0) || 'עסקה';
       const importedCategory = importedCategoryIndex >= 0 ? row[importedCategoryIndex] : '';
-      const normalizedMerchant = normalizeMerchantName(merchant);
-      const isSummaryRow = normalizedMerchant.includes('סך הכל') || normalizedMerchant.includes('total') || normalizedMerchant.includes('סהכ');
-      const detectedCategory = normalizeMerchantName(`${merchant} ${rowText}`).includes('רכישת מטח') || normalizeMerchantName(`${merchant} ${rowText}`).includes('רכישת מט״ח')
-  ? 'מט״ח / ארנק אשראי'
-  : detectCategory(merchant, learnedRules, importedCategory);
 
-return {
-  id: makeId('tx'),
-  date,
-  merchant,
-  amount,
-  originalAmount: Math.abs(rawAmount),
-  currency,
-  category: detectedCategory,
-  necessity: detectNecessity(detectedCategory, merchant),
-};
+      const detectedCategory =
+        normalizeMerchantName(`${merchant} ${rowText}`).includes('רכישת מטח') ||
+        normalizeMerchantName(`${merchant} ${rowText}`).includes('רכישת מט״ח')
+          ? 'מט״ח / ארנק אשראי'
+          : detectCategory(merchant, learnedRules, importedCategory);
+
+      return {
+        id: makeId('tx'),
+        date,
+        merchant,
+        amount,
+        originalAmount: Math.abs(rawAmount),
+        currency,
+        category: detectedCategory,
+        necessity: detectNecessity(detectedCategory, merchant),
+      };
     })
-    .filter((transaction) => Math.abs(transaction.amount) > 0 && normalizeMerchantName(transaction.merchant) !== normalizeMerchantName('עסקה') && !normalizeMerchantName(transaction.merchant).includes('סך הכל'));
+    .filter((transaction) =>
+      Math.abs(transaction.amount) > 0 &&
+      normalizeMerchantName(transaction.merchant) !== normalizeMerchantName('עסקה') &&
+      !normalizeMerchantName(transaction.merchant).includes('סך הכל')
+    );
 }
-
-function normalizeBankRows(rows) {
       
 function normalizeBankRows(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
