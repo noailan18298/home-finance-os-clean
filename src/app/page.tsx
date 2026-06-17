@@ -1674,7 +1674,6 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
     if (transaction.currency && transaction.currency !== 'ILS') {
       return `${transaction.originalAmount || transaction.amount} ${transaction.currency}`;
     }
-
     return SHEKEL.format(transaction.amount);
   }
 
@@ -1691,78 +1690,29 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
         </div>
 
         {rows.map((transaction) => (
-          <div
-            key={transaction.id}
-            className="grid grid-cols-[110px_minmax(180px,1fr)_150px_130px_160px_52px] gap-4 border-t border-neutral-100 p-4"
-          >
-            {isPending ? (
-              <Field
-                value={transaction.date || ''}
-                onChange={(event) => onUpdate(cardId, transaction.id, 'date', event.target.value)}
-              />
-            ) : (
-              <div className="px-3 py-3 text-sm text-neutral-500">{transaction.date}</div>
-            )}
+          <div key={transaction.id} className="grid grid-cols-[110px_minmax(180px,1fr)_150px_130px_160px_52px] gap-4 border-t border-neutral-100 p-4">
+            {isPending ? <Field value={transaction.date || ''} onChange={(event) => onUpdate(cardId, transaction.id, 'date', event.target.value)} /> : <div className="px-3 py-3 text-sm text-neutral-500">{transaction.date}</div>}
+            {isPending ? <Field value={transaction.merchant} onChange={(event) => onUpdate(cardId, transaction.id, 'merchant', event.target.value)} /> : <Field value={transaction.merchant} readOnly className="bg-neutral-50" />}
 
-            {isPending ? (
-              <Field
-                value={transaction.merchant}
-                onChange={(event) => onUpdate(cardId, transaction.id, 'merchant', event.target.value)}
-              />
-            ) : (
-              <Field value={transaction.merchant} readOnly className="bg-neutral-50" />
-            )}
-
-            <SelectField
-              value={transaction.category}
-              onChange={(event) =>
-                isPending
-                  ? onUpdate(cardId, transaction.id, 'category', event.target.value)
-                  : onUpdate(transaction.id, event.target.value)
-              }
-            >
-              {EXPENSE_CATEGORIES.map((category) => (
-                <option key={category}>{category}</option>
-              ))}
+            <SelectField value={transaction.category} onChange={(event) => isPending ? onUpdate(cardId, transaction.id, 'category', event.target.value) : onUpdate(transaction.id, event.target.value)}>
+              {EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
             </SelectField>
 
             {isPending ? (
-              <Field
-                type="number"
-                value={transaction.amount}
-                onChange={(event) => onUpdate(cardId, transaction.id, 'amount', event.target.value)}
-                className="w-full text-left"
-              />
+              <Field type="number" value={transaction.amount} onChange={(event) => onUpdate(cardId, transaction.id, 'amount', event.target.value)} className="w-full text-left" />
             ) : (
-              <div className="px-3 py-3 text-left text-sm font-semibold text-neutral-900">
-                {formatTransactionAmount(transaction)}
-              </div>
+              <div className="px-3 py-3 text-left text-sm font-semibold text-neutral-900">{formatTransactionAmount(transaction)}</div>
             )}
 
-            <SelectField
-              value={transaction.necessity || 'מותרות'}
-              onChange={(event) =>
-                isPending
-                  ? onUpdate(cardId, transaction.id, 'necessity', event.target.value)
-                  : onUpdate(transaction.id, event.target.value)
-              }
-            >
-              {['חיוני', 'חשוב', 'מותרות'].map((item) => (
-                <option key={item}>{item}</option>
-              ))}
+            <SelectField value={transaction.necessity || 'מותרות'} onChange={(event) => isPending ? onUpdate(cardId, transaction.id, 'necessity', event.target.value) : onUpdate(transaction.id, event.target.value)}>
+              {['חיוני', 'חשוב', 'מותרות'].map((item) => <option key={item}>{item}</option>)}
             </SelectField>
 
-            <GhostButton onClick={() => onRemove(cardId, transaction.id)} className="px-0">
-              ×
-            </GhostButton>
+            <GhostButton onClick={() => onRemove(cardId, transaction.id)} className="px-0">×</GhostButton>
           </div>
         ))}
 
-        {rows.length === 0 ? (
-          <div className="p-10 text-center text-sm text-neutral-400">
-            עדיין לא העלית פירוט אשראי. העלי CSV או Excel כדי להתחיל ניתוח חכם של ההוצאות.
-          </div>
-        ) : null}
+        {rows.length === 0 ? <div className="p-10 text-center text-sm text-neutral-400">עדיין לא העלית פירוט אשראי. העלי CSV או Excel כדי להתחיל ניתוח חכם של ההוצאות.</div> : null}
       </div>
     </div>
   );
@@ -1783,6 +1733,7 @@ function CreditCardPanel(props) {
     onUpdateCategory,
     theme,
   } = props;
+
   const safeTheme = theme || THEME_STYLES.Sage;
   const pendingRows = card.pendingTransactions || [];
   const approvedRows = card.transactions || [];
@@ -1828,8 +1779,6 @@ function CreditCardPanel(props) {
     </div>
   );
 }
-
-export default function PersonalIsraeliFamilyFinanceDashboard() {
   // selectedMonth switches the active month, while globalPreferences remains shared across all months.
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthKey());
   const [months, setMonths] = useState(getInitialMonths);
