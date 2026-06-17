@@ -540,6 +540,11 @@ return {
   category: detectedCategory,
   necessity: detectNecessity(detectedCategory, merchant),
 };
+    })
+    .filter((transaction) => Math.abs(transaction.amount) > 0 && normalizeMerchantName(transaction.merchant) !== normalizeMerchantName('עסקה') && !normalizeMerchantName(transaction.merchant).includes('סך הכל'));
+}
+
+function normalizeBankRows(rows) {
       
 function normalizeBankRows(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
@@ -1779,6 +1784,8 @@ function CreditCardPanel(props) {
     </div>
   );
 }
+
+export default function PersonalIsraeliFamilyFinanceDashboard() {
   // selectedMonth switches the active month, while globalPreferences remains shared across all months.
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthKey());
   const [months, setMonths] = useState(getInitialMonths);
