@@ -1680,19 +1680,20 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
 
   return (
     <div className="mt-5 max-h-[900px] overflow-auto rounded-[24px] border border-neutral-200 bg-white">
-      <div className="min-w-[720px]">
-        <div className="md:sticky md:top-0 z-10 grid grid-cols-[110px_minmax(180px,1fr)_170px_170px_52px] bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700">
+      <div className="min-w-[860px]">
+        <div className="md:sticky md:top-0 z-10 grid grid-cols-[110px_minmax(180px,1fr)_150px_130px_160px_52px] bg-neutral-100 px-5 py-4 text-sm font-semibold text-neutral-700">
           <div>תאריך</div>
           <div>{isPending ? 'בית עסק' : 'עסקה'}</div>
           <div>{isPending ? 'קטגוריה' : 'קטגוריה לומדת'}</div>
           <div>סכום</div>
+          <div>סוג הוצאה</div>
           <div />
         </div>
 
         {rows.map((transaction) => (
           <div
             key={transaction.id}
-            className="grid grid-cols-[110px_minmax(180px,1fr)_170px_170px_52px] gap-4 border-t border-neutral-100 p-4"
+            className="grid grid-cols-[110px_minmax(180px,1fr)_150px_130px_160px_52px] gap-4 border-t border-neutral-100 p-4"
           >
             {isPending ? (
               <Field
@@ -1737,6 +1738,19 @@ function TransactionEditorTable({ rows, cardId, mode, onUpdate, onRemove }) {
                 {formatTransactionAmount(transaction)}
               </div>
             )}
+
+            <SelectField
+              value={transaction.necessity || 'מותרות'}
+              onChange={(event) =>
+                isPending
+                  ? onUpdate(cardId, transaction.id, 'necessity', event.target.value)
+                  : onUpdate(transaction.id, event.target.value)
+              }
+            >
+              {['חיוני', 'חשוב', 'מותרות'].map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </SelectField>
 
             <GhostButton onClick={() => onRemove(cardId, transaction.id)} className="px-0">
               ×
