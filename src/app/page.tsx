@@ -2501,40 +2501,79 @@ async function handleSignIn(event) {
           </div>
 
 <div className="dark-surface border-t border-neutral-100 bg-white p-4 sm:p-6" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
-  <div className="grid gap-5">
-    <div>
-      <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-400">מצב כרגע</div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <StatCard title="עו״ש נוכחי" value={SHEKEL.format(totalBankClosing)} note={`יתרה אמיתית בבנק. שינוי החודש: ${SHEKEL.format(bankBalanceChange)}`} tone={totalBankClosing >= 0 ? 'good' : 'danger'} />
-        <StatCard title="חסכונות ויעדים" value={SHEKEL.format(totalAssets - totalBankClosing)} note="חסכונות, יעדים וקרן חירום שהוזנו" tone="good" />
-        <StatCard title="שווי נטו שהוזן" value={SHEKEL.format(netWorth)} note="עו״ש + חסכונות + יעדים + קרן חירום" tone="good" />
+  <div className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr]">
+
+    <div className="rounded-[32px] border border-neutral-200 bg-neutral-50 p-6 sm:p-8">
+      <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">הבית</div>
+      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950 sm:text-5xl">
+        {remainingCashFlow >= 0 ? 'החודש אתם בפלוס' : 'החודש אתם בגירעון'}
+      </h2>
+
+      <div className={`mt-5 text-5xl font-black tracking-tight sm:text-7xl ${remainingCashFlow >= 0 ? 'text-[#6F7D65]' : 'text-red-700'}`}>
+        {SHEKEL.format(remainingCashFlow)}
+      </div>
+
+      <p className="mt-5 max-w-2xl text-sm leading-7 text-neutral-600 sm:text-base sm:leading-8">
+        {noSingleWordLine(`הכנסות: ${SHEKEL.format(totalIncome)} · הוצאות אמיתיות: ${SHEKEL.format(totalExpenses)} · חיסכון: ${SHEKEL.format(totalPlannedSavings)}`)}
+      </p>
+
+      <div className="mt-6 grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl bg-white p-4">
+          <div className="text-xs font-semibold text-neutral-400">הכנסות</div>
+          <div className="mt-2 text-xl font-semibold text-neutral-950">{SHEKEL.format(totalIncome)}</div>
+        </div>
+        <div className="rounded-2xl bg-white p-4">
+          <div className="text-xs font-semibold text-neutral-400">הוצאות</div>
+          <div className="mt-2 text-xl font-semibold text-neutral-950">{SHEKEL.format(totalExpenses)}</div>
+        </div>
+        <div className="rounded-2xl bg-white p-4">
+          <div className="text-xs font-semibold text-neutral-400">חיסכון</div>
+          <div className="mt-2 text-xl font-semibold text-neutral-950">{SHEKEL.format(totalPlannedSavings)}</div>
+        </div>
       </div>
     </div>
 
-    <div>
-      <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-400">מה קרה החודש</div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <StatCard title="הכנסות" value={SHEKEL.format(totalIncome)} note="כל מקורות ההכנסה החודש" tone="good" />
-        <StatCard title="הוצאות אמיתיות" value={SHEKEL.format(totalExpenses)} note="צריכה אמיתית בלבד, בלי העברות פנימיות" tone={(totalIncome && totalExpenses > totalIncome) ? 'danger' : 'neutral'} />
-        <StatCard
-          title="עודף / גירעון"
-          value={SHEKEL.format(remainingCashFlow)}
-          note="הכנסות פחות הוצאות אמיתיות ופחות חיסכון"
-          tone={remainingCashFlow >= 0 ? 'good' : 'danger'}
-          help="זה התזרים החודשי המחושב: הכנסות פחות הוצאות אמיתיות פחות העברות לחיסכון. אם המספר שלילי, החודש בגירעון."
-        />
+    <div className="grid gap-3">
+      <StatCard title="עו״ש נוכחי" value={SHEKEL.format(totalBankClosing)} note={`שינוי החודש: ${SHEKEL.format(bankBalanceChange)}`} tone={totalBankClosing >= 0 ? 'good' : 'danger'} />
+      <StatCard title="שווי נטו שהוזן" value={SHEKEL.format(netWorth)} note="עו״ש + חסכונות + יעדים + קרן חירום" tone="good" />
+    </div>
+
+    <div className="rounded-[28px] border border-neutral-200 bg-white p-5 lg:col-span-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">לאן הכסף הלך?</div>
+          <h3 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">קטגוריות מובילות החודש</h3>
+        </div>
+        <div className="text-sm font-semibold text-neutral-500">{SHEKEL.format(totalCreditCards)} באשראי אמיתי</div>
+      </div>
+
+      <div className="mt-5 grid gap-3">
+        {topCategories.length ? topCategories.map(([category, amount]) => {
+          const percent = totalCreditCards ? Math.round((toNumber(amount) / totalCreditCards) * 100) : 0;
+          return (
+            <div key={category} className="grid gap-2">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="font-semibold text-neutral-800">{category}</span>
+                <span className="text-neutral-500">{SHEKEL.format(amount)} · {percent}%</span>
+              </div>
+              <div className="h-3 overflow-hidden rounded-full bg-neutral-100">
+                <div className="h-full rounded-full" style={{ width: `${Math.min(100, percent)}%`, backgroundColor: activeTheme.accent }} />
+              </div>
+            </div>
+          );
+        }) : (
+          <div className="rounded-2xl bg-neutral-50 p-5 text-sm text-neutral-500">אין עדיין עסקאות אשראי אמיתיות להצגה.</div>
+        )}
       </div>
     </div>
 
-    <div>
-      <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-400">תנועות כסף פנימיות</div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <StatCard title="העברות לחיסכון" value={SHEKEL.format(totalPlannedSavings)} note="לא הוצאה, כסף שעבר לכיס אחר" tone="good" />
-        <StatCard title="ארנק מט״ח / פנימי" value={SHEKEL.format(totalInternalCreditTransfers)} note="תנועות שלא נספרות כהוצאה אמיתית" />
-        <StatCard title="אשראי אמיתי" value={SHEKEL.format(totalCreditCards)} note="עסקאות אשראי אחרי ניקוי כפילויות" />
-        <StatCard title="עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note={includeSelfEmployed ? 'כלול בתזרים המשפחתי' : 'לא כלול בתזרים'} />
+    <div className="rounded-[28px] border border-neutral-200 bg-white p-5 lg:col-span-2">
+      <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">תובנה מהירה</div>
+      <div className="mt-3 text-lg font-semibold leading-8 text-neutral-950">
+        {activeNotifications[0] || (remainingCashFlow >= 0 ? `בקצב הנוכחי נשאר לכם ${SHEKEL.format(remainingCashFlow)} אחרי הוצאות וחיסכון.` : `שימו לב: חסרים ${SHEKEL.format(Math.abs(remainingCashFlow))} כדי לסיים את החודש מאוזנים.`)}
       </div>
     </div>
+
   </div>
 </div>
         </section>
