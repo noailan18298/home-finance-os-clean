@@ -2500,22 +2500,43 @@ async function handleSignIn(event) {
             </div>
           </div>
 
-          <div className="dark-surface grid grid-cols-1 gap-3 border-t border-neutral-100 bg-white p-4 sm:gap-4 sm:p-6 md:grid-cols-2 xl:grid-cols-4" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
-            <StatCard title="סה״כ הכנסות" value={SHEKEL.format(totalIncome)} note="כל מקורות ההכנסה" tone="good" />
-            <StatCard title="עו״ש נוכחי" value={SHEKEL.format(totalBankClosing)} note={`שינוי החודש: ${SHEKEL.format(bankBalanceChange)}`} tone={totalBankClosing >= 0 ? 'good' : 'danger'} />
-            <StatCard title="סה״כ הוצאות" value={SHEKEL.format(totalExpenses)} note={effectiveBudgetTarget ? `${formatPercent(budgetUsageRate)} מתוך יעד ${modeConfig.label}` : `${totalIncome ? formatPercent((totalExpenses / totalIncome) * 100) : '0%'} מההכנסה`} tone={(effectiveBudgetTarget && totalExpenses > effectiveBudgetTarget) || (totalIncome && totalExpenses > totalIncome) ? 'danger' : budgetUsageRate >= modeConfig.budgetWarningAt ? 'warn' : 'neutral'} />
-            <StatCard title="סה״כ אשראי" value={SHEKEL.format(totalCreditCards)} note="מכרטיסי האשראי" />
-            <StatCard title="עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note={includeSelfEmployed ? 'כלול בתזרים המשפחתי' : 'לא כלול בתזרים'} />
-            <StatCard title="העברות לחיסכון" value={SHEKEL.format(totalPlannedSavings)} note="לא הוצאה, אלא העברה פנימית" tone="good" />
-            <StatCard
-  title="עודף / גירעון חודשי"
-  value={SHEKEL.format(remainingCashFlow)}
-  note="אחרי הוצאות אמיתיות והעברות לחיסכון"
-  tone={remainingCashFlow >= 0 ? 'good' : 'danger'}
-  help="הכנסות פחות הוצאות אמיתיות פחות העברות לחיסכון. אם המספר שלילי, החודש בגירעון תזרימי."
-/>
-            <StatCard title="שווי נטו שהוזן" value={SHEKEL.format(netWorth)} note={`עו״ש + חסכונות + יעדים + קרן חירום`} tone="good" />
-          </div>
+<div className="dark-surface border-t border-neutral-100 bg-white p-4 sm:p-6" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
+  <div className="grid gap-5">
+    <div>
+      <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-400">מצב כרגע</div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <StatCard title="עו״ש נוכחי" value={SHEKEL.format(totalBankClosing)} note={`יתרה אמיתית בבנק. שינוי החודש: ${SHEKEL.format(bankBalanceChange)}`} tone={totalBankClosing >= 0 ? 'good' : 'danger'} />
+        <StatCard title="חסכונות ויעדים" value={SHEKEL.format(totalAssets - totalBankClosing)} note="חסכונות, יעדים וקרן חירום שהוזנו" tone="good" />
+        <StatCard title="שווי נטו שהוזן" value={SHEKEL.format(netWorth)} note="עו״ש + חסכונות + יעדים + קרן חירום" tone="good" />
+      </div>
+    </div>
+
+    <div>
+      <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-400">מה קרה החודש</div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <StatCard title="הכנסות" value={SHEKEL.format(totalIncome)} note="כל מקורות ההכנסה החודש" tone="good" />
+        <StatCard title="הוצאות אמיתיות" value={SHEKEL.format(totalExpenses)} note="צריכה אמיתית בלבד, בלי העברות פנימיות" tone={(totalIncome && totalExpenses > totalIncome) ? 'danger' : 'neutral'} />
+        <StatCard
+          title="עודף / גירעון"
+          value={SHEKEL.format(remainingCashFlow)}
+          note="הכנסות פחות הוצאות אמיתיות ופחות חיסכון"
+          tone={remainingCashFlow >= 0 ? 'good' : 'danger'}
+          help="זה התזרים החודשי המחושב: הכנסות פחות הוצאות אמיתיות פחות העברות לחיסכון. אם המספר שלילי, החודש בגירעון."
+        />
+      </div>
+    </div>
+
+    <div>
+      <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-400">תנועות כסף פנימיות</div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <StatCard title="העברות לחיסכון" value={SHEKEL.format(totalPlannedSavings)} note="לא הוצאה, כסף שעבר לכיס אחר" tone="good" />
+        <StatCard title="ארנק מט״ח / פנימי" value={SHEKEL.format(totalInternalCreditTransfers)} note="תנועות שלא נספרות כהוצאה אמיתית" />
+        <StatCard title="אשראי אמיתי" value={SHEKEL.format(totalCreditCards)} note="עסקאות אשראי אחרי ניקוי כפילויות" />
+        <StatCard title="עצמאי" value={SHEKEL.format(totalSelfEmployedPayments)} note={includeSelfEmployed ? 'כלול בתזרים המשפחתי' : 'לא כלול בתזרים'} />
+      </div>
+    </div>
+  </div>
+</div>
         </section>
 
         {activeTab === 'dashboard' ? (
