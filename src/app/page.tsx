@@ -836,30 +836,42 @@ function detectRecurringTransactions(transactions, historicalMonths = {}, select
 function getMonthTotals(data) {
   const safeData = normalizeMonthData(data);
   const includeSelfEmployed = Boolean(safeData.preferences.includeSelfEmployed);
+
   const income = safeData.incomes.reduce((sum, item) => sum + toNumber(item.amount), 0);
   const credit = safeData.creditCards.reduce((sum, card) => sum + (card.transactions || []).reduce((inner, item) => inner + toNumber(item.amount), 0), 0);
   const manual = safeData.manualExpenses.reduce((sum, item) => sum + toNumber(item.amount), 0);
+
   const savingsProducts = safeData.savingsProducts.reduce((sum, item) => sum + toNumber(item.monthlyDeposit), 0);
   const savingGoals = safeData.savingGoals.reduce((sum, item) => sum + toNumber(item.monthlyDeposit), 0);
+
   const selfEmployedVatDue = Math.max(0, toNumber(safeData.selfEmployed.vatCollected) - toNumber(safeData.selfEmployed.vatPaidOnExpenses));
   const selfEmployedRaw = selfEmployedVatDue + toNumber(safeData.selfEmployed.incomeTaxAdvance) + toNumber(safeData.selfEmployed.nationalInsurance) + toNumber(safeData.selfEmployed.businessExpenses);
   const selfEmployed = includeSelfEmployed ? selfEmployedRaw : 0;
-const savingsTransfers = savingsProducts + savingGoals;
-const realExpenses = credit + manual + selfEmployed;
-const remainingCashFlow = income - realExpenses - savingsTransfers;
-const savingsRate = income ? (savingsTransfers / income) * 100 : 0;
 
-return {
-  income,
-  credit,
-  manual,
-  savings: savingsTransfers,
-  selfEmployed,
-  selfEmployedRaw,
-  expenses: realExpenses,
-  net: remainingCashFlow,
-  savingsRate,
-};
+  const savingsTransfers = savingsProducts + savingGoals;
+  const realExpenses = credit + manual + selfEmployed;
+
+  const balanceAfterExpenses = income - realExpenses;
+  const availableAfterSavings = balanceAfterExpenses - savingsTransfers;
+  const savingsRate = income ? (savingsTransfers / income) * 100 : 0;
+
+  return {
+    income,
+    credit,
+    manual,
+    savings: savingsTransfers,
+    selfEmployed,
+    selfEmployedRaw,
+    expenses: realExpenses,
+
+    // זה המספר הנכון ל"פלוס / מינוס אחרי הוצאות"
+    net: balanceAfterExpenses,
+
+    // זה הכסף הפנוי אחרי שגם שמנו כסף בצד
+    availableAfterSavings,
+
+    savingsRate,
+  };
 }
 
 function getPreviousMonthKey(monthKey) {
