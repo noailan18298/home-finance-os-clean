@@ -25,12 +25,12 @@ const COMPARE_PERIODS = [
 ];
 
 const TABS = [
-  { id: 'dashboard', label: '🏠 הבית' },
-  { id: 'credit', label: '💳 תנועות' },
-  { id: 'insights', label: '📊 תקציב' },
-  { id: 'savings', label: '🎯 יעדים' },
-  { id: 'income', label: '📈 נכסים' },
-  { id: 'settings', label: '⚙️ הגדרות' },
+  { id: 'dashboard', label: 'הבית' },
+  { id: 'credit', label: 'תנועות' },
+  { id: 'insights', label: 'תקציב' },
+  { id: 'savings', label: 'יעדים' },
+  { id: 'income', label: 'נכסים' },
+  { id: 'settings', label: 'הגדרות' },
 ];
 
 const THEME_STYLES = {
@@ -2281,10 +2281,10 @@ const emergencyMonths = toNumber(monthData.emergencyFund) / (totalExpenses || 1)
   const projectedMonthEndBalance = totalIncome - projectedMonthEndExpenses;
   const projectedSavings = Math.max(0, Math.min(totalPlannedSavings, balanceAfterExpenses));
   const financialStatus = projectedMonthEndBalance >= 0 && spendingProgressPercent <= monthProgressPercent + 10
-    ? { icon: '🟢', label: 'מצוין', note: 'הסיכון לחריגה החודש נמוך' }
+    ? { label: 'מצוין', note: 'הסיכון לחריגה החודש נמוך' }
     : projectedMonthEndBalance >= 0
-      ? { icon: '🟠', label: 'לשים לב', note: `קצב ההוצאות גבוה ב־${Math.max(0, spendingProgressPercent - monthProgressPercent)}%` }
-      : { icon: '🔴', label: 'בסיכון', note: `בקצב הנוכחי חסרים ${SHEKEL.format(Math.abs(projectedMonthEndBalance))}` };
+      ? { label: 'לשים לב', note: `קצב ההוצאות גבוה ב־${Math.max(0, spendingProgressPercent - monthProgressPercent)}%` }
+      : { label: 'בסיכון', note: `בקצב הנוכחי חסרים ${SHEKEL.format(Math.abs(projectedMonthEndBalance))}` };
   const recentTransactions = useMemo(() => realCreditTransactions
     .slice()
     .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
@@ -2509,11 +2509,11 @@ async function handleSignIn(event) {
       <details className="fixed bottom-5 left-5 z-50 group">
         <summary className="flex h-14 w-14 cursor-pointer list-none items-center justify-center rounded-full text-3xl font-semibold text-white shadow-lg" style={{ backgroundColor: activeTheme.accent }}>+</summary>
         <div className="absolute bottom-16 left-0 grid min-w-[210px] gap-2 rounded-2xl border border-neutral-200 bg-white p-3 shadow-lg">
-          <button type="button" onClick={() => { addManualExpense(); setActiveTab('credit'); }} className="rounded-xl px-3 py-2 text-right text-sm font-semibold text-neutral-700 hover:bg-neutral-50">➕ הוצאה</button>
-          <button type="button" onClick={() => { addIncome(); setActiveTab('income'); }} className="rounded-xl px-3 py-2 text-right text-sm font-semibold text-neutral-700 hover:bg-neutral-50">💰 הכנסה</button>
-          <button type="button" onClick={() => setActiveTab('credit')} className="rounded-xl px-3 py-2 text-right text-sm font-semibold text-neutral-700 hover:bg-neutral-50">🔄 העברה</button>
-          <button type="button" onClick={() => { addSavingGoal(); setActiveTab('savings'); }} className="rounded-xl px-3 py-2 text-right text-sm font-semibold text-neutral-700 hover:bg-neutral-50">🎯 יעד חדש</button>
-          <button type="button" onClick={() => setActiveTab('credit')} className="rounded-xl px-3 py-2 text-right text-sm font-semibold text-neutral-700 hover:bg-neutral-50">📄 העלאת קובץ אשראי</button>
+          <button type="button" onClick={() => { addManualExpense(); setActiveTab('credit'); }} className="rounded-xl px-3 py-2 text-right text-sm font-semibold text-neutral-700 hover:bg-neutral-50">הוצאה</button>
+          <button type="button" onClick={() => { addIncome(); setActiveTab('income'); }} className="rounded-xl px-3 py-2 text-right text-sm font-semibold text-neutral-700 hover:bg-neutral-50">הכנסה</button>
+          <button type="button" onClick={() => setActiveTab('credit')} className="rounded-xl px-3 py-2 text-right text-sm font-semibold text-neutral-700 hover:bg-neutral-50">העברה</button>
+          <button type="button" onClick={() => { addSavingGoal(); setActiveTab('savings'); }} className="rounded-xl px-3 py-2 text-right text-sm font-semibold text-neutral-700 hover:bg-neutral-50">יעד חדש</button>
+          <button type="button" onClick={() => setActiveTab('credit')} className="rounded-xl px-3 py-2 text-right text-sm font-semibold text-neutral-700 hover:bg-neutral-50">העלאת קובץ אשראי</button>
         </div>
       </details>
 
@@ -2538,6 +2538,7 @@ async function handleSignIn(event) {
           </div>
         </div>
 
+        {activeTab === 'dashboard' ? (
         <section className="hero-banner overflow-hidden rounded-[24px] border border-neutral-200 bg-white shadow-sm sm:rounded-3xl" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
           <div className={`p-5 sm:p-8 ${isDark ? 'text-white' : 'text-neutral-950'}`} style={isDark ? { backgroundColor: '#151515' } : undefined}>
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -2560,14 +2561,13 @@ async function handleSignIn(event) {
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-neutral-600">
-            <span>{financialStatus.icon}</span>
             <span>{financialStatus.label}</span>
             <span className="text-neutral-300">|</span>
             <span>{financialStatus.note}</span>
           </div>
 
           <h2 className="mt-5 text-3xl font-semibold leading-tight tracking-tight text-neutral-950 sm:text-5xl">
-            שלום {preferences.primaryPerson || 'נועה'} ו{preferences.secondaryPerson || 'אורן'} 👋
+            שלום {preferences.primaryPerson || 'נועה'} ו{preferences.secondaryPerson || 'אורן'}
           </h2>
           <div className="mt-3 text-2xl font-semibold tracking-tight text-neutral-950 sm:text-4xl">
             {projectedMonthEndBalance >= 0 ? 'החודש אתם במצב טוב' : 'החודש דורש תשומת לב'}
@@ -2583,15 +2583,15 @@ async function handleSignIn(event) {
 
         <div className="grid min-w-[260px] gap-3 rounded-[28px] bg-white p-5">
           <div className="flex items-center justify-between gap-4 text-sm font-semibold text-neutral-600">
-            <span>🟢 תחזית סוף חודש</span>
+            <span>תחזית סוף חודש</span>
             <span className={projectedMonthEndBalance >= 0 ? 'text-[#6F7D65]' : 'text-red-700'}>{SHEKEL.format(projectedMonthEndBalance)}</span>
           </div>
           <div className="flex items-center justify-between gap-4 text-sm font-semibold text-neutral-600">
-            <span>💰 חיסכון צפוי</span>
+            <span>חיסכון צפוי</span>
             <span>{SHEKEL.format(projectedSavings)}</span>
           </div>
           <div className="flex items-center justify-between gap-4 text-sm font-semibold text-neutral-600">
-            <span>📅 ימים שנותרו</span>
+            <span>ימים שנותרו</span>
             <span>{daysLeftInMonth}</span>
           </div>
         </div>
@@ -2599,15 +2599,15 @@ async function handleSignIn(event) {
 
       <div className="mt-7 grid gap-3 md:grid-cols-3">
         <div className="rounded-2xl bg-white p-4">
-          <div className="text-xs font-semibold text-neutral-400">💰 הכנסות</div>
+          <div className="text-xs font-semibold text-neutral-400">הכנסות</div>
           <div className="mt-2 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalIncome)}</div>
         </div>
         <div className="rounded-2xl bg-white p-4">
-          <div className="text-xs font-semibold text-neutral-400">💸 הוצאות</div>
+          <div className="text-xs font-semibold text-neutral-400">הוצאות</div>
           <div className="mt-2 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalExpenses)}</div>
         </div>
         <div className="rounded-2xl bg-white p-4">
-          <div className="text-xs font-semibold text-neutral-400">🏦 יתרה פנויה</div>
+          <div className="text-xs font-semibold text-neutral-400">יתרה פנויה</div>
           <div className="mt-2 text-2xl font-semibold text-neutral-950">{SHEKEL.format(availableAfterSavings)}</div>
         </div>
       </div>
@@ -2664,7 +2664,7 @@ async function handleSignIn(event) {
       <div className="grid gap-5">
         <div className="rounded-[28px] border border-neutral-200 bg-white p-5">
           <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">התובנה של היום</div>
-          <div className="mt-3 text-lg font-semibold leading-8 text-neutral-950">💡 {dailyInsight}</div>
+          <div className="mt-3 text-lg font-semibold leading-8 text-neutral-950">{dailyInsight}</div>
         </div>
 
         <div className="rounded-[28px] border border-neutral-200 bg-white p-5">
@@ -2673,7 +2673,7 @@ async function handleSignIn(event) {
             {anomalyTransactions.length ? anomalyTransactions.map((transaction, index) => (
               <div key={transaction.id} className="flex items-center justify-between gap-4 rounded-2xl bg-neutral-50 p-4">
                 <div>
-                  <div className="text-sm font-semibold text-neutral-900">{index === 0 ? '🔴' : '🟠'} {transaction.merchant}</div>
+                  <div className="text-sm font-semibold text-neutral-900">{transaction.merchant}</div>
                   <div className="mt-1 text-xs text-neutral-500">עסקה גדולה יחסית החודש</div>
                 </div>
                 <div className="text-sm font-semibold text-neutral-900">{SHEKEL.format(transaction.amount)}</div>
@@ -2694,7 +2694,7 @@ async function handleSignIn(event) {
             const monthsLeft = toNumber(goal.monthlyDeposit) ? Math.ceil(remaining / toNumber(goal.monthlyDeposit)) : null;
             return (
               <div key={goal.id} className="rounded-2xl bg-neutral-50 p-4">
-                <div className="text-sm font-semibold text-neutral-950">🎯 {goal.name}</div>
+                <div className="text-sm font-semibold text-neutral-950">{goal.name}</div>
                 <div className="mt-3 text-2xl font-semibold text-neutral-950">{progress}%</div>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
                   <div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: activeTheme.accent }} />
@@ -2732,6 +2732,7 @@ async function handleSignIn(event) {
   </div>
 </div>
         </section>
+        ) : null}
 
         {activeTab === 'dashboard' ? (
           <>
@@ -2743,7 +2744,7 @@ async function handleSignIn(event) {
                       {activeNotifications.map((notification) => (
                         <div key={notification} className="rounded-[24px] border border-amber-200 bg-gradient-to-br from-amber-50 to-white px-5 py-5 shadow-sm">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">⚠</div>
+                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700"></div>
                             <div>
                               <div className="text-xs font-semibold uppercase tracking-widest text-amber-500">Smart Notification</div>
                               <div className="mt-1 text-sm font-semibold leading-6 text-amber-900 no-orphans">{noSingleWordLine(notification)}</div>
