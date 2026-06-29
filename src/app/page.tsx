@@ -2289,6 +2289,48 @@ const emergencyMonths = toNumber(monthData.emergencyFund) / (totalExpenses || 1)
     .slice()
     .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
     .slice(0, 5), [realCreditTransactions]);
+  const unifiedTransactions = useMemo(() => {
+    const creditRows = realCreditTransactions.map((transaction) => ({
+      id: `credit-${transaction.id}`,
+      rawId: transaction.id,
+      date: transaction.date || '',
+      title: transaction.merchant || 'עסקת אשראי',
+      category: transaction.category || 'אחר',
+      amount: toNumber(transaction.amount),
+      source: 'אשראי',
+      kind: toNumber(transaction.amount) < 0 ? 'זיכוי' : 'הוצאה',
+      canEditCategory: true,
+    }));
+
+    const bankRows = allBankTransactions.map((transaction) => ({
+      id: `bank-${transaction.id}`,
+      rawId: transaction.id,
+      date: transaction.date || '',
+      title: transaction.description || 'תנועה בעו״ש',
+      category: toNumber(transaction.amount) >= 0 ? 'הכנסה / הפקדה' : 'תזרים עו״ש',
+      amount: toNumber(transaction.amount),
+      source: 'עו״ש',
+      kind: toNumber(transaction.amount) >= 0 ? 'כניסה' : 'יציאה',
+      canEditCategory: false,
+    }));
+
+    const manualRows = monthData.manualExpenses
+      .filter((expense) => Math.abs(toNumber(expense.amount)) > 0)
+      .map((expense) => ({
+        id: `manual-${expense.id}`,
+        rawId: expense.id,
+        date: selectedMonth,
+        title: expense.category || 'הוצאה ידנית',
+        category: expense.type || 'ידנית',
+        amount: toNumber(expense.amount),
+        source: 'ידני',
+        kind: 'הוצאה',
+        canEditCategory: false,
+      }));
+
+    return [...creditRows, ...bankRows, ...manualRows]
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  }, [realCreditTransactions, allBankTransactions, monthData.manualExpenses, selectedMonth]);
   const anomalyTransactions = useMemo(() => realCreditTransactions
     .filter((transaction) => toNumber(transaction.amount) >= Math.max(350, totalCreditCards * 0.12))
     .sort((a, b) => toNumber(b.amount) - toNumber(a.amount))
@@ -2296,13 +2338,13 @@ const emergencyMonths = toNumber(monthData.emergencyFund) / (totalExpenses || 1)
   const goalCards = monthData.savingGoals.slice(0, 3);
   const filteredTransactions = useMemo(() => {
     const normalizedSearch = normalizeMerchantName(searchTerm);
-    return realCreditTransactions.filter((transaction) => {
-      const merchantMatch = normalizeMerchantName(transaction.merchant).includes(normalizedSearch);
+    return unifiedTransactions.filter((transaction) => {
+      const textMatch = normalizeMerchantName(`${transaction.title} ${transaction.category} ${transaction.source}`).includes(normalizedSearch);
       const categoryMatch = categoryFilter === 'הכול' || transaction.category === categoryFilter;
-      const amount = toNumber(transaction.amount);
-      return merchantMatch && categoryMatch && (minAmount === '' || amount >= toNumber(minAmount)) && (maxAmount === '' || amount <= toNumber(maxAmount));
+      const amount = Math.abs(toNumber(transaction.amount));
+      return textMatch && categoryMatch && (minAmount === '' || amount >= toNumber(minAmount)) && (maxAmount === '' || amount <= toNumber(maxAmount));
     });
-  }, [allCreditTransactions, searchTerm, categoryFilter, minAmount, maxAmount]);
+  }, [unifiedTransactions, searchTerm, categoryFilter, minAmount, maxAmount]);
 
   const financialHealthScore = calculateFinancialHealthScore(allCreditTransactions, modeConfig) || 0;
   const monthlyBudgetTarget = toNumber(preferences.monthlyBudgetTarget);
@@ -2942,11 +2984,108 @@ async function handleSignIn(event) {
         {activeTab === 'credit' ? (
           <>
             <Section>
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div><h2 className="text-3xl font-semibold tracking-tight text-neutral-950">סיכום כרטיסי אשראי</h2><p className="mt-2 text-sm text-neutral-500">כאן מעלים CSV/Excel לכל כרטיס, בודקים קטגוריות, ואז מאשרים הכנסה להוצאות.</p></div>
-                <PrimaryButton theme={activeTheme} onClick={addCreditCard}>+ הוספת כרטיס</PrimaryButton>
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">תנועות</div>
+                  <h2 className="mt-2 text-3xl font-semibold tracking-tight text-neutral-950">כל התנועות במקום אחד</h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-7 text-neutral-500">
+                    כאן רואים עו״ש, אשראי והוצאות ידניות יחד. אשראי מציג צריכה אמיתית, עו״ש מציג תזרים, והעברות פנימיות נשארות מסומנות בלי להתערבב בהוצאות.
+                  </p>
+                </div>
+                <div className="grid gap-2 md:min-w-[220px]">
+                  <PrimaryButton theme={activeTheme} onClick={addManualExpense}>הוספת הוצאה ידנית</PrimaryButton>
+                  <GhostButton onClick={addCreditCard}>הוספת כרטיס אשראי</GhostButton>
+                </div>
               </div>
-              <div className="mt-7 grid gap-8 xl:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 md:grid-cols-1 grid-cols-1 grid-cols-1 md:grid-cols-2">
+
+              <div className="mt-7 grid gap-3 md:grid-cols-4">
+                <div className="rounded-[22px] border border-neutral-200 bg-neutral-50 p-4">
+                  <div className="text-xs font-semibold text-neutral-400">סה״כ תנועות</div>
+                  <div className="mt-2 text-2xl font-semibold text-neutral-950">{unifiedTransactions.length}</div>
+                </div>
+                <div className="rounded-[22px] border border-neutral-200 bg-neutral-50 p-4">
+                  <div className="text-xs font-semibold text-neutral-400">אשראי אמיתי</div>
+                  <div className="mt-2 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalCreditCards)}</div>
+                </div>
+                <div className="rounded-[22px] border border-neutral-200 bg-neutral-50 p-4">
+                  <div className="text-xs font-semibold text-neutral-400">יציאות עו״ש</div>
+                  <div className="mt-2 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankWithdrawals)}</div>
+                </div>
+                <div className="rounded-[22px] border border-neutral-200 bg-neutral-50 p-4">
+                  <div className="text-xs font-semibold text-neutral-400">כניסות עו״ש</div>
+                  <div className="mt-2 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankDeposits)}</div>
+                </div>
+              </div>
+            </Section>
+
+            <Section>
+              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-tight text-neutral-950">חיפוש וסינון תנועות</h2>
+                  <p className="mt-2 text-sm text-neutral-500">חיפוש עובד על בית עסק, פירוט עו״ש, קטגוריה ומקור התנועה.</p>
+                </div>
+                <div className="text-sm font-semibold text-neutral-500">מוצגות {filteredTransactions.length} מתוך {unifiedTransactions.length}</div>
+              </div>
+              <div className="mt-5 grid gap-3 md:grid-cols-[1fr_180px_140px_140px]">
+                <Field value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="חיפוש תנועה, למשל וולט / שופרסל / משכורת" />
+                <SelectField value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                  <option>הכול</option>
+                  {EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+                  <option>הכנסה / הפקדה</option>
+                  <option>תזרים עו״ש</option>
+                  <option>ידנית</option>
+                </SelectField>
+                <Field value={minAmount} onChange={(event) => setMinAmount(event.target.value)} type="number" placeholder="מינימום" />
+                <Field value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} type="number" placeholder="מקסימום" />
+              </div>
+            </Section>
+
+            <Section>
+              <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">טבלת תנועות מאוחדת</h2>
+              <div className="mt-6 overflow-x-auto rounded-[24px] border border-neutral-200 bg-white">
+                <div className="min-w-[980px]">
+                  <div className="grid grid-cols-[120px_110px_minmax(240px,1fr)_190px_130px_110px] bg-neutral-100 px-6 py-4 text-sm font-semibold text-neutral-700">
+                    <div>תאריך</div>
+                    <div>מקור</div>
+                    <div>פירוט</div>
+                    <div>קטגוריה</div>
+                    <div>סכום</div>
+                    <div>סוג</div>
+                  </div>
+                  {filteredTransactions.map((transaction) => (
+                    <div key={transaction.id} className="grid grid-cols-[120px_110px_minmax(240px,1fr)_190px_130px_110px] gap-4 border-t border-neutral-100 px-6 py-4 text-sm">
+                      <div className="text-neutral-500">{transaction.date || '—'}</div>
+                      <div className="font-semibold text-neutral-700">{transaction.source}</div>
+                      <div className="font-semibold text-neutral-950">{transaction.title}</div>
+                      <div>
+                        {transaction.canEditCategory ? (
+                          <SelectField value={transaction.category} onChange={(event) => updateTransactionCategory(transaction.rawId, event.target.value)} className="w-full">
+                            {EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+                          </SelectField>
+                        ) : (
+                          <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600">{transaction.category}</span>
+                        )}
+                      </div>
+                      <div className={`font-semibold ${toNumber(transaction.amount) < 0 ? 'text-[#6F7D65]' : 'text-neutral-950'}`}>
+                        {SHEKEL.format(transaction.amount)}
+                      </div>
+                      <div className="text-neutral-500">{transaction.kind}</div>
+                    </div>
+                  ))}
+                  {filteredTransactions.length === 0 ? <div className="p-16 text-center text-neutral-400">לא נמצאו תנועות לפי החיפוש והפילטרים שבחרתם.</div> : null}
+                </div>
+              </div>
+            </Section>
+
+            <Section>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">ניהול כרטיסי אשראי</h2>
+                  <p className="mt-2 text-sm text-neutral-500">העלאת CSV/Excel, בדיקת קטגוריות ואישור עסקאות.</p>
+                </div>
+                <PrimaryButton theme={activeTheme} onClick={addCreditCard}>הוספת כרטיס</PrimaryButton>
+              </div>
+              <div className="mt-7 grid gap-8 md:grid-cols-2">
                 {monthData.creditCards.map((card) => {
                   const cardTotal = (card.transactions || []).reduce((sum, item) => sum + toNumber(item.amount), 0);
                   return (
@@ -2976,7 +3115,7 @@ async function handleSignIn(event) {
                   <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">הוצאות ידניות</h2>
                   <p className="mt-2 text-sm text-neutral-500">הוצאות שלא נכנסות מכרטיסי האשראי ונחשבות יחד עם ההוצאות החודשיות.</p>
                 </div>
-                <PrimaryButton theme={activeTheme} onClick={addManualExpense}>+ הוספת הוצאה</PrimaryButton>
+                <PrimaryButton theme={activeTheme} onClick={addManualExpense}>הוספת הוצאה</PrimaryButton>
               </div>
               <div className="mt-7 overflow-x-auto rounded-[24px] border border-neutral-200 bg-white">
                 <div className="min-w-[720px]">
@@ -2989,28 +3128,6 @@ async function handleSignIn(event) {
                       <GhostButton onClick={() => removeRow('manualExpenses', expense.id)} className="px-0">×</GhostButton>
                     </div>
                   ))}
-                </div>
-              </div>
-            </Section>
-
-            <Section>
-              <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">כל עסקאות האשראי המסוננות</h2>
-              <div className="mt-6 overflow-x-auto rounded-[24px] border border-neutral-200 bg-white">
-                <div className="min-w-[860px]">
-                  <div className="grid grid-cols-[110px_1fr_170px_120px_90px] bg-neutral-100 px-6 py-4 text-sm font-semibold text-neutral-700"><div>תאריך</div><div>בית עסק</div><div>קטגוריה לומדת</div><div>סכום</div><div>זיהוי</div></div>
-                  {filteredTransactions.map((transaction) => {
-                    const isRecurring = recurringTransactions.some((item) => item.id === transaction.id);
-                    return (
-                      <div key={transaction.id} className="grid grid-cols-[110px_1fr_170px_120px_90px] gap-4 border-t border-neutral-100 px-6 py-4">
-                        <div>{transaction.date}</div>
-                        <div>{transaction.merchant}</div>
-                        <SelectField value={transaction.category} onChange={(event) => updateTransactionCategory(transaction.id, event.target.value)}>{EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</SelectField>
-                        <div className="font-semibold">{SHEKEL.format(transaction.amount)}</div>
-                        <div>{isRecurring ? 'חוזר קבוע' : '—'}</div>
-                      </div>
-                    );
-                  })}
-                  {filteredTransactions.length === 0 ? <div className="p-16 text-center text-neutral-400">לא נמצאו עסקאות לפי החיפוש והפילטרים שבחרתם.</div> : null}
                 </div>
               </div>
             </Section>
