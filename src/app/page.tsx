@@ -2390,7 +2390,7 @@ const emergencyMonths = toNumber(monthData.emergencyFund) / (totalExpenses || 1)
     || 'ברגע שתזינו הוצאות והכנסות, תופיע כאן תובנה יומית חכמה.';
 
   const monthlyStory = totalIncome
-  ? `במצב ${modeConfig.label}, ההוצאות האמיתיות החודש הן ${SHEKEL.format(totalExpenses)}, והועברו לחיסכון ${SHEKEL.format(totalPlannedSavings)}. העו״ש הנוכחי הוא נתון אמיתי שהוזן ידנית או הגיע מהבנק. אחרי הוצאות והעברות לחיסכון נשאר תזרים חודשי של ${SHEKEL.format(remainingCashFlow)}. שיעור החיסכון הוא ${formatPercent(savingsRate)} מתוך יעד של ${formatPercent(targetSavingsRate)}.`
+  ? `במצב ${modeConfig.label}, ההוצאות האמיתיות החודש הן ${SHEKEL.format(totalExpenses)}, והועברו לחיסכון ${SHEKEL.format(totalPlannedSavings)}. העו״ש הנוכחי הוא נתון אמיתי שהוזן ידנית או הגיע מהבנק. אחרי הוצאות בלבד נשאר ${SHEKEL.format(balanceAfterExpenses)}. אחרי החיסכון נשאר פנוי ${SHEKEL.format(availableAfterSavings)}. שיעור החיסכון הוא ${formatPercent(savingsRate)} מתוך יעד של ${formatPercent(targetSavingsRate)}.`
   : `מצב ${modeConfig.label} פעיל. התחילו להזין הכנסות, הוצאות, עו״ש וחסכונות כדי להבין את המצב הפיננסי האמיתי.`;
   
   const monthlyCompareStory = monthlyCompare.hasPrevious
@@ -2616,7 +2616,7 @@ async function handleSignIn(event) {
                 </div>
               </div>
 
-              <div className="mt-8 grid gap-3 md:grid-cols-4">
+              <div className="mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                 <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
                   <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">הכנסות</div>
                   <div className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">{SHEKEL.format(totalIncome)}</div>
@@ -2625,13 +2625,20 @@ async function handleSignIn(event) {
                   <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">הוצאות</div>
                   <div className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">{SHEKEL.format(totalExpenses)}</div>
                 </div>
+                <div className={`rounded-[24px] border p-5 ${balanceAfterExpenses >= 0 ? 'border-[#D6DDCF] bg-[#F4F6F1]' : 'border-red-200 bg-red-50'}`}>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">עודף / גירעון לפני חיסכון</div>
+                  <div className={`mt-3 text-3xl font-semibold tracking-tight ${balanceAfterExpenses >= 0 ? 'text-[#66725E]' : 'text-red-700'}`}>{SHEKEL.format(balanceAfterExpenses)}</div>
+                  <div className="mt-2 text-xs leading-5 text-neutral-500">הכנסות פחות הוצאות אמיתיות בלבד</div>
+                </div>
                 <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
                   <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">נחסך החודש</div>
                   <div className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">{SHEKEL.format(totalPlannedSavings)}</div>
+                  <div className="mt-2 text-xs leading-5 text-neutral-500">כסף שנשאר אצלכם ועבר הצידה</div>
                 </div>
-                <div className={`rounded-[24px] border p-5 ${availableAfterSavings >= 0 ? 'border-[#D6DDCF] bg-[#F4F6F1]' : 'border-red-200 bg-red-50'}`}>
-                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">עודף חודשי אחרי חיסכון</div>
-                  <div className={`mt-3 text-3xl font-semibold tracking-tight ${availableAfterSavings >= 0 ? 'text-[#66725E]' : 'text-red-700'}`}>{SHEKEL.format(availableAfterSavings)}</div>
+                <div className={`rounded-[24px] border p-5 ${availableAfterSavings >= 0 ? 'border-neutral-200 bg-neutral-50' : 'border-red-200 bg-red-50'}`}>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">פנוי אחרי חיסכון</div>
+                  <div className={`mt-3 text-3xl font-semibold tracking-tight ${availableAfterSavings >= 0 ? 'text-neutral-950' : 'text-red-700'}`}>{SHEKEL.format(availableAfterSavings)}</div>
+                  <div className="mt-2 text-xs leading-5 text-neutral-500">עודף / גירעון אחרי שהזזתם כסף לחיסכון</div>
                 </div>
               </div>
             </Section>
