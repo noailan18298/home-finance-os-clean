@@ -1527,9 +1527,9 @@ function runSmokeTests() {
   console.assert(getCompareMonthKeys({ '2026-01': {}, '2026-02': {}, '2026-03': {}, '2026-04': {} }, '2026-04', 'quarter').length === 3, 'quarter compare failed');
   console.assert(getMonthlyCompare({ '2026-01': createDefaultMonth(), '2026-02': createDefaultMonth(), '2026-03': createDefaultMonth() }, '2026-03', 'all').compareMonthKeys.length === 2, 'all period compare failed');
   console.assert(parseExcelArrayBuffer instanceof Function, 'excel parser exists');
-  console.assert(TABS[1].id === 'income', 'income tab should be second');
+  console.assert(TABS[1].id === 'credit', 'transactions tab should be second');
   console.assert(getCurrentMonthKey().length === 7 && getCurrentMonthKey().includes('-'), 'current month key failed');
-  console.assert(TABS.some((tab) => tab.id === 'insights' && tab.label === 'תובנות חכמות'), 'smart insights tab label failed');
+  console.assert(TABS.some((tab) => tab.id === 'insights' && tab.label === 'תקציב'), 'budget tab label failed');
   console.assert(normalizePreferences({ showTrendChart: false }).showTrendChart === false, 'preferences override failed');
   console.assert(normalizePreferences({}).householdProfileId === DEFAULT_SUPABASE_PROFILE_ID, 'household profile default failed');
   console.assert(getSafeTheme('Missing').accent === THEME_STYLES.Sage.accent, 'theme fallback failed');
@@ -2289,6 +2289,13 @@ const emergencyMonths = toNumber(monthData.emergencyFund) / (totalExpenses || 1)
     .slice()
     .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
     .slice(0, 5), [realCreditTransactions]);
+  const biggestTransactions = useMemo(() => realCreditTransactions
+    .slice()
+    .sort((a, b) => Math.abs(toNumber(b.amount)) - Math.abs(toNumber(a.amount)))
+    .slice(0, 5), [realCreditTransactions]);
+  const dataUpdatedLabel = monthData.attachedDocuments?.length || monthData.creditCards.some((card) => card.importedFile) || monthData.bankAccounts.some((account) => account.importedFile) || monthData.lastSalaryImport
+    ? 'מבוסס על הקבצים והנתונים האחרונים שהועלו'
+    : 'ממתין לנתונים חודשיים';
   const unifiedTransactions = useMemo(() => {
     const creditRows = realCreditTransactions.map((transaction) => ({
       id: `credit-${transaction.id}`,
@@ -2581,403 +2588,205 @@ async function handleSignIn(event) {
         </div>
 
         {activeTab === 'dashboard' ? (
-        <section className="hero-banner overflow-hidden rounded-[24px] border border-neutral-200 bg-white shadow-sm sm:rounded-3xl" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
-          <div className={`p-5 sm:p-8 ${isDark ? 'text-white' : 'text-neutral-950'}`} style={isDark ? { backgroundColor: '#151515' } : undefined}>
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <input value={monthData.dashboardTitle} onChange={(event) => updateMonthField('dashboardTitle', event.target.value)} className="w-full max-w-3xl rounded-xl border border-transparent bg-transparent px-0 py-1 text-3xl font-semibold leading-tight tracking-tight text-neutral-950 outline-none transition placeholder:text-neutral-400 sm:py-2 sm:text-4xl md:text-5xl" placeholder="שם הדשבורד המשפחתי" />
-                <p className="mt-3 max-w-4xl text-sm leading-7 text-neutral-500 no-orphans no-single-word-lines sm:mt-4 sm:text-base sm:leading-8">{noSingleWordLine('ממלאים הכנסות, הוצאות, אשראי, עצמאי, קרנות ויעדים. המערכת מחשבת תזרים, חיסכון ותובנות אמיתיות.')}</p>
-                <div className="mt-4 inline-flex max-w-full rounded-full px-3 py-2 text-xs font-semibold leading-6 no-orphans sm:px-4 sm:text-sm" style={{ backgroundColor: activeTheme.soft, color: activeTheme.text }}>{noSingleWordLine(`${modeInsight[preferences.financialMode] || modeInsight.Stable} יעד חיסכון: ${formatPercent(targetSavingsRate)} | התראה ב־${modeConfig.budgetWarningAt}%`)}</div>
-                <div className="mt-3 inline-flex max-w-full rounded-full border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium leading-6 text-neutral-600 no-orphans sm:mt-5 sm:px-4 sm:text-sm">{noSingleWordLine(cloudStatus)}</div>
-              </div>
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
-                <label className="text-xs font-semibold uppercase tracking-widest text-neutral-400">חודש</label>
-                <input type="month" value={selectedMonth} onChange={(event) => ensureMonth(event.target.value)} className="mt-2 w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-lg font-semibold text-neutral-900 outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-100" />
-              </div>
-            </div>
-          </div>
-
-<div className="dark-surface border-t border-neutral-100 bg-white p-4 sm:p-6" style={isDark ? { backgroundColor: '#151515', borderColor: '#333333' } : undefined}>
-  <div className="grid gap-5">
-    <div className="rounded-[34px] border border-neutral-200 bg-neutral-50 p-6 shadow-sm sm:p-8">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-neutral-600">
-            <span>{financialStatus.label}</span>
-            <span className="text-neutral-300">|</span>
-            <span>{financialStatus.note}</span>
-          </div>
-
-          <h2 className="mt-5 text-3xl font-semibold leading-tight tracking-tight text-neutral-950 sm:text-5xl">
-            שלום {preferences.primaryPerson || 'נועה'} ו{preferences.secondaryPerson || 'אורן'}
-          </h2>
-          <div className="mt-3 text-2xl font-semibold tracking-tight text-neutral-950 sm:text-4xl">
-            {projectedMonthEndBalance >= 0 ? 'החודש אתם במצב טוב' : 'החודש דורש תשומת לב'}
-          </div>
-
-          <div className={`mt-5 text-5xl font-black tracking-tight sm:text-7xl ${balanceAfterExpenses >= 0 ? 'text-[#6F7D65]' : 'text-red-700'}`}>
-            {SHEKEL.format(balanceAfterExpenses)}
-          </div>
-          <p className="mt-3 text-sm font-medium leading-7 text-neutral-500 sm:text-base">
-            נשארו אחרי הוצאות אמיתיות. חיסכון מוצג בנפרד כי הוא כסף שנשאר אצלכם.
-          </p>
-        </div>
-
-        <div className="grid min-w-[260px] gap-3 rounded-[28px] bg-white p-5">
-          <div className="flex items-center justify-between gap-4 text-sm font-semibold text-neutral-600">
-            <span>תחזית סוף חודש</span>
-            <span className={projectedMonthEndBalance >= 0 ? 'text-[#6F7D65]' : 'text-red-700'}>{SHEKEL.format(projectedMonthEndBalance)}</span>
-          </div>
-          <div className="flex items-center justify-between gap-4 text-sm font-semibold text-neutral-600">
-            <span>חיסכון צפוי</span>
-            <span>{SHEKEL.format(projectedSavings)}</span>
-          </div>
-          <div className="flex items-center justify-between gap-4 text-sm font-semibold text-neutral-600">
-            <span>ימים שנותרו</span>
-            <span>{daysLeftInMonth}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-7 grid gap-3 md:grid-cols-3">
-        <div className="rounded-2xl bg-white p-4">
-          <div className="text-xs font-semibold text-neutral-400">הכנסות</div>
-          <div className="mt-2 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalIncome)}</div>
-        </div>
-        <div className="rounded-2xl bg-white p-4">
-          <div className="text-xs font-semibold text-neutral-400">הוצאות</div>
-          <div className="mt-2 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalExpenses)}</div>
-        </div>
-        <div className="rounded-2xl bg-white p-4">
-          <div className="text-xs font-semibold text-neutral-400">יתרה פנויה</div>
-          <div className="mt-2 text-2xl font-semibold text-neutral-950">{SHEKEL.format(availableAfterSavings)}</div>
-        </div>
-      </div>
-
-      <div className="mt-7 grid gap-4 md:grid-cols-2">
-        <div className="rounded-[24px] bg-white p-5">
-          <div className="flex items-center justify-between text-sm font-semibold text-neutral-600">
-            <span>עברו {monthProgressPercent}% מהחודש</span>
-            <span>{currentDayOfMonth}/{daysInCurrentMonth}</span>
-          </div>
-          <div className="mt-3 h-3 overflow-hidden rounded-full bg-neutral-100">
-            <div className="h-full rounded-full" style={{ width: `${monthProgressPercent}%`, backgroundColor: activeTheme.accent }} />
-          </div>
-        </div>
-        <div className="rounded-[24px] bg-white p-5">
-          <div className="flex items-center justify-between text-sm font-semibold text-neutral-600">
-            <span>הוצאתם {spendingProgressPercent}% מהתקציב</span>
-            <span>{SHEKEL.format(totalExpenses)}</span>
-          </div>
-          <div className="mt-3 h-3 overflow-hidden rounded-full bg-neutral-100">
-            <div className={`h-full rounded-full ${spendingProgressPercent > monthProgressPercent + 15 ? 'bg-red-500' : 'bg-amber-500'}`} style={{ width: `${Math.min(100, spendingProgressPercent)}%` }} />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
-      <div className="rounded-[28px] border border-neutral-200 bg-white p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">לאן הכסף הלך?</div>
-            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">קטגוריות מובילות</h3>
-          </div>
-          <div className="text-sm font-semibold text-neutral-500">{SHEKEL.format(totalCreditCards)}</div>
-        </div>
-        <div className="mt-5 grid gap-4">
-          {topCategories.length ? topCategories.map(([category, amount]) => {
-            const percent = totalCreditCards ? Math.round((toNumber(amount) / totalCreditCards) * 100) : 0;
-            return (
-              <button key={category} type="button" onClick={() => { setActiveTab('credit'); setCategoryFilter(category); }} className="grid gap-2 text-right">
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-semibold text-neutral-800">{category}</span>
-                  <span className="text-neutral-500">{SHEKEL.format(amount)} · {percent}%</span>
-                </div>
-                <div className="h-3 overflow-hidden rounded-full bg-neutral-100">
-                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, percent)}%`, backgroundColor: activeTheme.accent }} />
-                </div>
-              </button>
-            );
-          }) : <div className="rounded-2xl bg-neutral-50 p-5 text-sm text-neutral-500">אין עדיין עסקאות אשראי אמיתיות להצגה.</div>}
-        </div>
-      </div>
-
-      <div className="grid gap-5">
-        <div className="rounded-[28px] border border-neutral-200 bg-white p-5">
-          <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">התובנה של היום</div>
-          <div className="mt-3 text-lg font-semibold leading-8 text-neutral-950">{dailyInsight}</div>
-        </div>
-
-        <div className="rounded-[28px] border border-neutral-200 bg-white p-5">
-          <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">חריגות</div>
-          <div className="mt-4 grid gap-3">
-            {anomalyTransactions.length ? anomalyTransactions.map((transaction, index) => (
-              <div key={transaction.id} className="flex items-center justify-between gap-4 rounded-2xl bg-neutral-50 p-4">
-                <div>
-                  <div className="text-sm font-semibold text-neutral-900">{transaction.merchant}</div>
-                  <div className="mt-1 text-xs text-neutral-500">עסקה גדולה יחסית החודש</div>
-                </div>
-                <div className="text-sm font-semibold text-neutral-900">{SHEKEL.format(transaction.amount)}</div>
-              </div>
-            )) : <div className="rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-500">לא זוהו חריגות משמעותיות.</div>}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div className="grid gap-5 lg:grid-cols-[1fr_0.9fr]">
-      <div className="rounded-[28px] border border-neutral-200 bg-white p-5">
-        <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">יעדים</div>
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
-          {goalCards.map((goal) => {
-            const progress = toNumber(goal.targetAmount) ? Math.min(100, Math.round((toNumber(goal.currentAmount) / toNumber(goal.targetAmount)) * 100)) : 0;
-            const remaining = Math.max(0, toNumber(goal.targetAmount) - toNumber(goal.currentAmount));
-            const monthsLeft = toNumber(goal.monthlyDeposit) ? Math.ceil(remaining / toNumber(goal.monthlyDeposit)) : null;
-            return (
-              <div key={goal.id} className="rounded-2xl bg-neutral-50 p-4">
-                <div className="text-sm font-semibold text-neutral-950">{goal.name}</div>
-                <div className="mt-3 text-2xl font-semibold text-neutral-950">{progress}%</div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
-                  <div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: activeTheme.accent }} />
-                </div>
-                <div className="mt-3 text-xs leading-6 text-neutral-500">{SHEKEL.format(goal.currentAmount)} / {SHEKEL.format(goal.targetAmount)}</div>
-                <div className="text-xs text-neutral-500">{monthsLeft ? `עוד ${monthsLeft} חודשים בקצב הנוכחי` : 'הוסיפי הפקדה חודשית לתחזית'}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="rounded-[28px] border border-neutral-200 bg-white p-5">
-        <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">הוצאות אחרונות</div>
-        <div className="mt-4 grid gap-3">
-          {recentTransactions.length ? recentTransactions.map((transaction) => (
-            <div key={transaction.id} className="flex items-center justify-between gap-4 border-b border-neutral-100 pb-3 last:border-b-0 last:pb-0">
-              <div>
-                <div className="text-sm font-semibold text-neutral-900">{transaction.merchant}</div>
-                <div className="mt-1 text-xs text-neutral-500">{transaction.date} · {transaction.category}</div>
-              </div>
-              <div className="text-sm font-semibold text-neutral-900">{SHEKEL.format(transaction.amount)}</div>
-            </div>
-          )) : <div className="rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-500">אין עדיין עסקאות להצגה.</div>}
-        </div>
-      </div>
-    </div>
-
-    <div className="rounded-[28px] border border-neutral-200 bg-white p-6">
-      <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">תחזית חכמה</div>
-      <div className="mt-3 text-2xl font-semibold tracking-tight text-neutral-950">
-        אם תמשיכו בקצב הנוכחי, תסיימו את החודש עם {projectedMonthEndBalance >= 0 ? SHEKEL.format(projectedMonthEndBalance) + ' עודף' : SHEKEL.format(Math.abs(projectedMonthEndBalance)) + ' גירעון'}.
-      </div>
-    </div>
-  </div>
-</div>
-        </section>
-        ) : null}
-
-        {activeTab === 'dashboard' ? (
           <>
-            {(preferences.showMonthlyStory || preferences.showFinancialHealth || activeNotifications.length > 0) ? (
-              <Section>
-                <div className="grid gap-4 xl:grid-cols-[1.4fr_0.6fr]">
-                  {activeNotifications.length > 0 ? (
-                    <div className="grid gap-3 md:grid-cols-3 lg:col-span-2">
-                      {activeNotifications.map((notification) => (
-                        <div key={notification} className="rounded-[24px] border border-amber-200 bg-gradient-to-br from-amber-50 to-white px-5 py-5 shadow-sm">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700"></div>
-                            <div>
-                              <div className="text-xs font-semibold uppercase tracking-widest text-amber-500">Smart Notification</div>
-                              <div className="mt-1 text-sm font-semibold leading-6 text-amber-900 no-orphans">{noSingleWordLine(notification)}</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  {preferences.showMonthlyStory ? (
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">MONTHLY STORY</div>
-                      <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-neutral-950 sm:mt-4 sm:text-4xl">הסיפור של החודש שלכם</h2>
-                      <p className="mt-4 max-h-40 max-w-3xl overflow-auto text-sm leading-7 text-neutral-600 no-orphans sm:max-h-none sm:text-lg sm:leading-9">
-  {noSingleWordLine(monthlyStory)}
-</p>
-                      <div className="mt-8 grid gap-3 md:grid-cols-3">
-                        <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 px-5 py-4"><div className="text-xs font-semibold text-neutral-400">Burn Rate</div><div className="mt-2 text-xl font-semibold text-neutral-950">{SHEKEL.format(burnRate)}</div></div>
-                        <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 px-5 py-4"><div className="text-xs font-semibold text-neutral-400">Cash Flow לחיסכון</div><div className="mt-2 text-xl font-semibold text-neutral-950">{SHEKEL.format(cashFlow)}</div></div>
-                        <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 px-5 py-4"><div className="text-xs font-semibold text-neutral-400">שיעור חיסכון</div><div className="mt-2 text-xl font-semibold text-neutral-950">{formatPercent(savingsRate)}</div></div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {preferences.showFinancialHealth ? (
-                    <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-6">
-                      <div className="text-sm font-semibold text-neutral-500">Financial Health</div>
-                      <div className="mt-4 text-6xl font-semibold text-neutral-950">{financialHealthScore}</div>
-                      <div className="mt-5 h-3 overflow-hidden rounded-full bg-neutral-200"><div className="h-full rounded-full" style={{ width: `${financialHealthScore}%`, backgroundColor: activeTheme.accent }} /></div>
-                      <div className="mt-3 text-sm leading-7 text-neutral-500">ציון לפי מצב {modeConfig.label}: קשיחות תקציב, חריגות, פיזור הוצאות ועסקאות גדולות.</div>
-                    </div>
-                  ) : null}
-                </div>
-              </Section>
-            ) : null}
-
-            <Section>
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <Section className="overflow-hidden">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">ACCOUNTS</div>
-                  <h2 className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">חשבונות ועו״ש</h2>
-                  <p className="mt-3 max-w-3xl text-sm leading-7 text-neutral-500 no-orphans">{noSingleWordLine('מעלים פירוט עו״ש CSV/Excel מהבנק, והמערכת מחשבת יתרת פתיחה, יתרה נוכחית ותנועות. היתרה אחרי הכול היא תזרים מחושב ולא נכנסת אוטומטית לעו״ש.')}</p>
-                </div>
-                <PrimaryButton theme={activeTheme} onClick={addBankAccount}>+ הוספת חשבון</PrimaryButton>
-              </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-4">
-                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">יתרת פתיחה</div>
-                  <div className="mt-3 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankOpening)}</div>
-                </div>
-                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">יתרה נוכחית</div>
-                  <div className="mt-3 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankClosing)}</div>
-                </div>
-                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">נכנס לעו״ש</div>
-                  <div className="mt-3 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankDeposits)}</div>
-                </div>
-                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">יצא מהעו״ש</div>
-                  <div className="mt-3 text-2xl font-semibold text-neutral-950">{SHEKEL.format(totalBankWithdrawals)}</div>
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-3">
-                {monthData.bankAccounts.map((account) => (
-                  <div key={account.id} className="rounded-[22px] border border-neutral-200 bg-white p-4 shadow-sm">
-  <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-    <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-      <LabeledField label="חשבון">
-        <Field value={account.name} onChange={(event) => updateRow('bankAccounts', account.id, 'name', event.target.value)} placeholder="עו״ש משותף" />
-      </LabeledField>
-
-      <LabeledField label="שייך ל">
-        <Field value={account.owner} onChange={(event) => updateRow('bankAccounts', account.id, 'owner', event.target.value)} placeholder="משפחה" />
-      </LabeledField>
-
-      <LabeledField label="יתרת פתיחה">
-        <Field type="number" value={account.openingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'openingBalance', event.target.value)} />
-      </LabeledField>
-
-      <LabeledField label="יתרה נוכחית">
-        <Field type="number" value={account.closingBalance} onChange={(event) => updateRow('bankAccounts', account.id, 'closingBalance', event.target.value)} />
-      </LabeledField>
-    </div>
-
-    <div className="flex gap-2 items-end">
-      <label className="flex-1 cursor-pointer rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-center text-xs font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-white">
-        ייבוא עו״ש
-        <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) importBankFile(account.id, file); }} />
-      </label>
-
-      <GhostButton onClick={() => removeRow('bankAccounts', account.id)} className="w-10 px-0">
-        ×
-      </GhostButton>
-    </div>
-  </div>
-                    {account.importedFile ? <div className="mt-3 rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-600">נקלט קובץ עו״ש: <strong>{account.importedFile}</strong> · {account.transactions?.length || 0} תנועות</div> : null}
-                    {account.transactions?.length ? (
-                      <div className="mt-3 max-h-64 overflow-auto rounded-2xl border border-neutral-200">
-                        <div className="grid grid-cols-[110px_1fr_130px_130px] bg-neutral-100 px-4 py-3 text-xs font-semibold text-neutral-600">
-                          <div>תאריך</div>
-                          <div>פירוט</div>
-                          <div>סכום</div>
-                          <div>יתרה</div>
-                        </div>
-                        {account.transactions.slice(0, 80).map((transaction) => (
-                          <div key={transaction.id} className="grid grid-cols-[110px_1fr_130px_130px] gap-3 border-t border-neutral-100 px-4 py-3 text-sm">
-                            <div className="text-neutral-500">{transaction.date}</div>
-                            <div>{transaction.description}</div>
-                            <div className={toNumber(transaction.amount) >= 0 ? 'font-semibold text-[#66725E]' : 'font-semibold text-red-700'}>{SHEKEL.format(transaction.amount)}</div>
-                            <div>{transaction.balance ? SHEKEL.format(transaction.balance) : '—'}</div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">סקירה חודשית</div>
+                  <h1 className="mt-3 text-4xl font-semibold tracking-tight text-neutral-950 sm:text-5xl">
+                    דוח פיננסי | {monthLabel(selectedMonth)}
+                  </h1>
+                  <p className="mt-4 max-w-3xl text-sm leading-7 text-neutral-500">
+                    {noSingleWordLine('המסך הזה מסכם את החודש שנבחר לפי הנתונים שהוזנו והקבצים שהועלו. הוא לא מתיימר להיות בנק בזמן אמת, אלא דוח חודשי אינטראקטיבי וברור.')}
+                  </p>
+                  <div className="mt-4 inline-flex rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-xs font-semibold text-neutral-600">
+                    {dataUpdatedLabel}
                   </div>
-                ))}
+                </div>
+
+                <div className="grid gap-3 rounded-[24px] border border-neutral-200 bg-neutral-50 p-4 sm:min-w-[260px]">
+                  <label className="text-xs font-semibold uppercase tracking-widest text-neutral-400">תקופת דיווח</label>
+                  <input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(event) => ensureMonth(event.target.value)}
+                    className="rounded-xl border border-neutral-300 bg-white px-4 py-3 text-lg font-semibold text-neutral-900 outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-100"
+                  />
+                  <div className="text-xs leading-6 text-neutral-500">כל המסכים והחישובים מתייחסים לחודש הזה.</div>
+                </div>
+              </div>
+
+              <div className="mt-8 grid gap-3 md:grid-cols-4">
+                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">הכנסות</div>
+                  <div className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">{SHEKEL.format(totalIncome)}</div>
+                </div>
+                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">הוצאות</div>
+                  <div className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">{SHEKEL.format(totalExpenses)}</div>
+                </div>
+                <div className="rounded-[24px] border border-neutral-200 bg-neutral-50 p-5">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">נחסך החודש</div>
+                  <div className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">{SHEKEL.format(totalPlannedSavings)}</div>
+                </div>
+                <div className={`rounded-[24px] border p-5 ${availableAfterSavings >= 0 ? 'border-[#D6DDCF] bg-[#F4F6F1]' : 'border-red-200 bg-red-50'}`}>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">עודף חודשי אחרי חיסכון</div>
+                  <div className={`mt-3 text-3xl font-semibold tracking-tight ${availableAfterSavings >= 0 ? 'text-[#66725E]' : 'text-red-700'}`}>{SHEKEL.format(availableAfterSavings)}</div>
+                </div>
               </div>
             </Section>
 
-            <Section>
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">MONTHLY COMPARE</div>
-                  <h2 className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">השוואה לאורך זמן</h2>
-                  <p className="mt-3 max-w-3xl text-sm leading-7 text-neutral-500 no-orphans">{noSingleWordLine(monthlyCompareStory)}</p>
+            <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+              <Section>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">איפה הכסף הלך?</div>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">חלוקה לפי קטגוריות</h2>
+                  </div>
+                  <div className="text-sm font-semibold text-neutral-500">סה״כ הוצאות: {SHEKEL.format(totalExpenses)}</div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+
+                <div className="mt-6 grid gap-4">
+                  {topCategories.length ? topCategories.map(([category, amount]) => {
+                    const percent = totalCreditCards ? Math.round((toNumber(amount) / totalCreditCards) * 100) : 0;
+                    return (
+                      <button key={category} type="button" onClick={() => { setCategoryFilter(category); setActiveTab('credit'); }} className="grid gap-2 rounded-2xl border border-neutral-200 bg-white p-4 text-right transition hover:border-neutral-400 hover:bg-neutral-50">
+                        <div className="flex items-center justify-between gap-3 text-sm">
+                          <span className="font-semibold text-neutral-900">{category}</span>
+                          <span className="font-semibold text-neutral-500">{SHEKEL.format(amount)} · {percent}%</span>
+                        </div>
+                        <div className="h-3 overflow-hidden rounded-full bg-neutral-100">
+                          <div className="h-full rounded-full" style={{ width: `${Math.min(100, percent)}%`, backgroundColor: activeTheme.accent }} />
+                        </div>
+                      </button>
+                    );
+                  }) : <EmptyState title="אין עדיין הוצאות מסווגות" text="אחרי העלאת פירוט אשראי או הזנת הוצאות, תופיע כאן חלוקת ההוצאות לפי קטגוריות." />}
+                </div>
+              </Section>
+
+              <Section>
+                <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">מה השתנה?</div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">השוואה לחודשים קודמים</h2>
+                <div className="mt-4 flex flex-wrap gap-2">
                   {COMPARE_PERIODS.map((period) => (
-                    <button
-                      key={period.id}
-                      type="button"
-                      onClick={() => setComparePeriod(period.id)}
-                      className="rounded-full border px-4 py-2 text-sm font-semibold transition"
-                      style={comparePeriod === period.id ? { backgroundColor: activeTheme.soft, color: activeTheme.text, borderColor: activeTheme.accent } : undefined}
-                    >
+                    <button key={period.id} type="button" onClick={() => setComparePeriod(period.id)} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${comparePeriod === period.id ? 'text-white' : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400'}`} style={comparePeriod === period.id ? { backgroundColor: activeTheme.accent, borderColor: activeTheme.accent } : undefined}>
                       {period.label}
                     </button>
                   ))}
                 </div>
-              </div>
-              {monthlyCompare.hasPrevious ? (
-                <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {monthlyCompare.rows.map((row) => {
-                    const isGoodDirection = row.key === 'income' || row.key === 'net' || row.key === 'savingsRate' || row.key === 'savings';
-                    const improved = isGoodDirection ? row.diff >= 0 : row.diff <= 0;
-                    const value = row.type === 'percent' ? formatPercent(row.currentValue) : SHEKEL.format(row.currentValue);
-                    const diff = row.type === 'percent' ? formatPercent(Math.abs(row.diff)) : SHEKEL.format(Math.abs(row.diff));
-                    return (
-                      <div key={row.key} className={`rounded-[24px] border p-5 ${improved ? 'border-[#D6DDCF] bg-[#F4F6F1] text-[#66725E]' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
-                        <div className="text-xs font-semibold uppercase tracking-widest opacity-70">{row.label}</div>
-                        <div className="mt-3 text-2xl font-semibold text-neutral-950">{value}</div>
-                        <div className="mt-2 text-sm font-semibold">{improved ? 'שיפור' : 'דורש תשומת לב'}: {diff}</div>
+
+                {monthlyCompare.hasPrevious ? (
+                  <div className="mt-6 grid gap-3">
+                    {monthlyCompare.rows.filter((row) => ['income', 'expenses', 'savings', 'net'].includes(row.key)).map((row) => {
+                      const isGoodDirection = row.key === 'income' || row.key === 'net' || row.key === 'savings';
+                      const improved = isGoodDirection ? row.diff >= 0 : row.diff <= 0;
+                      const diffText = row.type === 'percent' ? formatPercent(Math.abs(row.diff)) : SHEKEL.format(Math.abs(row.diff));
+                      return (
+                        <div key={row.key} className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                          <div>
+                            <div className="text-sm font-semibold text-neutral-900">{row.label}</div>
+                            <div className={`mt-1 text-xs font-semibold ${improved ? 'text-[#66725E]' : 'text-amber-700'}`}>{improved ? 'שיפור' : 'עלייה שדורשת בדיקה'} · {diffText}</div>
+                          </div>
+                          <div className="text-lg font-semibold text-neutral-950">{row.type === 'percent' ? formatPercent(row.currentValue) : SHEKEL.format(row.currentValue)}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="mt-6"><EmptyState title="אין עדיין מספיק חודשים להשוואה" text="אחרי שיהיו לפחות שני חודשים עם נתונים, תופיע כאן השוואה אמיתית בין חודשים." /></div>
+                )}
+              </Section>
+            </section>
+
+            <section className="grid gap-5 xl:grid-cols-2">
+              <Section>
+                <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">איפה אפשר להשתפר?</div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">תובנות מהחודש</h2>
+                <div className="mt-5 grid gap-3">
+                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm leading-7 text-neutral-700">{noSingleWordLine(dailyInsight)}</div>
+                  <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm leading-7 text-neutral-700">{noSingleWordLine(monthlyCompareStory)}</div>
+                  <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm leading-7 text-neutral-700">
+                    {savingsRate >= targetSavingsRate
+                      ? noSingleWordLine(`שיעור החיסכון החודש הוא ${formatPercent(savingsRate)}, מעל יעד של ${formatPercent(targetSavingsRate)}.`)
+                      : noSingleWordLine(`שיעור החיסכון החודש הוא ${formatPercent(savingsRate)}, מתחת ליעד של ${formatPercent(targetSavingsRate)}.`)}
+                  </div>
+                </div>
+              </Section>
+
+              <Section>
+                <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">הוצאות חריגות</div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">עסקאות שכדאי לבדוק</h2>
+                <div className="mt-5 grid gap-3">
+                  {anomalyTransactions.length ? anomalyTransactions.map((transaction) => (
+                    <button key={transaction.id} type="button" onClick={() => setActiveTab('credit')} className="flex items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white p-4 text-right transition hover:border-neutral-400 hover:bg-neutral-50">
+                      <div>
+                        <div className="font-semibold text-neutral-950">{transaction.merchant}</div>
+                        <div className="mt-1 text-xs text-neutral-500">{transaction.category || 'אחר'} · {transaction.date || 'ללא תאריך'}</div>
                       </div>
+                      <div className="text-lg font-semibold text-neutral-950">{SHEKEL.format(transaction.amount)}</div>
+                    </button>
+                  )) : <EmptyState title="לא זוהו חריגות" text="כרגע אין עסקאות גדולות במיוחד ביחס לסך ההוצאות החודשי." />}
+                </div>
+              </Section>
+            </section>
+
+            <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+              <Section>
+                <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">יעדים</div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">התקדמות חיסכון</h2>
+                <div className="mt-5 grid gap-4">
+                  {goalCards.length ? goalCards.map((goal) => {
+                    const target = toNumber(goal.targetAmount);
+                    const current = toNumber(goal.currentAmount);
+                    const monthlyDeposit = Math.max(1, toNumber(goal.monthlyDeposit));
+                    const progress = target ? Math.min(100, Math.round((current / target) * 100)) : 0;
+                    const remaining = Math.max(0, target - current);
+                    const etaMonths = remaining ? Math.ceil(remaining / monthlyDeposit) : 0;
+                    return (
+                      <button key={goal.id} type="button" onClick={() => setActiveTab('savings')} className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-right transition hover:border-neutral-400 hover:bg-white">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="font-semibold text-neutral-950">{goal.name}</div>
+                          <div className="text-sm font-semibold text-neutral-500">{progress}%</div>
+                        </div>
+                        <div className="h-3 overflow-hidden rounded-full bg-white">
+                          <div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: activeTheme.accent }} />
+                        </div>
+                        <div className="text-xs leading-6 text-neutral-500">{SHEKEL.format(current)} מתוך {SHEKEL.format(target)} · {etaMonths ? `עוד ${etaMonths} חודשים בקצב הנוכחי` : 'היעד הושלם או לא הוגדר'}</div>
+                      </button>
                     );
-                  })}
+                  }) : <EmptyState title="אין עדיין יעדים" text="הוסיפי יעד חיסכון כדי לראות כאן התקדמות חודשית." />}
                 </div>
-              ) : (
-                <div className="mt-6">
-                  <EmptyState title="אין עדיין מספיק חודשים" text="צרי או מלאי נתונים בעוד חודשים כדי לראות השוואה אוטומטית מול 3 חודשים, 6 חודשים, שנה או כל התקופה." />
+              </Section>
+
+              <Section>
+                <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">5 העסקאות הגדולות</div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">העסקאות שהשפיעו הכי הרבה</h2>
+                <div className="mt-5 divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">
+                  {biggestTransactions.length ? biggestTransactions.map((transaction) => (
+                    <button key={transaction.id} type="button" onClick={() => setActiveTab('credit')} className="grid w-full grid-cols-[1fr_auto] gap-4 p-4 text-right transition hover:bg-neutral-50">
+                      <div>
+                        <div className="font-semibold text-neutral-950">{transaction.merchant}</div>
+                        <div className="mt-1 text-xs text-neutral-500">{transaction.category || 'אחר'} · {transaction.date || 'ללא תאריך'}</div>
+                      </div>
+                      <div className="font-semibold text-neutral-950">{SHEKEL.format(transaction.amount)}</div>
+                    </button>
+                  )) : <div className="p-6"><EmptyState title="אין עדיין עסקאות" text="אחרי העלאת פירוט אשראי, יוצגו כאן 5 העסקאות הגדולות של החודש." /></div>}
                 </div>
-              )}
+              </Section>
+            </section>
+
+            <Section>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-widest text-neutral-400">השוואה חודשית</div>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">מגמת 6 חודשים</h2>
+                </div>
+                <div className="text-sm text-neutral-500">הכנסות, הוצאות וחיסכון לפי חודשים</div>
+              </div>
+              <div className="mt-6">
+                <TrendLineChart data={trendSixMonths} theme={activeTheme} />
+              </div>
             </Section>
-
-            {(preferences.showCategoryChart || preferences.showTrendChart) ? (
-              <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-                {preferences.showCategoryChart ? (
-                  <Section>
-                    <div className="flex items-center justify-between gap-4"><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">התפלגות הוצאות לפי קטגוריות</h2><span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">Heatmap</span></div>
-                    <div className="mx-auto mt-5 h-40 w-40 rounded-full sm:h-56 sm:w-56" style={{ background: pieChart }} />
-                    <div className="mt-6 space-y-2">
-                      {topCategories.length ? topCategories.map(([category, amount]) => <div key={category} className={`flex justify-between rounded-2xl border px-4 py-3 text-sm ${getBudgetHeatColor(category, amount)}`}><span>{category}</span><strong>{SHEKEL.format(amount)}</strong></div>) : <EmptyState title="אין עדיין קטגוריות" text="העלי פירוט אשראי כדי לראות התפלגות צבעונית לפי קטגוריות." />}
-                    </div>
-                  </Section>
-                ) : null}
-
-                {preferences.showTrendChart ? (
-                  <Section className="lg:col-span-2">
-                    <div className="flex items-center justify-between gap-4"><h2 className="text-2xl font-semibold tracking-tight text-neutral-950">מגמת 6 חודשים</h2><span className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">Income · Expenses · Savings</span></div>
-                    <p className="mt-2 text-sm leading-7 text-neutral-500">הכנסות, הוצאות וחיסכון נטו לפי חודשים. בלי ספריית גרפים חיצונית, כדי שה־build יישאר נקי.</p>
-                    <div className="mt-6">
-                      <TrendLineChart data={trendSixMonths} theme={activeTheme} />
-                    </div>
-                    <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-neutral-600">Burn Rate ממוצע: <strong>{SHEKEL.format(burnRate)}</strong> | Cash Flow לחיסכון: <strong>{SHEKEL.format(cashFlow)}</strong></div>
-                  </Section>
-                ) : null}
-              </section>
-            ) : null}
           </>
         ) : null}
 
